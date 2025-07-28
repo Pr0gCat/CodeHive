@@ -1,0 +1,138 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { readdirSync, statSync, readFileSync } from 'fs';
+import { join } from 'path';
+import { prisma } from '@/lib/db';
+
+export async function GET(request: NextRequest) {
+  try {
+    const reposPath = join(process.cwd(), 'repos');
+    
+    // Check if repos directory exists
+    try {
+      statSync(reposPath);
+    } catch (error) {
+      // If repos directory doesn't exist, return empty array
+      return NextResponse.json({
+        success: true,
+        data: []
+      });
+    }
+
+    // Read all directories in repos/
+    const allItems = readdirSync(reposPath);
+    const folders = allItems.filter(item => {
+      try {
+        const itemPath = join(reposPath, item);
+        return statSync(itemPath).isDirectory();
+      } catch (error) {
+        return false;
+      }
+    });
+
+    // Get all existing project local paths to filter out already indexed projects
+    const existingProjects = await prisma.project.findMany({
+      select: {
+        localPath: true,
+        name: true
+      }
+    });
+
+    // Create a set of existing paths for quick lookup
+    const existingPaths = new Set(existingProjects.map(p => p.localPath));
+
+    // Filter out folders that are already indexed as projects
+    const availableFolders = folders
+      .map(folder => {
+        const fullPath = join(reposPath, folder);
+        const relativePath = join('repos', folder);
+        
+        return {
+          name: folder,
+          path: fullPath,
+          relativePath: relativePath,
+          isAvailable: !existingPaths.has(fullPath) && !existingPaths.has(relativePath)
+        };
+      })
+      .filter(folder => folder.isAvailable)
+      .map(folder => ({
+        name: folder.name,
+        path: folder.path,
+        relativePath: folder.relativePath
+      }));
+
+    // Also check for any git repositories and get their info
+    const foldersWithInfo = availableFolders.map(folder => {
+      try {
+        const gitPath = join(folder.path, '.git');
+        let hasGit = false;
+        let gitUrl = null;
+        
+        try {
+          statSync(gitPath);
+          hasGit = true;
+          
+          // Try to read git config for remote URL
+          try {
+            const configPath = join(gitPath, 'config');
+            const configContent = readFileSync(configPath, 'utf8');
+            const urlMatch = configContent.match(/url = (.+)/);
+            if (urlMatch) {
+              gitUrl = urlMatch[1].trim();
+            }
+          } catch (configError) {
+            // Git config not readable, continue without URL
+          }
+        } catch (gitError) {
+          // No .git directory
+        }
+
+        // Check for common project files to determine project type
+        const projectFiles = readdirSync(folder.path);
+        let projectType = 'Unknown';
+        
+        if (projectFiles.includes('package.json')) {
+          projectType = 'Node.js/JavaScript';
+        } else if (projectFiles.includes('requirements.txt') || projectFiles.includes('pyproject.toml')) {
+          projectType = 'Python';
+        } else if (projectFiles.includes('Cargo.toml')) {
+          projectType = 'Rust';
+        } else if (projectFiles.includes('pom.xml') || projectFiles.includes('build.gradle')) {
+          projectType = 'Java';
+        } else if (projectFiles.includes('go.mod')) {
+          projectType = 'Go';
+        }
+
+        return {
+          ...folder,
+          hasGit,
+          gitUrl,
+          projectType,
+          fileCount: projectFiles.length
+        };
+      } catch (error) {
+        return {
+          ...folder,
+          hasGit: false,
+          gitUrl: null,
+          projectType: 'Unknown',
+          fileCount: 0
+        };
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: foldersWithInfo
+    });
+
+  } catch (error) {
+    console.error('Error listing available repos:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to list available repositories'
+      },
+      { status: 500 }
+    );
+  }
+}

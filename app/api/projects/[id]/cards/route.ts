@@ -1,0 +1,129 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
+import { z } from 'zod';
+
+const createCardSchema = z.object({
+  title: z.string().min(1, 'Card title is required'),
+  description: z.string().optional(),
+  status: z.enum(['BACKLOG', 'TODO', 'IN_PROGRESS', 'REVIEW', 'DONE']).default('BACKLOG'),
+  assignedAgent: z.string().optional(),
+  position: z.number().optional(), // Frontend sends this but we calculate our own
+});
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const cards = await prisma.kanbanCard.findMany({
+      where: { projectId: params.id },
+      include: {
+        agentTasks: {
+          orderBy: { createdAt: 'desc' },
+        },
+        _count: {
+          select: {
+            agentTasks: true,
+            queuedTasks: true,
+          },
+        },
+      },
+      orderBy: { position: 'asc' },
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: cards,
+    });
+  } catch (error) {
+    console.error('Error fetching cards:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to fetch cards',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const body = await request.json();
+    const validatedData = createCardSchema.parse(body);
+
+    // Verify project exists
+    const project = await prisma.project.findUnique({
+      where: { id: params.id },
+    });
+
+    if (!project) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Project not found',
+        },
+        { status: 404 }
+      );
+    }
+
+    // Get the next position for the card
+    const lastCard = await prisma.kanbanCard.findFirst({
+      where: { projectId: params.id },
+      orderBy: { position: 'desc' },
+    });
+
+    const nextPosition = (lastCard?.position ?? 0) + 1;
+
+    const card = await prisma.kanbanCard.create({
+      data: {
+        title: validatedData.title,
+        description: validatedData.description,
+        status: validatedData.status,
+        assignedAgent: validatedData.assignedAgent,
+        projectId: params.id,
+        position: nextPosition,
+      },
+      include: {
+        agentTasks: true,
+        _count: {
+          select: {
+            agentTasks: true,
+            queuedTasks: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: card,
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Validation failed',
+          details: error.issues,
+        },
+        { status: 400 }
+      );
+    }
+
+    console.error('Error creating card:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to create card',
+      },
+      { status: 500 }
+    );
+  }
+}

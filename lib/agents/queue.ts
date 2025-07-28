@@ -1,0 +1,347 @@
+import { prisma, TaskStatus } from '@/lib/db';
+import { AgentTask, AgentResult, QueueStatus } from './types';
+import { AgentExecutor } from './executor';
+import { RateLimiter } from './rate-limiter';
+import { PerformanceTracker } from './performance-tracker';
+import { AgentFactory, AgentExecutionRequest } from './agent-factory';
+import { ProjectManagerAgent } from './project-manager';
+import { getProjectSettings, canQueueTask, canRunParallelAgent } from './project-settings';
+
+export class TaskQueue {
+  private executor: AgentExecutor;
+  private rateLimiter: RateLimiter;
+  private performanceTracker: PerformanceTracker;
+  private status: QueueStatus = QueueStatus.ACTIVE;
+  private processingInterval: NodeJS.Timeout | null = null;
+  private readonly POLL_INTERVAL = 5000; // 5 seconds
+
+  constructor() {
+    this.executor = new AgentExecutor();
+    this.rateLimiter = new RateLimiter();
+    this.performanceTracker = new PerformanceTracker();
+    this.startProcessing();
+  }
+
+  async enqueue(task: Omit<AgentTask, 'id' | 'createdAt'>): Promise<string> {
+    // Check if project can queue more tasks
+    const queueCheck = await canQueueTask(task.projectId);
+    if (!queueCheck.allowed) {
+      throw new Error(`Cannot queue task: ${queueCheck.reason} (${queueCheck.currentSize}/${queueCheck.maxSize})`);
+    }
+
+    // Get project settings to determine default priority if not specified
+    const settings = await getProjectSettings(task.projectId);
+    const priority = task.priority || (settings.taskPriority === 'LOW' ? 1 : 
+                                      settings.taskPriority === 'NORMAL' ? 5 :
+                                      settings.taskPriority === 'HIGH' ? 8 : 10);
+
+    const queuedTask = await prisma.queuedTask.create({
+      data: {
+        projectId: task.projectId,
+        cardId: task.cardId,
+        taskId: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        agentType: task.agentType,
+        payload: JSON.stringify({
+          command: task.command,
+          priority,
+          context: task.context || {},
+        }),
+        priority,
+        status: 'PENDING',
+      },
+    });
+
+    console.log(`Task enqueued: ${queuedTask.taskId} (priority: ${priority})`);
+    return queuedTask.taskId;
+  }
+
+  async getQueueStatus(): Promise<{
+    status: QueueStatus;
+    pendingTasks: number;
+    activeTasks: number;
+    rateLimitStatus: any;
+  }> {
+    const [pendingTasks, activeTasks] = await Promise.all([
+      prisma.queuedTask.count({
+        where: { status: 'PENDING' },
+      }),
+      prisma.agentTask.count({
+        where: { status: TaskStatus.RUNNING },
+      }),
+    ]);
+
+    const rateLimitStatus = await this.rateLimiter.getStatus();
+
+    return {
+      status: this.status,
+      pendingTasks,
+      activeTasks,
+      rateLimitStatus,
+    };
+  }
+
+  async toggleQueue(): Promise<void> {
+    if (this.status === QueueStatus.ACTIVE) {
+      // Pause: Stop the timer completely
+      this.status = QueueStatus.PAUSED;
+      if (this.processingInterval) {
+        clearInterval(this.processingInterval);
+        this.processingInterval = null;
+      }
+      console.log('Task queue paused');
+    } else {
+      // Resume: Recreate the timer
+      this.status = QueueStatus.ACTIVE;
+      this.startProcessing();
+      console.log('Task queue resumed');
+    }
+  }
+
+  // Legacy method for backward compatibility - now just calls toggleQueue
+  async pauseQueue(): Promise<void> {
+    if (this.status === QueueStatus.ACTIVE) {
+      await this.toggleQueue();
+    }
+  }
+
+  // Legacy method for backward compatibility - now just calls toggleQueue  
+  async resumeQueue(): Promise<void> {
+    if (this.status === QueueStatus.PAUSED) {
+      await this.toggleQueue();
+    }
+  }
+
+  // Getter method to check if queue is currently active
+  isActive(): boolean {
+    return this.status === QueueStatus.ACTIVE;
+  }
+
+  // Getter method to get current queue status
+  getStatus(): QueueStatus {
+    return this.status;
+  }
+
+  private startProcessing(): void {
+    if (this.processingInterval) {
+      clearInterval(this.processingInterval);
+    }
+
+    this.processingInterval = setInterval(async () => {
+      if (this.status === QueueStatus.ACTIVE) {
+        await this.processNextTask();
+      }
+    }, this.POLL_INTERVAL);
+
+    console.log('Task queue processing started');
+  }
+
+  private async processNextTask(): Promise<void> {
+    try {
+      // Check rate limits
+      const canProceed = await this.rateLimiter.canProceed();
+      if (!canProceed) {
+        if (this.status === QueueStatus.ACTIVE) {
+          console.log('Rate limit reached, pausing queue');
+          await this.toggleQueue(); // Use the new toggle method
+        }
+        return;
+      }
+
+      // Get next pending task with highest priority
+      const queuedTask = await prisma.queuedTask.findFirst({
+        where: { status: 'PENDING' },
+        orderBy: [
+          { priority: 'desc' },
+          { createdAt: 'asc' },
+        ],
+      });
+
+      if (!queuedTask) {
+        return; // No tasks to process
+      }
+
+      console.log(`Processing task: ${queuedTask.taskId}`);
+
+      // Mark task as running and create agent task record
+      const payload = JSON.parse(queuedTask.payload);
+      const agentTask = await prisma.agentTask.create({
+        data: {
+          cardId: queuedTask.cardId!,
+          agentType: queuedTask.agentType,
+          command: payload.command,
+          status: TaskStatus.RUNNING,
+          startedAt: new Date(),
+        },
+      });
+
+      // Update queued task status
+      await prisma.queuedTask.update({
+        where: { id: queuedTask.id },
+        data: { status: 'RUNNING' },
+      });
+
+      // Execute the task
+      const result = await this.executeTask(payload, queuedTask.projectId);
+
+      // Record token usage
+      if (result.tokensUsed) {
+        await this.rateLimiter.recordUsage(result.tokensUsed);
+        await prisma.tokenUsage.create({
+          data: {
+            projectId: queuedTask.projectId,
+            agentType: queuedTask.agentType,
+            taskId: queuedTask.taskId,
+            inputTokens: Math.floor(result.tokensUsed * 0.3), // Rough estimate
+            outputTokens: Math.floor(result.tokensUsed * 0.7),
+          },
+        });
+      }
+
+      // Update task with result
+      await prisma.agentTask.update({
+        where: { id: agentTask.id },
+        data: {
+          status: result.success ? TaskStatus.COMPLETED : TaskStatus.FAILED,
+          output: result.output,
+          error: result.error,
+          completedAt: new Date(),
+        },
+      });
+
+      // Update queued task
+      await prisma.queuedTask.update({
+        where: { id: queuedTask.id },
+        data: {
+          status: result.success ? 'COMPLETED' : 'FAILED',
+          completedAt: new Date(),
+          error: result.error,
+        },
+      });
+
+      // Record performance metrics
+      try {
+        // Find or create agent specification
+        const agentSpec = await prisma.agentSpecification.findFirst({
+          where: { 
+            projectId: queuedTask.projectId,
+            type: queuedTask.agentType,
+          },
+        });
+
+        if (agentSpec) {
+          await this.performanceTracker.recordExecution(
+            agentSpec.id,
+            queuedTask.agentType,
+            result,
+            payload.context?.complexity || 'normal'
+          );
+        }
+      } catch (error) {
+        console.error('Error recording performance metrics:', error);
+      }
+
+      console.log(`Task ${queuedTask.taskId} ${result.success ? 'completed' : 'failed'}`);
+
+    } catch (error) {
+      console.error('Error processing task:', error);
+      // Continue processing other tasks
+    }
+  }
+
+  private async executeTask(payload: any, projectId: string): Promise<AgentResult> {
+    try {
+      // Get project details and context
+      const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: { 
+          id: true,
+          name: true,
+          localPath: true,
+          gitUrl: true,
+        },
+      });
+
+      if (!project) {
+        return {
+          success: false,
+          error: `Project ${projectId} not found`,
+          executionTime: 0,
+          tokensUsed: 50,
+        };
+      }
+
+      // Use AgentFactory for supported agents, fallback to direct execution
+      if (AgentFactory.isAgentSupported(payload.agentType)) {
+        // Create project context for the agent
+        const projectManager = new ProjectManagerAgent();
+        const projectContext = await projectManager.analyzeProject(projectId);
+
+        const executionRequest: AgentExecutionRequest = {
+          agentType: payload.agentType,
+          command: payload.command,
+          projectContext,
+          options: {
+            timeout: 240000, // 4 minutes
+            maxRetries: 2,
+            workingDirectory: project.localPath,
+          },
+        };
+
+        return await AgentFactory.executeAgent(executionRequest);
+      } else {
+        // Fallback to direct execution for unsupported agents
+        const result = await this.executor.execute(payload.command, {
+          workingDirectory: project.localPath,
+          timeout: 120000, // 2 minutes
+          maxRetries: 2,
+        });
+
+        return result;
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        executionTime: 0,
+        tokensUsed: 100, // Estimated minimal usage for failed tasks
+      };
+    }
+  }
+
+  // Get task by ID
+  async getTask(taskId: string) {
+    return prisma.queuedTask.findFirst({
+      where: { taskId },
+      include: {
+        project: {
+          select: { name: true, localPath: true },
+        },
+        card: {
+          select: { title: true, status: true },
+        },
+      },
+    });
+  }
+
+  // Cancel a task
+  async cancelTask(taskId: string): Promise<boolean> {
+    try {
+      const task = await prisma.queuedTask.findFirst({
+        where: { taskId },
+      });
+
+      if (!task) return false;
+
+      await prisma.queuedTask.update({
+        where: { id: task.id },
+        data: {
+          status: 'CANCELLED',
+          completedAt: new Date(),
+        },
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}

@@ -1,0 +1,282 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  summary     String?  // AI-generated project summary from review
+  gitUrl      String?
+  localPath   String   @unique
+  status      String @default("ACTIVE")
+  
+  // Tech Stack Configuration
+  framework   String?  // e.g., "Next.js", "React", "Vue.js", "Angular"
+  language    String?  // e.g., "typescript", "javascript", "python"
+  packageManager String? // e.g., "npm", "yarn", "pnpm", "bun"
+  testFramework String? // e.g., "jest", "vitest", "cypress"
+  lintTool    String?  // e.g., "eslint", "tslint", "pylint"
+  buildTool   String?  // e.g., "webpack", "vite", "rollup"
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  kanbanCards KanbanCard[]
+  tokenUsage  TokenUsage[]
+  queuedTasks QueuedTask[]
+  milestones  RoadmapMilestone[]
+  agentSpecs  AgentSpecification[]
+  settings    ProjectSettings?
+
+  @@map("projects")
+}
+
+model GlobalSettings {
+  id          String   @id @default("global")
+  
+  // Global Tech Stack Preferences
+  preferredFramework   String?  // e.g., "Next.js", "React", "Vue.js"
+  preferredLanguage    String?  // e.g., "typescript", "javascript", "python"
+  preferredPackageManager String? // e.g., "npm", "yarn", "pnpm", "bun"
+  preferredTestFramework String? // e.g., "jest", "vitest", "cypress"
+  preferredLintTool    String?  // e.g., "eslint", "tslint", "pylint"
+  preferredBuildTool   String?  // e.g., "webpack", "vite", "rollup"
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("global_settings")
+}
+
+model ProjectSettings {
+  id          String   @id @default(cuid())
+  projectId   String   @unique
+  
+  // Token and Rate Limiting Settings
+  maxTokensPerDay        Int      @default(10000)
+  maxTokensPerRequest    Int      @default(4000)
+  maxRequestsPerMinute   Int      @default(20)
+  maxRequestsPerHour     Int      @default(100)
+  
+  // Agent Execution Settings
+  agentTimeout           Int      @default(300000)  // 5 minutes in milliseconds
+  maxRetries             Int      @default(3)
+  parallelAgentLimit     Int      @default(2)
+  autoReviewOnImport     Boolean  @default(true)
+  
+  // Task Queue Settings
+  maxQueueSize           Int      @default(50)
+  taskPriority           String   @default("NORMAL") // LOW, NORMAL, HIGH, CRITICAL
+  autoExecuteTasks       Boolean  @default(true)
+  
+  // Notification Settings
+  emailNotifications     Boolean  @default(false)
+  slackWebhookUrl        String?
+  discordWebhookUrl      String?
+  notifyOnTaskComplete   Boolean  @default(true)
+  notifyOnTaskFail       Boolean  @default(true)
+  
+  // Agent Behavior Settings
+  codeAnalysisDepth      String   @default("STANDARD") // LIGHT, STANDARD, DEEP
+  testCoverageThreshold  Float    @default(80.0)
+  enforceTypeChecking    Boolean  @default(true)
+  autoFixLintErrors      Boolean  @default(false)
+  
+  // Advanced Settings
+  claudeModel            String   @default("claude-3-5-sonnet-20241022")
+  customInstructions     String?
+  excludePatterns        String?  // JSON array of file patterns to exclude
+  includeDependencies    Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_settings")
+}
+
+model KanbanCard {
+  id          String     @id @default(cuid())
+  projectId   String
+  title       String
+  description String?
+  status      String @default("BACKLOG")
+  position    Int
+  assignedAgent String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  agentTasks  AgentTask[]
+  queuedTasks QueuedTask[]
+
+  @@map("kanban_cards")
+}
+
+model AgentTask {
+  id          String    @id @default(cuid())
+  cardId      String
+  agentType   String
+  command     String
+  status      String @default("PENDING")
+  output      String?
+  error       String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  card        KanbanCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@map("agent_tasks")
+}
+
+model TokenUsage {
+  id           String   @id @default(cuid())
+  projectId    String
+  agentType    String
+  taskId       String?
+  inputTokens  Int
+  outputTokens Int
+  timestamp    DateTime @default(now())
+
+  // Relations
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("token_usage")
+}
+
+model RoadmapMilestone {
+  id          String          @id @default(cuid())
+  projectId   String
+  title       String
+  description String?
+  dueDate     DateTime?
+  status      String @default("PLANNED")
+  createdAt   DateTime        @default(now())
+
+  // Relations
+  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("roadmap_milestones")
+}
+
+model QueuedTask {
+  id          String      @id @default(cuid())
+  projectId   String
+  cardId      String?
+  taskId      String
+  agentType   String
+  payload     String      // JSON payload
+  priority    Int         @default(0)
+  status      String  @default("PENDING")
+  createdAt   DateTime    @default(now())
+  pausedAt    DateTime?
+  resumedAt   DateTime?
+  completedAt DateTime?
+  error       String?
+
+  // Relations
+  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  card        KanbanCard? @relation(fields: [cardId], references: [id], onDelete: SetNull)
+
+  @@map("queued_tasks")
+}
+
+model AgentSpecification {
+  id           String   @id @default(cuid())
+  projectId    String
+  name         String
+  type         String
+  purpose      String
+  capabilities String   // JSON array
+  dependencies String   // JSON array
+  prompt       String
+  constraints  String   // JSON object
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  createdBy    String   @default("project-manager-agent")
+
+  // Relations
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  performance  AgentPerformance[]
+  evolution    AgentEvolution[]
+
+  @@unique([projectId, name], name: "projectId_name")
+  @@map("agent_specifications")
+}
+
+model AgentPerformance {
+  id             String    @id @default(cuid())
+  agentId        String
+  executionTime  Int
+  tokensUsed     Int
+  success        Boolean
+  errorMessage   String?
+  taskComplexity String?
+  timestamp      DateTime  @default(now())
+
+  // Relations
+  agent          AgentSpecification @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@map("agent_performance")
+}
+
+model AgentEvolution {
+  id                String   @id @default(cuid())
+  agentId           String
+  version           Int
+  changes           String   // JSON object
+  performanceBefore String   // JSON object
+  performanceAfter  String?  // JSON object
+  reason            String
+  timestamp         DateTime @default(now())
+
+  // Relations
+  agent             AgentSpecification @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@map("agent_evolution")
+}
+
+model UsageTracking {
+  id          String   @id @default(cuid())
+  timestamp   DateTime @default(now())
+  tokenCount  Int
+  requestCount Int     @default(1)
+  projectId   String?
+  agentType   String?
+  resetPeriod String   // 'minute', 'hour', 'day'
+
+  @@map("usage_tracking")
+}
+
+model UsageLimit {
+  id          String   @id @default(cuid())
+  limitType   String   @unique // 'tokens_per_day', 'requests_per_minute', etc.
+  limitValue  Int
+  currentUsage Int     @default(0)
+  resetAt     DateTime
+  updatedAt   DateTime @updatedAt
+
+  @@map("usage_limits")
+}
+
+// Note: SQLite doesn't support enums, so we use strings with default values
+// Valid values:
+// ProjectStatus: "ACTIVE", "PAUSED", "COMPLETED", "ARCHIVED"
+// CardStatus: "BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DONE"
+// TaskStatus: "PENDING", "RUNNING", "COMPLETED", "FAILED", "PAUSED"
+// MilestoneStatus: "PLANNED", "IN_PROGRESS", "COMPLETED"

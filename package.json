@@ -1,0 +1,62 @@
+{
+  "name": "codehive",
+  "version": "0.1.0",
+  "description": "A multi-agent software development platform that orchestrates Claude Code agents",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:setup": "prisma migrate dev && prisma generate",
+    "db:seed": "bun run prisma/seed.ts",
+    "test": "bun test",
+    "test:watch": "bun test --watch"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.0.0",
+    "clsx": "^2.1.1",
+    "next": "^14.0.0",
+    "prisma": "^5.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "tailwind-merge": "^3.3.1",
+    "zod": "^4.0.10"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "autoprefixer": "^10.0.0",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "^14.0.0",
+    "postcss": "^8.0.0",
+    "prettier": "^3.0.0",
+    "tailwindcss": "^3.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/codehive.git"
+  },
+  "keywords": [
+    "ai",
+    "claude-code",
+    "multi-agent",
+    "software-development",
+    "kanban",
+    "project-management"
+  ],
+  "author": "CodeHive Team",
+  "license": "MIT"
+}
