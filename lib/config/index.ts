@@ -2,6 +2,8 @@
  * Environment configuration and validation
  */
 
+import { formatShortNumber } from '@/lib/utils';
+
 export interface Config {
   // Database
   databaseUrl: string;
@@ -102,7 +104,7 @@ if (config.isDevelopment) {
     nodeEnv: config.nodeEnv,
     appUrl: config.appUrl,
     claudeCodePath: config.claudeCodePath,
-    tokenLimit: parseInt(config.claudeDailyTokenLimit).toLocaleString(),
+    tokenLimit: formatShortNumber(parseInt(config.claudeDailyTokenLimit)),
     rateLimit: config.claudeRateLimitPerMinute,
   });
 }

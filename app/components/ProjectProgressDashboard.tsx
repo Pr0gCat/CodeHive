@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { formatShortNumber } from '@/lib/utils';
 
 interface ProjectProgress {
   id: string;
@@ -181,7 +182,7 @@ export default function ProjectProgressDashboard() {
               <div className="flex items-center justify-between text-xs">
                 <span className="text-primary-400">Token Usage Today</span>
                 <div className="flex items-center gap-1">
-                  <span className="text-accent-50">{project.tokenUsage.used.toLocaleString()}</span>
+                  <span className="text-accent-50">{formatShortNumber(project.tokenUsage.used)}</span>
                   <div className={`w-2 h-2 rounded-full ${
                     project.tokenUsage.trend === 'up' ? 'bg-green-500' :
                     project.tokenUsage.trend === 'down' ? 'bg-red-500' : 'bg-yellow-500'

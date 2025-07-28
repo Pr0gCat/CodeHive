@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { formatShortNumber } from '@/lib/utils';
 
 interface AgentStatusPanelProps {
   projectId: string;
@@ -138,7 +139,7 @@ export default function AgentStatusPanel({ projectId }: AgentStatusPanelProps) {
           <div className="flex items-center justify-between text-sm mb-1">
             <span className="text-primary-300">Daily Tokens</span>
             <span className="text-accent-50">
-              {queueStatus.rateLimitStatus.dailyTokens.used.toLocaleString()} / {queueStatus.rateLimitStatus.dailyTokens.limit.toLocaleString()}
+              {formatShortNumber(queueStatus.rateLimitStatus.dailyTokens.used)} / {formatShortNumber(queueStatus.rateLimitStatus.dailyTokens.limit)}
             </span>
           </div>
           <div className="w-full bg-primary-800 rounded-full h-2">

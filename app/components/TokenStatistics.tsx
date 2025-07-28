@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { formatShortNumber } from '@/lib/utils';
 
 interface TokenStats {
   total: {
@@ -60,14 +61,6 @@ export default function TokenStatistics() {
     }
   };
 
-  const formatNumber = (num: number): string => {
-    if (num >= 1000000) {
-      return (num / 1000000).toFixed(1) + 'M';
-    } else if (num >= 1000) {
-      return (num / 1000).toFixed(1) + 'K';
-    }
-    return num.toString();
-  };
 
   const getAgentIcon = (agentType: string): string => {
     switch (agentType) {
@@ -123,7 +116,7 @@ export default function TokenStatistics() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-primary-300">Total Tokens</p>
-              <p className="text-2xl font-bold text-accent-50">{formatNumber(stats.total.tokens)}</p>
+              <p className="text-2xl font-bold text-accent-50">{formatShortNumber(stats.total.tokens)}</p>
               <p className="text-xs text-primary-400">{stats.total.requests} requests</p>
             </div>
             <div className="text-3xl text-accent-500">🔥</div>
@@ -135,7 +128,7 @@ export default function TokenStatistics() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-primary-300">Today</p>
-              <p className="text-2xl font-bold text-accent-50">{formatNumber(stats.today.tokens)}</p>
+              <p className="text-2xl font-bold text-accent-50">{formatShortNumber(stats.today.tokens)}</p>
               <p className="text-xs text-primary-400">{stats.today.requests} requests</p>
             </div>
             <div className="text-3xl text-blue-500">📅</div>
@@ -147,7 +140,7 @@ export default function TokenStatistics() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-primary-300">This Week</p>
-              <p className="text-2xl font-bold text-accent-50">{formatNumber(stats.week.tokens)}</p>
+              <p className="text-2xl font-bold text-accent-50">{formatShortNumber(stats.week.tokens)}</p>
               <p className="text-xs text-primary-400">{stats.week.requests} requests</p>
             </div>
             <div className="text-3xl text-green-500">📊</div>
@@ -159,7 +152,7 @@ export default function TokenStatistics() {
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-primary-800 rounded-lg p-4 border border-primary-600">
           <p className="text-sm text-primary-300 mb-2">Input Tokens</p>
-          <p className="text-lg font-semibold text-accent-50">{formatNumber(stats.total.inputTokens)}</p>
+          <p className="text-lg font-semibold text-accent-50">{formatShortNumber(stats.total.inputTokens)}</p>
           <div className="w-full bg-primary-700 rounded-full h-2 mt-2">
             <div 
               className="bg-blue-500 h-2 rounded-full" 
@@ -172,7 +165,7 @@ export default function TokenStatistics() {
 
         <div className="bg-primary-800 rounded-lg p-4 border border-primary-600">
           <p className="text-sm text-primary-300 mb-2">Output Tokens</p>
-          <p className="text-lg font-semibold text-accent-50">{formatNumber(stats.total.outputTokens)}</p>
+          <p className="text-lg font-semibold text-accent-50">{formatShortNumber(stats.total.outputTokens)}</p>
           <div className="w-full bg-primary-700 rounded-full h-2 mt-2">
             <div 
               className="bg-green-500 h-2 rounded-full" 
@@ -201,9 +194,9 @@ export default function TokenStatistics() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-semibold text-accent-50">{formatNumber(agent.tokens)}</p>
+                  <p className="text-sm font-semibold text-accent-50">{formatShortNumber(agent.tokens)}</p>
                   <p className="text-xs text-primary-400">
-                    {formatNumber(agent.inputTokens)}↑ {formatNumber(agent.outputTokens)}↓
+                    {formatShortNumber(agent.inputTokens)}↑ {formatShortNumber(agent.outputTokens)}↓
                   </p>
                 </div>
               </div>

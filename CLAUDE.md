@@ -13,6 +13,13 @@ CodeHive is a multi-agent software development platform that orchestrates Claude
 - User-controlled tech stack preferences system
 - ESLint, Prettier, and code quality tools configured
 
+**Upcoming Major Feature**: Scrum Agile Integration with Query-Driven Development
+- 🎯 **Goal**: Transform CodeHive into a full Scrum + Kanban platform with user query system
+- 📋 **5 Sprint Roadmap**: 10-week implementation plan (140 tasks across 20 epics)
+- 🔄 **Query-Driven Flow**: Development pauses for user decisions via mail-like query cards
+- 🤖 **Enhanced Product Owner**: AI agent facilitates Scrum ceremonies and generates intelligent queries
+- 🔒 **Single Claude Instance**: One active Claude Code session per project with smart pause/resume
+
 ## Core Development Commands
 
 ```bash
@@ -111,6 +118,29 @@ POST /api/agents/project-manager - Execute project manager actions
 GET /api/agents/status/:taskId - Get task status
 GET /api/agents/queue - Get task queue status
 
+// Scrum & Sprint operations (Planned)
+GET /api/projects/:id/sprints - List project sprints
+POST /api/projects/:id/sprints - Create new sprint
+GET /api/sprints/:id - Get sprint details
+PUT /api/sprints/:id - Update sprint
+DELETE /api/sprints/:id - Delete sprint
+GET/POST /api/sprints/:id/ceremonies - Manage ceremonies
+
+// User Query system (Planned)
+GET /api/projects/:id/queries - List project queries
+POST /api/projects/:id/queries - Create new query
+GET /api/queries/:id - Get query details
+PUT /api/queries/:id - Update query
+POST /api/queries/:id/comments - Add query comment
+PUT /api/queries/:id/accept - Accept query
+POST /api/queries/:id/block-development - Block development
+
+// Instance Management (Planned)
+GET /api/projects/:id/instance/status - Get Claude instance status
+POST /api/projects/:id/instance/pause - Pause instance
+POST /api/projects/:id/instance/resume - Resume instance
+GET /api/projects/:id/queue - Get task queue
+
 // Settings
 GET /api/settings - Get global tech stack preferences
 PUT /api/settings - Update global tech stack preferences
@@ -207,10 +237,13 @@ The configuration module validates all required variables on startup and provide
 
 ## Development Workflow
 
-### Current Sprint Status
-- ✅ Sprint 1 infrastructure complete
-- 🚧 Next: API endpoints and Kanban functionality
-- 📅 Upcoming: Agent system implementation
+### Current Sprint Status - Scrum Agile Feature Development
+- 📋 **Sprint 1** (Weeks 1-2): Foundation & Database Models - 35 tasks
+- 🔄 **Sprint 2** (Weeks 3-4): Query System & Instance Management - 25 tasks  
+- 🤖 **Sprint 3** (Weeks 5-6): Product Owner Agent & Ceremonies - 28 tasks
+- 🎨 **Sprint 4** (Weeks 7-8): UI Components & User Experience - 28 tasks
+- 🚀 **Sprint 5** (Weeks 9-10): Integration & Testing - 28 tasks
+- **Total**: 140 tasks across 20 epics with 30 documentation tasks (21% of effort)
 
 ### Code Quality Standards
 - All code must pass TypeScript compilation

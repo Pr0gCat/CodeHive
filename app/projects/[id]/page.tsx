@@ -6,7 +6,6 @@ import { Project, KanbanCard, ProjectSettings } from '@/lib/db';
 import KanbanBoard from '@/app/components/KanbanBoard';
 import AgentStatusPanel from '@/app/components/AgentStatusPanel';
 import ProjectSettingsModal from '@/app/components/ProjectSettingsModal';
-import Navbar from '@/app/components/Navbar';
 
 interface ProjectPageProps {
   params: { id: string };
@@ -198,7 +197,6 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
   return (
     <div className="min-h-screen bg-primary-950">
-      <Navbar />
       {/* Header */}
       <div className="bg-primary-900 border-b border-primary-800">
         <div className="container mx-auto px-4 py-4">
@@ -282,7 +280,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
         </div>
       </div>
 
-      <div className="flex h-[calc(100vh-theme(spacing.64))]">
+      <div className="flex h-[calc(100vh-120px)]">
         {/* Agent Status Panel */}
         <div className="w-80 p-4 bg-primary-950 border-r border-primary-800 h-full">
           <AgentStatusPanel projectId={project.id} />
