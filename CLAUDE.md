@@ -6,22 +6,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 CodeHive is a multi-agent software development platform that orchestrates Claude Code agents to manage multiple projects simultaneously using Test-Driven Development principles. The system dynamically creates specialized agents based on project requirements.
 
-**Current Status**: Sprint 5 completed ✅ - Production-ready agent architecture
+**Current Status**: AI-Native TDD Development System - Foundation Complete ✅
 - Next.js 14 + TypeScript + Tailwind CSS with complete UI
 - SQLite database with Prisma ORM and tech stack configuration
 - 4 specialized agents with command validation
 - User-controlled tech stack preferences system
 - ESLint, Prettier, and code quality tools configured
 
-**Upcoming Major Feature**: Scrum Agile Integration with Query-Driven Development
-- 🎯 **Goal**: Transform CodeHive into a full Scrum + Kanban platform with user query system
-- 📋 **5 Sprint Roadmap**: 10-week implementation plan (140 tasks across 20 epics)
-- 🔄 **Query-Driven Flow**: Development pauses for user decisions via mail-like query cards
-- 🤖 **Enhanced Product Owner**: AI agent facilitates Scrum ceremonies and generates intelligent queries
-- 🔒 **Single Claude Instance**: One active Claude Code session per project with smart pause/resume
+**New AI-Native TDD System**: Query-Driven Development with Test-First Cycles
+- 🎯 **Goal**: AI-driven Test-Driven Development with minimal human interruption
+- 🔄 **TDD Phases**: RED (generate tests) → GREEN (implement) → REFACTOR (improve) → REVIEW
+- 🤖 **Smart Decision Points**: AI only blocks for truly important architectural decisions
+- 📊 **Cycle Tracking**: Complete visibility into test generation, implementation, and artifacts
+- 🎨 **Simple UI**: Focus on development progress, not ceremony
+
+**Foundation Complete**:
+- ✅ Database models for Cycles, Tests, Queries, and Artifacts
+- ✅ TDD Cycle Engine with RED-GREEN-REFACTOR-REVIEW phases
+- ✅ Type-safe status constants and database client
+- 🔄 Decision Point system (in progress)
+- 🔄 AI test generation (pending)
+- 🔄 Development Dashboard UI (pending)
 
 ## Core Development Commands
 
+**CodeHive Platform Commands:**
 ```bash
 # Install dependencies
 bun install
@@ -47,6 +56,41 @@ bun run type-check       # Run TypeScript type checking
 # Testing (when implemented)
 bun test                 # Run all tests
 bun test --watch         # Run tests in watch mode
+```
+
+**Managed Project Commands (Language Agnostic):**
+CodeHive manages projects in ANY programming language or framework. Commands are determined by the project's tech stack configuration:
+
+```bash
+# Examples for different project types:
+
+# Node.js/JavaScript projects
+npm install / yarn install / pnpm install / bun install
+npm run dev / yarn dev
+npm test / yarn test
+
+# Python projects  
+pip install -r requirements.txt
+python -m pytest
+python manage.py runserver
+
+# Go projects
+go mod tidy
+go test ./...
+go run main.go
+
+# Rust projects
+cargo build
+cargo test
+cargo run
+
+# Java projects
+mvn clean install
+mvn test
+./gradlew build
+
+# Any other language/framework
+# Commands are configured per project based on tech stack
 ```
 
 ## Architecture Overview
@@ -77,7 +121,13 @@ bun test --watch         # Run tests in watch mode
    - **Documentation**: README generation, code docs, API documentation
    - Each agent has command validation, prompt templates, and execution tracking
 
-2. **User-Controlled Tech Stack**: Flexible preference system:
+2. **Language-Agnostic Tech Stack**: Flexible preference system supporting any technology:
+   - **Framework**: Next.js, React, Django, Rails, Spring Boot, Express, FastAPI, etc.
+   - **Language**: TypeScript, JavaScript, Python, Go, Rust, Java, C#, PHP, etc.
+   - **Package Manager**: npm, yarn, pnpm, bun, pip, cargo, maven, gradle, composer, etc.
+   - **Test Framework**: Jest, Pytest, Go test, Cargo test, JUnit, PHPUnit, etc.
+   - **Lint Tool**: ESLint, Pylint, Golint, Clippy, Checkstyle, etc.
+   - **Build Tool**: Webpack, Vite, Make, CMake, Gradle, Maven, etc.
    - Global settings with text input fields for any tool names
    - Per-project overrides in database schema
    - Agents adapt behavior based on user-defined preferences
@@ -118,28 +168,31 @@ POST /api/agents/project-manager - Execute project manager actions
 GET /api/agents/status/:taskId - Get task status
 GET /api/agents/queue - Get task queue status
 
-// Scrum & Sprint operations (Planned)
-GET /api/projects/:id/sprints - List project sprints
-POST /api/projects/:id/sprints - Create new sprint
-GET /api/sprints/:id - Get sprint details
-PUT /api/sprints/:id - Update sprint
-DELETE /api/sprints/:id - Delete sprint
-GET/POST /api/sprints/:id/ceremonies - Manage ceremonies
+// AI-Native TDD Cycle operations
+GET /api/projects/:id/cycles - List project TDD cycles
+POST /api/projects/:id/cycles - Create new TDD cycle from feature request
+GET /api/cycles/:id - Get cycle details with tests and artifacts
+PUT /api/cycles/:id/execute - Execute current phase of cycle
+DELETE /api/cycles/:id - Delete cycle
 
-// User Query system (Planned)
-GET /api/projects/:id/queries - List project queries
-POST /api/projects/:id/queries - Create new query
-GET /api/queries/:id - Get query details
-PUT /api/queries/:id - Update query
-POST /api/queries/:id/comments - Add query comment
-PUT /api/queries/:id/accept - Accept query
-POST /api/queries/:id/block-development - Block development
+// Test Management
+GET /api/cycles/:id/tests - Get tests for a cycle
+POST /api/cycles/:id/tests - Generate new test for cycle
+PUT /api/tests/:id - Update test status/results
+DELETE /api/tests/:id - Delete test
 
-// Instance Management (Planned)
-GET /api/projects/:id/instance/status - Get Claude instance status
-POST /api/projects/:id/instance/pause - Pause instance
-POST /api/projects/:id/instance/resume - Resume instance
-GET /api/projects/:id/queue - Get task queue
+// Query System (AI Decision Points)
+GET /api/projects/:id/queries - List pending queries (decision inbox)
+POST /api/queries - Create new query when AI needs decision
+GET /api/queries/:id - Get query details with context
+PUT /api/queries/:id/answer - Answer query and resume development
+PUT /api/queries/:id/dismiss - Dismiss advisory query
+
+// Artifact Management  
+GET /api/cycles/:id/artifacts - Get generated code/docs for cycle
+POST /api/artifacts - Create new artifact (generated code)
+GET /api/artifacts/:id/content - Get artifact content
+PUT /api/artifacts/:id - Update artifact content
 
 // Settings
 GET /api/settings - Get global tech stack preferences
@@ -176,7 +229,7 @@ Always use Prisma client for database operations:
 ```typescript
 import { prisma, ProjectStatus, CardStatus } from '@/lib/db';
 
-// Good - uses Prisma client
+// Good - uses Prisma client (works for any project type)
 const projects = await prisma.project.findMany({
   include: {
     kanbanCards: true,
@@ -184,9 +237,19 @@ const projects = await prisma.project.findMany({
   },
 });
 
-// Use status constants for type safety
+// Example projects of different types
 const activeProjects = await prisma.project.findMany({
   where: { status: ProjectStatus.ACTIVE },
+  // Could be: Next.js, Django, Rails, Spring Boot, Go API, etc.
+});
+
+// Projects support any language/framework
+const pythonProjects = await prisma.project.findMany({
+  where: { language: 'python' },
+});
+
+const rustProjects = await prisma.project.findMany({
+  where: { language: 'rust' },
 });
 
 // Bad - raw SQL queries
@@ -220,8 +283,8 @@ Create `.env` file (see `.env.example`):
 # Database
 DATABASE_URL="file:./codehive.db"
 
-# Claude Code Configuration
-CLAUDE_CODE_PATH="claude-code"  # or full path like /usr/local/bin/claude-code
+# Claude Code Configuration  
+CLAUDE_CODE_PATH="claude"  # or full path like /usr/local/bin/claude
 CLAUDE_DAILY_TOKEN_LIMIT="10000000"
 CLAUDE_RATE_LIMIT_PER_MINUTE="50"
 
@@ -237,13 +300,38 @@ The configuration module validates all required variables on startup and provide
 
 ## Development Workflow
 
-### Current Sprint Status - Scrum Agile Feature Development
-- 📋 **Sprint 1** (Weeks 1-2): Foundation & Database Models - 35 tasks
-- 🔄 **Sprint 2** (Weeks 3-4): Query System & Instance Management - 25 tasks  
-- 🤖 **Sprint 3** (Weeks 5-6): Product Owner Agent & Ceremonies - 28 tasks
-- 🎨 **Sprint 4** (Weeks 7-8): UI Components & User Experience - 28 tasks
-- 🚀 **Sprint 5** (Weeks 9-10): Integration & Testing - 28 tasks
-- **Total**: 140 tasks across 20 epics with 30 documentation tasks (21% of effort)
+### AI-Native TDD Development Process
+
+**Phase 1: Feature Definition**
+- User defines feature with clear acceptance criteria
+- System creates new TDD Cycle in database
+- AI analyzes requirements and constraints
+
+**Phase 2: RED Phase (Test Generation)**
+- AI generates failing tests from acceptance criteria
+- Tests are stored in database with expected behavior
+- System validates tests are properly failing
+
+**Phase 3: GREEN Phase (Implementation)** 
+- AI writes minimal code to make tests pass
+- Generated code stored as artifacts
+- Tests updated to passing status
+
+**Phase 4: REFACTOR Phase (Code Improvement)**
+- AI improves code quality while keeping tests green
+- Refactored versions stored as new artifacts
+- Performance and maintainability optimized
+
+**Phase 5: REVIEW Phase (Validation)**
+- Final check that all requirements are met
+- User can review generated code and tests
+- Cycle marked as completed or returns to earlier phase
+
+**Query-Driven Decision Points**:
+- AI creates queries only when truly blocked
+- BLOCKING queries pause development until answered
+- ADVISORY queries continue with reasonable defaults
+- User answers via simple inbox interface
 
 ### Code Quality Standards
 - All code must pass TypeScript compilation

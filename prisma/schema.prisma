@@ -37,6 +37,8 @@ model Project {
   milestones  RoadmapMilestone[]
   agentSpecs  AgentSpecification[]
   settings    ProjectSettings?
+  cycles      Cycle[]
+  queries     Query[]
 
   @@map("projects")
 }
@@ -274,9 +276,132 @@ model UsageLimit {
   @@map("usage_limits")
 }
 
+// AI-Native TDD Development Models
+model Cycle {
+  id          String   @id @default(cuid())
+  projectId   String
+  title       String   // "Add user authentication"
+  description String?  // Optional detailed description
+  phase       String   @default("RED") // RED, GREEN, REFACTOR, REVIEW
+  status      String   @default("ACTIVE") // ACTIVE, PAUSED, COMPLETED, FAILED
+  
+  // Feature definition
+  acceptanceCriteria String // JSON array of criteria
+  constraints        String? // JSON array of technical constraints
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  completedAt DateTime?
+
+  // Relations
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tests       Test[]
+  queries     Query[]
+  artifacts   Artifact[]
+
+  @@map("cycles")
+}
+
+model Test {
+  id          String   @id @default(cuid())
+  cycleId     String
+  name        String   // "should validate user credentials"
+  description String?  // Optional test description
+  code        String   // Actual test code
+  filePath    String?  // Where the test file should be located
+  status      String   @default("FAILING") // FAILING, PASSING, SKIPPED, BROKEN
+  
+  // Test execution details
+  lastRun     DateTime?
+  duration    Int?     // Execution time in milliseconds
+  errorOutput String?  // Error message if test failed
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  cycle       Cycle    @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@map("tests")
+}
+
+model Query {
+  id          String   @id @default(cuid())
+  projectId   String
+  cycleId     String?  // Optional - queries can be cycle-specific or general
+  
+  // Query details
+  type        String   // ARCHITECTURE, BUSINESS_LOGIC, UI_UX, INTEGRATION, CLARIFICATION
+  title       String   // Short question summary
+  question    String   // Detailed question
+  context     String   // JSON object with code context, options, etc.
+  
+  urgency     String   @default("ADVISORY") // BLOCKING, ADVISORY
+  priority    String   @default("MEDIUM")   // LOW, MEDIUM, HIGH
+  status      String   @default("PENDING")  // PENDING, ANSWERED, DISMISSED, EXPIRED
+  
+  // Response
+  answer      String?  // User's response
+  answeredAt  DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cycle       Cycle?   @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  comments    QueryComment[]
+
+  @@map("queries")
+}
+
+model QueryComment {
+  id          String   @id @default(cuid())
+  queryId     String
+  content     String
+  author      String   @default("user") // user, ai, system
+  
+  createdAt   DateTime @default(now())
+
+  // Relations
+  query       Query    @relation(fields: [queryId], references: [id], onDelete: Cascade)
+
+  @@map("query_comments")
+}
+
+model Artifact {
+  id          String   @id @default(cuid())
+  cycleId     String
+  
+  // Artifact details
+  type        String   // CODE, TEST, DOCS, SCHEMA, CONFIG
+  name        String   // File name or artifact name
+  path        String   // File path relative to project root
+  content     String   // Generated content
+  
+  // Generation details
+  purpose     String?  // Why this artifact was created
+  phase       String   // Which TDD phase created this (RED, GREEN, REFACTOR)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  cycle       Cycle    @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@map("artifacts")
+}
+
 // Note: SQLite doesn't support enums, so we use strings with default values
 // Valid values:
 // ProjectStatus: "ACTIVE", "PAUSED", "COMPLETED", "ARCHIVED"
 // CardStatus: "BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DONE"
 // TaskStatus: "PENDING", "RUNNING", "COMPLETED", "FAILED", "PAUSED"
 // MilestoneStatus: "PLANNED", "IN_PROGRESS", "COMPLETED"
+// CyclePhase: "RED", "GREEN", "REFACTOR", "REVIEW"
+// CycleStatus: "ACTIVE", "PAUSED", "COMPLETED", "FAILED"
+// TestStatus: "FAILING", "PASSING", "SKIPPED", "BROKEN"
+// QueryType: "ARCHITECTURE", "BUSINESS_LOGIC", "UI_UX", "INTEGRATION", "CLARIFICATION"
+// QueryUrgency: "BLOCKING", "ADVISORY"
+// QueryStatus: "PENDING", "ANSWERED", "DISMISSED", "EXPIRED"
+// ArtifactType: "CODE", "TEST", "DOCS", "SCHEMA", "CONFIG"

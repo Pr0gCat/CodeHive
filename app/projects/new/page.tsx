@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Navbar from '@/app/components/Navbar';
+import Navbar from '../../components/Navbar';
 
 interface AvailableRepo {
   name: string;
@@ -27,10 +27,17 @@ export default function NewProjectPage() {
     description: '',
     gitUrl: '',
     localPath: '',
+    framework: '',
+    language: '',
+    packageManager: '',
+    testFramework: '',
+    lintTool: '',
+    buildTool: '',
   });
 
   useEffect(() => {
     fetchAvailableRepos();
+    fetchGlobalSettings();
   }, []);
 
   const fetchAvailableRepos = async () => {
@@ -47,6 +54,28 @@ export default function NewProjectPage() {
       console.error('Error fetching available repos:', error);
     } finally {
       setLoadingRepos(false);
+    }
+  };
+
+  const fetchGlobalSettings = async () => {
+    try {
+      const response = await fetch('/api/settings');
+      const data = await response.json();
+      if (data.success) {
+        setGlobalSettings(data.data);
+        // Pre-populate form with global defaults
+        setFormData(prev => ({
+          ...prev,
+          framework: data.data?.preferredFramework || '',
+          language: data.data?.preferredLanguage || '',
+          packageManager: data.data?.preferredPackageManager || '',
+          testFramework: data.data?.preferredTestFramework || '',
+          lintTool: data.data?.preferredLintTool || '',
+          buildTool: data.data?.preferredBuildTool || '',
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching global settings:', error);
     }
   };
 
@@ -239,6 +268,106 @@ export default function NewProjectPage() {
                     : 'Optional: Git repository URL for version control integration'
                   }
                 </p>
+              </div>
+
+              {/* Tech Stack Configuration */}
+              <div className="space-y-4 pt-4 border-t border-primary-700">
+                <h3 className="text-lg font-semibold text-accent-50">Tech Stack Configuration</h3>
+                <p className="text-sm text-primary-400">
+                  Specify the tools and frameworks for this project. Leave empty to use global defaults.
+                </p>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="framework" className="block text-sm font-medium text-primary-300 mb-2">
+                      Framework
+                    </label>
+                    <input
+                      type="text"
+                      id="framework"
+                      name="framework"
+                      value={formData.framework}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
+                      placeholder="e.g., Next.js, React, Vue"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="language" className="block text-sm font-medium text-primary-300 mb-2">
+                      Language
+                    </label>
+                    <input
+                      type="text"
+                      id="language"
+                      name="language"
+                      value={formData.language}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
+                      placeholder="e.g., typescript, javascript"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="packageManager" className="block text-sm font-medium text-primary-300 mb-2">
+                      Package Manager
+                    </label>
+                    <input
+                      type="text"
+                      id="packageManager"
+                      name="packageManager"
+                      value={formData.packageManager}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
+                      placeholder="e.g., npm, yarn, pnpm, bun"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="testFramework" className="block text-sm font-medium text-primary-300 mb-2">
+                      Test Framework
+                    </label>
+                    <input
+                      type="text"
+                      id="testFramework"
+                      name="testFramework"
+                      value={formData.testFramework}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
+                      placeholder="e.g., jest, vitest, cypress"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="lintTool" className="block text-sm font-medium text-primary-300 mb-2">
+                      Lint Tool
+                    </label>
+                    <input
+                      type="text"
+                      id="lintTool"
+                      name="lintTool"
+                      value={formData.lintTool}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
+                      placeholder="e.g., eslint, tslint, pylint"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="buildTool" className="block text-sm font-medium text-primary-300 mb-2">
+                      Build Tool
+                    </label>
+                    <input
+                      type="text"
+                      id="buildTool"
+                      name="buildTool"
+                      value={formData.buildTool}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
+                      placeholder="e.g., webpack, vite, rollup"
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center justify-end space-x-4 pt-6 border-t border-primary-700">

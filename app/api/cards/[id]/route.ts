@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { projectLogger } from '@/lib/logging/project-logger';
 import { z } from 'zod';
 
 const updateCardSchema = z.object({
@@ -150,6 +151,15 @@ export async function PUT(
       },
     });
 
+    // Log the card update
+    const changes = Object.keys(validatedData);
+    projectLogger.info(
+      updatedCard.project.id,
+      'kanban',
+      `Card "${updatedCard.title}" updated (${changes.join(', ')})`,
+      { cardId: params.id, changes: validatedData }
+    );
+
     return NextResponse.json({
       success: true,
       data: updatedCard,
@@ -184,7 +194,7 @@ export async function DELETE(
   try {
     const card = await prisma.kanbanCard.findUnique({
       where: { id: params.id },
-      select: { projectId: true, position: true },
+      select: { projectId: true, position: true, title: true },
     });
 
     if (!card) {
@@ -212,6 +222,14 @@ export async function DELETE(
         position: { decrement: 1 },
       },
     });
+
+    // Log the card deletion
+    projectLogger.info(
+      card.projectId,
+      'kanban',
+      `Card "${card.title}" deleted`,
+      { cardId: params.id }
+    );
 
     return NextResponse.json({
       success: true,

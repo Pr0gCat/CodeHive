@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { logProjectEvent } from '@/lib/logging/project-logger';
 import { z } from 'zod';
 
 const updateProjectSchema = z.object({
@@ -127,9 +128,25 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Get project name before deleting for logging
+    const project = await prisma.project.findUnique({
+      where: { id: params.id },
+      select: { name: true }
+    });
+
+    if (!project) {
+      return NextResponse.json(
+        { success: false, error: 'Project not found' },
+        { status: 404 }
+      );
+    }
+
     await prisma.project.delete({
       where: { id: params.id },
     });
+
+    // Log the project deletion
+    logProjectEvent.projectDeleted(params.id, project.name);
 
     return NextResponse.json({
       success: true,

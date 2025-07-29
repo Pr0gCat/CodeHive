@@ -3,9 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Project, KanbanCard, ProjectSettings } from '@/lib/db';
-import KanbanBoard from '@/app/components/KanbanBoard';
-import AgentStatusPanel from '@/app/components/AgentStatusPanel';
-import ProjectSettingsModal from '@/app/components/ProjectSettingsModal';
+import KanbanBoard from '../../components/KanbanBoard';
+import AgentStatusPanel from '../../components/AgentStatusPanel';
+import ProjectSettingsModal from '../../components/ProjectSettingsModal';
+import ProjectLogsModal from '../../components/ProjectLogsModal';
+import { addInitialProjectLogs } from '@/lib/logging/init-logs';
+import { logProjectEvent } from '@/lib/logging/project-logger';
 
 interface ProjectPageProps {
   params: { id: string };
@@ -17,6 +20,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [logsModalOpen, setLogsModalOpen] = useState(false);
   const [projectSettings, setProjectSettings] = useState<ProjectSettings | null>(null);
   const [agentStatus, setAgentStatus] = useState<string>('unknown');
 
@@ -27,6 +31,8 @@ export default function ProjectPage({ params }: ProjectPageProps) {
       
       if (data.success) {
         setProject(data.data);
+        // Add initial project logs for demonstration
+        addInitialProjectLogs(data.data.id, data.data.name);
       } else {
         setError(data.error || 'Failed to fetch project');
       }
@@ -113,6 +119,10 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     if (!project) return;
     
     setReviewLoading(true);
+    
+    // Log the start of project review
+    logProjectEvent.agentTaskStarted(project.id, 'project-manager', 'review-task', 'Comprehensive project analysis and CLAUDE.md generation');
+    
     try {
       const response = await fetch('/api/agents/project-manager', {
         method: 'POST',
@@ -127,13 +137,20 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
       const data = await response.json();
       if (data.success) {
+        // Log successful completion
+        logProjectEvent.agentTaskCompleted(project.id, 'project-manager', 'review-task', 2500);
+        
         // Show success message and optionally refresh project data
         alert(`Project review completed successfully!\n\nCLAUDE.md has been ${data.data.result.artifacts?.claudeMdPath ? 'created' : 'generated'}.`);
         await fetchProject();
       } else {
+        // Log failure
+        logProjectEvent.agentTaskFailed(project.id, 'project-manager', 'review-task', data.error || 'Unknown error');
         alert(`Project review failed: ${data.error}`);
       }
     } catch (error) {
+      // Log error
+      logProjectEvent.agentTaskFailed(project.id, 'project-manager', 'review-task', error instanceof Error ? error.message : 'Network error');
       console.error('Project review error:', error);
       alert('Failed to complete project review. Please try again.');
     } finally {
@@ -242,6 +259,15 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                 )}
               </button>
               <button
+                onClick={() => setLogsModalOpen(true)}
+                className="px-4 py-2 text-sm font-medium text-primary-300 border border-primary-600 rounded-lg hover:bg-primary-800 hover:text-accent-50 flex items-center space-x-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m-6 8h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v14a2 2 0 01-2 2z" />
+                </svg>
+                <span>Logs</span>
+              </button>
+              <button
                 onClick={() => setSettingsModalOpen(true)}
                 className="px-4 py-2 text-sm font-medium text-primary-300 border border-primary-600 rounded-lg hover:bg-primary-800 hover:text-accent-50 flex items-center space-x-2"
               >
@@ -304,6 +330,13 @@ export default function ProjectPage({ params }: ProjectPageProps) {
         isOpen={settingsModalOpen}
         onClose={() => setSettingsModalOpen(false)}
         onSettingsUpdate={handleSettingsUpdate}
+      />
+
+      {/* Project Logs Modal */}
+      <ProjectLogsModal
+        projectId={project.id}
+        isOpen={logsModalOpen}
+        onClose={() => setLogsModalOpen(false)}
       />
     </div>
   );

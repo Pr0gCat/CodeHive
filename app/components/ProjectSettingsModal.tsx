@@ -19,7 +19,9 @@ export default function ProjectSettingsModal({
   const [settings, setSettings] = useState<ProjectSettings | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState<'tokens' | 'agents' | 'queue' | 'notifications' | 'behavior' | 'advanced'>('tokens');
+  const [removing, setRemoving] = useState(false);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  // Removed tab system for simplicity
 
   useEffect(() => {
     if (isOpen && projectId) {
@@ -107,6 +109,32 @@ export default function ProjectSettingsModal({
     setSettings({ ...settings, [key]: value });
   };
 
+  const handleRemoveProject = async () => {
+    if (!projectId) return;
+    
+    setRemoving(true);
+    try {
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Close modal and redirect to projects page
+        onClose();
+        window.location.href = '/projects';
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to remove project: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error removing project:', error);
+      alert('Failed to remove project. Please try again.');
+    } finally {
+      setRemoving(false);
+      setShowRemoveConfirm(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -131,435 +159,234 @@ export default function ProjectSettingsModal({
             <p className="text-primary-400">Loading settings...</p>
           </div>
         ) : settings ? (
-          <div className="flex h-[calc(90vh-208px)]">
-            {/* Sidebar */}
-            <div className="w-64 bg-primary-950 border-r border-primary-700 p-4">
-              <nav className="space-y-2">
-                {[
-                  { id: 'tokens', label: 'Token & Rate Limits', icon: '⚡' },
-                  { id: 'agents', label: 'Agent Execution', icon: '🤖' },
-                  { id: 'queue', label: 'Task Queue', icon: '📋' },
-                  { id: 'notifications', label: 'Notifications', icon: '🔔' },
-                  { id: 'behavior', label: 'Agent Behavior', icon: '⚙️' },
-                  { id: 'advanced', label: 'Advanced', icon: '🔧' },
-                ].map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id as any)}
-                    className={`w-full text-left px-3 py-2 rounded-lg flex items-center space-x-3 ${
-                      activeTab === tab.id
-                        ? 'bg-accent-600 text-accent-50'
-                        : 'text-primary-300 hover:bg-primary-800 hover:text-accent-50'
-                    }`}
-                  >
-                    <span>{tab.icon}</span>
-                    <span className="text-sm">{tab.label}</span>
-                  </button>
-                ))}
-              </nav>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 p-6 overflow-y-auto min-h-0">
-              {activeTab === 'tokens' && (
-                <div className="space-y-6">
-                  <h3 className="text-lg font-semibold text-accent-50">Token & Rate Limits</h3>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-primary-300 mb-2">
-                        Max Tokens Per Day
-                      </label>
-                      <input
-                        type="number"
-                        value={settings.maxTokensPerDay}
-                        onChange={(e) => updateSetting('maxTokensPerDay', parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded-lg text-accent-50 focus:outline-none focus:border-accent-500"
-                        min="100"
-                        max="100000"
-                      />
-                      <p className="text-xs text-primary-400 mt-1">Daily token usage limit</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-primary-300 mb-2">
-                        Max Tokens Per Request
-                      </label>
-                      <input
-                        type="number"
-                        value={settings.maxTokensPerRequest}
-                        onChange={(e) => updateSetting('maxTokensPerRequest', parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded-lg text-accent-50 focus:outline-none focus:border-accent-500"
-                        min="100"
-                        max="10000"
-                      />
-                      <p className="text-xs text-primary-400 mt-1">Max tokens per single request</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-primary-300 mb-2">
-                        Max Requests Per Minute
-                      </label>
-                      <input
-                        type="number"
-                        value={settings.maxRequestsPerMinute}
-                        onChange={(e) => updateSetting('maxRequestsPerMinute', parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded-lg text-accent-50 focus:outline-none focus:border-accent-500"
-                        min="1"
-                        max="100"
-                      />
-                      <p className="text-xs text-primary-400 mt-1">Rate limit per minute</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-primary-300 mb-2">
-                        Max Requests Per Hour
-                      </label>
-                      <input
-                        type="number"
-                        value={settings.maxRequestsPerHour}
-                        onChange={(e) => updateSetting('maxRequestsPerHour', parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded-lg text-accent-50 focus:outline-none focus:border-accent-500"
-                        min="10"
-                        max="1000"
-                      />
-                      <p className="text-xs text-primary-400 mt-1">Rate limit per hour</p>
-                    </div>
+          <div className="p-6 max-h-[calc(90vh-208px)] overflow-y-auto">
+            {/* Essential Settings */}
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold text-accent-50 mb-4">Project Settings</h3>
+              
+              {/* Token Limits */}
+              <div>
+                <h4 className="text-sm font-medium text-primary-300 mb-3">Token & Rate Limits</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-primary-400 mb-1">Max Tokens Per Day</label>
+                    <input
+                      type="number"
+                      value={settings.maxTokensPerDay}
+                      onChange={(e) => updateSetting('maxTokensPerDay', parseInt(e.target.value) || 0)}
+                      className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500 text-sm"
+                      min="100"
+                      max="100000"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-primary-400 mb-1">Max Requests Per Hour</label>
+                    <input
+                      type="number"
+                      value={settings.maxRequestsPerHour}
+                      onChange={(e) => updateSetting('maxRequestsPerHour', parseInt(e.target.value) || 0)}
+                      className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500 text-sm"
+                      min="10"
+                      max="1000"
+                    />
                   </div>
                 </div>
-              )}
+              </div>
 
-              {activeTab === 'agents' && (
-                <div className="space-y-6">
-                  <h3 className="text-lg font-semibold text-accent-50">Agent Execution Settings</h3>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-primary-300 mb-2">
-                        Agent Timeout (seconds)
-                      </label>
-                      <input
-                        type="number"
-                        value={Math.round(settings.agentTimeout / 1000)}
-                        onChange={(e) => updateSetting('agentTimeout', (parseInt(e.target.value) || 0) * 1000)}
-                        className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded-lg text-accent-50 focus:outline-none focus:border-accent-500"
-                        min="30"
-                        max="1800"
-                      />
-                      <p className="text-xs text-primary-400 mt-1">Maximum execution time per agent</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-primary-300 mb-2">
-                        Max Retries
-                      </label>
-                      <input
-                        type="number"
-                        value={settings.maxRetries}
-                        onChange={(e) => updateSetting('maxRetries', parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded-lg text-accent-50 focus:outline-none focus:border-accent-500"
-                        min="0"
-                        max="10"
-                      />
-                      <p className="text-xs text-primary-400 mt-1">Retry attempts on failure</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-primary-300 mb-2">
-                        Parallel Agent Limit
-                      </label>
-                      <input
-                        type="number"  
-                        value={settings.parallelAgentLimit}
-                        onChange={(e) => updateSetting('parallelAgentLimit', parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded-lg text-accent-50 focus:outline-none focus:border-accent-500"
-                        min="1"
-                        max="10"
-                      />
-                      <p className="text-xs text-primary-400 mt-1">Max agents running simultaneously</p>
-                    </div>
-
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="autoReviewOnImport"
-                        checked={settings.autoReviewOnImport}
-                        onChange={(e) => updateSetting('autoReviewOnImport', e.target.checked)}
-                        className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500"
-                      />
-                      <label htmlFor="autoReviewOnImport" className="ml-2 text-sm text-primary-300">
-                        Auto-review on import
-                      </label>
-                    </div>
+              {/* Agent Settings */}
+              <div>
+                <h4 className="text-sm font-medium text-primary-300 mb-3">Agent Configuration</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-primary-400 mb-1">Agent Timeout (seconds)</label>
+                    <input
+                      type="number"
+                      value={Math.round(settings.agentTimeout / 1000)}
+                      onChange={(e) => updateSetting('agentTimeout', (parseInt(e.target.value) || 0) * 1000)}
+                      className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500 text-sm"
+                      min="30"
+                      max="1800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-primary-400 mb-1">Parallel Agent Limit</label>
+                    <input
+                      type="number"
+                      value={settings.parallelAgentLimit}
+                      onChange={(e) => updateSetting('parallelAgentLimit', parseInt(e.target.value) || 0)}
+                      className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500 text-sm"
+                      min="1"
+                      max="10"
+                    />
                   </div>
                 </div>
-              )}
+                <div className="flex flex-wrap gap-4 mt-3">
+                  <label className="flex items-center text-sm text-primary-300">
+                    <input
+                      type="checkbox"
+                      checked={settings.autoReviewOnImport}
+                      onChange={(e) => updateSetting('autoReviewOnImport', e.target.checked)}
+                      className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500 mr-2"
+                    />
+                    Auto-review on import
+                  </label>
+                  <label className="flex items-center text-sm text-primary-300">
+                    <input
+                      type="checkbox"
+                      checked={settings.autoExecuteTasks}
+                      onChange={(e) => updateSetting('autoExecuteTasks', e.target.checked)}
+                      className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500 mr-2"
+                    />
+                    Auto-execute tasks
+                  </label>
+                </div>
+              </div>
 
-              {activeTab === 'queue' && (
-                <div className="space-y-6">
-                  <h3 className="text-lg font-semibold text-accent-50">Task Queue Settings</h3>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-primary-300 mb-2">
-                        Max Queue Size
-                      </label>
-                      <input
-                        type="number"
-                        value={settings.maxQueueSize}
-                        onChange={(e) => updateSetting('maxQueueSize', parseInt(e.target.value) || 0)}
-                        className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded-lg text-accent-50 focus:outline-none focus:border-accent-500"
-                        min="5"
-                        max="500"
-                      />
-                      <p className="text-xs text-primary-400 mt-1">Maximum tasks in queue</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-primary-300 mb-2">
-                        Default Task Priority
-                      </label>
-                      <select
-                        value={settings.taskPriority}
-                        onChange={(e) => updateSetting('taskPriority', e.target.value)}
-                        className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded-lg text-accent-50 focus:outline-none focus:border-accent-500"
-                      >
-                        <option value="LOW">Low</option>
-                        <option value="NORMAL">Normal</option>
-                        <option value="HIGH">High</option>
-                        <option value="CRITICAL">Critical</option>
-                      </select>
-                      <p className="text-xs text-primary-400 mt-1">Default priority for new tasks</p>
-                    </div>
-
-                    <div className="flex items-center col-span-2">
-                      <input
-                        type="checkbox"
-                        id="autoExecuteTasks"
-                        checked={settings.autoExecuteTasks}
-                        onChange={(e) => updateSetting('autoExecuteTasks', e.target.checked)}
-                        className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500"
-                      />
-                      <label htmlFor="autoExecuteTasks" className="ml-2 text-sm text-primary-300">
-                        Auto-execute queued tasks
-                      </label>
-                    </div>
+              {/* Analysis Settings */}
+              <div>
+                <h4 className="text-sm font-medium text-primary-300 mb-3">Analysis & Quality</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-primary-400 mb-1">Code Analysis Depth</label>
+                    <select
+                      value={settings.codeAnalysisDepth}
+                      onChange={(e) => updateSetting('codeAnalysisDepth', e.target.value)}
+                      className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500 text-sm"
+                    >
+                      <option value="LIGHT">Light</option>
+                      <option value="STANDARD">Standard</option>
+                      <option value="DEEP">Deep</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-primary-400 mb-1">Test Coverage (%)</label>
+                    <input
+                      type="number"
+                      value={settings.testCoverageThreshold}
+                      onChange={(e) => updateSetting('testCoverageThreshold', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500 text-sm"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                    />
                   </div>
                 </div>
-              )}
+              </div>
 
-              {activeTab === 'notifications' && (
-                <div className="space-y-6">
-                  <h3 className="text-lg font-semibold text-accent-50">Notification Settings</h3>
-                  
-                  <div className="space-y-4">
-                    <div className="flex items-center">
+              {/* Notifications */}
+              <div>
+                <h4 className="text-sm font-medium text-primary-300 mb-3">Notifications</h4>
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-4">
+                    <label className="flex items-center text-sm text-primary-300">
                       <input
                         type="checkbox"
-                        id="emailNotifications"
-                        checked={settings.emailNotifications}
-                        onChange={(e) => updateSetting('emailNotifications', e.target.checked)}
-                        className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500"
+                        checked={settings.notifyOnTaskComplete}
+                        onChange={(e) => updateSetting('notifyOnTaskComplete', e.target.checked)}
+                        className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500 mr-2"
                       />
-                      <label htmlFor="emailNotifications" className="ml-2 text-sm text-primary-300">
-                        Email notifications
-                      </label>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-primary-300 mb-2">
-                        Slack Webhook URL
-                      </label>
+                      Task completion
+                    </label>
+                    <label className="flex items-center text-sm text-primary-300">
                       <input
-                        type="url"
-                        value={settings.slackWebhookUrl || ''}
-                        onChange={(e) => updateSetting('slackWebhookUrl', e.target.value || null)}
-                        className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded-lg text-accent-50 focus:outline-none focus:border-accent-500"
-                        placeholder="https://hooks.slack.com/services/..."
+                        type="checkbox"
+                        checked={settings.notifyOnTaskFail}
+                        onChange={(e) => updateSetting('notifyOnTaskFail', e.target.checked)}
+                        className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500 mr-2"
                       />
-                      <p className="text-xs text-primary-400 mt-1">Optional Slack integration</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-primary-300 mb-2">
-                        Discord Webhook URL
-                      </label>
-                      <input
-                        type="url"
-                        value={settings.discordWebhookUrl || ''}
-                        onChange={(e) => updateSetting('discordWebhookUrl', e.target.value || null)}
-                        className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded-lg text-accent-50 focus:outline-none focus:border-accent-500"
-                        placeholder="https://discord.com/api/webhooks/..."
-                      />
-                      <p className="text-xs text-primary-400 mt-1">Optional Discord integration</p>
-                    </div>
-
-                    <div className="flex items-center space-x-6">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="notifyOnTaskComplete"
-                          checked={settings.notifyOnTaskComplete}
-                          onChange={(e) => updateSetting('notifyOnTaskComplete', e.target.checked)}
-                          className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500"
-                        />
-                        <label htmlFor="notifyOnTaskComplete" className="ml-2 text-sm text-primary-300">
-                          Notify on task completion
-                        </label>
-                      </div>
-
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id="notifyOnTaskFail"
-                          checked={settings.notifyOnTaskFail}
-                          onChange={(e) => updateSetting('notifyOnTaskFail', e.target.checked)}
-                          className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500"
-                        />
-                        <label htmlFor="notifyOnTaskFail" className="ml-2 text-sm text-primary-300">
-                          Notify on task failure
-                        </label>
-                      </div>
-                    </div>
+                      Task failures
+                    </label>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-primary-400 mb-1">Slack Webhook (optional)</label>
+                    <input
+                      type="url"
+                      value={settings.slackWebhookUrl || ''}
+                      onChange={(e) => updateSetting('slackWebhookUrl', e.target.value || null)}
+                      className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500 text-sm"
+                      placeholder="https://hooks.slack.com/services/..."
+                    />
                   </div>
                 </div>
-              )}
-
-              {activeTab === 'behavior' && (
-                <div className="space-y-6">
-                  <h3 className="text-lg font-semibold text-accent-50">Agent Behavior Settings</h3>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-primary-300 mb-2">
-                        Code Analysis Depth
-                      </label>
-                      <select
-                        value={settings.codeAnalysisDepth}
-                        onChange={(e) => updateSetting('codeAnalysisDepth', e.target.value)}
-                        className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded-lg text-accent-50 focus:outline-none focus:border-accent-500"
-                      >
-                        <option value="LIGHT">Light - Quick surface analysis</option>
-                        <option value="STANDARD">Standard - Balanced analysis</option>
-                        <option value="DEEP">Deep - Comprehensive analysis</option>
-                      </select>
-                      <p className="text-xs text-primary-400 mt-1">Analysis thoroughness level</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-primary-300 mb-2">
-                        Test Coverage Threshold (%)
-                      </label>
-                      <input
-                        type="number"
-                        value={settings.testCoverageThreshold}
-                        onChange={(e) => updateSetting('testCoverageThreshold', parseFloat(e.target.value) || 0)}
-                        className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded-lg text-accent-50 focus:outline-none focus:border-accent-500"
-                        min="0"
-                        max="100"
-                        step="0.1"
-                      />
-                      <p className="text-xs text-primary-400 mt-1">Minimum test coverage target</p>
-                    </div>
-
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="enforceTypeChecking"
-                        checked={settings.enforceTypeChecking}
-                        onChange={(e) => updateSetting('enforceTypeChecking', e.target.checked)}
-                        className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500"
-                      />
-                      <label htmlFor="enforceTypeChecking" className="ml-2 text-sm text-primary-300">
-                        Enforce TypeScript checking
-                      </label>
-                    </div>
-
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="autoFixLintErrors"
-                        checked={settings.autoFixLintErrors}
-                        onChange={(e) => updateSetting('autoFixLintErrors', e.target.checked)}
-                        className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500"
-                      />
-                      <label htmlFor="autoFixLintErrors" className="ml-2 text-sm text-primary-300">
-                        Auto-fix lint errors
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'advanced' && (
-                <div className="space-y-6">
-                  <h3 className="text-lg font-semibold text-accent-50">Advanced Settings</h3>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-primary-300 mb-2">
-                        Claude Model
-                      </label>
-                      <select
-                        value={settings.claudeModel}
-                        onChange={(e) => updateSetting('claudeModel', e.target.value)}
-                        className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded-lg text-accent-50 focus:outline-none focus:border-accent-500"
-                      >
-                        <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (Latest)</option>
-                        <option value="claude-3-opus-20240229">Claude 3 Opus</option>
-                        <option value="claude-3-haiku-20240307">Claude 3 Haiku</option>
-                      </select>
-                      <p className="text-xs text-primary-400 mt-1">AI model to use for agents</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-primary-300 mb-2">
-                        Custom Instructions
-                      </label>
-                      <textarea
-                        value={settings.customInstructions || ''}
-                        onChange={(e) => updateSetting('customInstructions', e.target.value || null)}
-                        className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded-lg text-accent-50 focus:outline-none focus:border-accent-500"
-                        rows={4}
-                        placeholder="Additional instructions for all agents in this project..."
-                      />
-                      <p className="text-xs text-primary-400 mt-1">Custom prompts added to all agent requests</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-primary-300 mb-2">
-                        Exclude Patterns (JSON Array)
-                      </label>
-                      <textarea
-                        value={settings.excludePatterns || ''}
-                        onChange={(e) => updateSetting('excludePatterns', e.target.value || null)}
-                        className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded-lg text-accent-50 focus:outline-none focus:border-accent-500"
-                        rows={3}
-                        placeholder='["node_modules/**", "*.log", "dist/**"]'
-                      />
-                      <p className="text-xs text-primary-400 mt-1">File patterns to exclude from analysis</p>
-                    </div>
-
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="includeDependencies"
-                        checked={settings.includeDependencies}
-                        onChange={(e) => updateSetting('includeDependencies', e.target.checked)}
-                        className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500"
-                      />
-                      <label htmlFor="includeDependencies" className="ml-2 text-sm text-primary-300">
-                        Include dependency analysis
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
           </div>
         ) : (
           <div className="p-8 text-center">
             <p className="text-red-400">Failed to load settings</p>
+          </div>
+        )}
+
+        {/* Danger Zone */}
+        <div className="border-t border-red-800 bg-red-950/20 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-sm font-medium text-red-300">Remove Project</h4>
+              <p className="text-xs text-red-400">Removes from database, keeps code files</p>
+            </div>
+            <button
+              onClick={() => setShowRemoveConfirm(true)}
+              disabled={removing}
+              className="px-3 py-1.5 text-xs font-medium text-red-300 border border-red-600 rounded hover:bg-red-600 hover:text-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+
+        {/* Remove Confirmation Modal */}
+        {showRemoveConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+            <div className="bg-primary-900 rounded-lg border border-red-700 p-6 max-w-md w-full mx-4">
+              <div className="flex items-center mb-4">
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-lg font-medium text-red-400">Remove Project</h3>
+                </div>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-sm text-primary-300 mb-3">
+                  Are you sure you want to remove this project from CodeHive?
+                </p>
+                <div className="bg-primary-800 border border-primary-700 rounded-md p-3">
+                  <ul className="text-xs text-primary-400 space-y-1">
+                    <li>✅ Database record will be deleted</li>
+                    <li>✅ Project settings will be removed</li>
+                    <li>✅ Code files will remain in repos/ directory</li>
+                    <li>⚠️ This action cannot be undone</li>
+                  </ul>
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowRemoveConfirm(false)}
+                  disabled={removing}
+                  className="px-4 py-2 text-sm font-medium text-primary-300 border border-primary-600 rounded-lg hover:bg-primary-800 hover:text-accent-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleRemoveProject}
+                  disabled={removing}
+                  className="px-4 py-2 text-sm font-medium text-red-50 bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                >
+                  {removing ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-50"></div>
+                      <span>Removing...</span>
+                    </>
+                  ) : (
+                    <span>Remove Project</span>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

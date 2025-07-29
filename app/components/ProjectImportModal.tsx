@@ -6,20 +6,11 @@ import { useRouter } from 'next/navigation';
 interface ProjectImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  globalSettings?: {
-    preferredFramework?: string;
-    preferredLanguage?: string;
-    preferredPackageManager?: string;
-    preferredTestFramework?: string;
-    preferredLintTool?: string;
-    preferredBuildTool?: string;
-  };
 }
 
 export default function ProjectImportModal({ 
   isOpen, 
-  onClose,
-  globalSettings = {} 
+  onClose
 }: ProjectImportModalProps) {
   const router = useRouter();
   const [isImporting, setIsImporting] = useState(false);
@@ -29,12 +20,6 @@ export default function ProjectImportModal({
     gitUrl: '',
     projectName: '',
     branch: '',
-    framework: globalSettings?.preferredFramework || '',
-    language: globalSettings?.preferredLanguage || '',
-    packageManager: globalSettings?.preferredPackageManager || '',
-    testFramework: globalSettings?.preferredTestFramework || '',
-    lintTool: globalSettings?.preferredLintTool || '',
-    buildTool: globalSettings?.preferredBuildTool || '',
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -169,102 +154,6 @@ export default function ProjectImportModal({
             </p>
           </div>
 
-          {/* Tech Stack Configuration */}
-          <div className="space-y-4 pt-4 border-t border-primary-700">
-            <h3 className="text-lg font-semibold text-accent-50">Tech Stack Configuration</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="framework" className="block text-sm font-medium text-accent-50 mb-2">
-                  Framework
-                </label>
-                <input
-                  type="text"
-                  id="framework"
-                  name="framework"
-                  value={formData.framework}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 bg-primary-900 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
-                  placeholder="e.g., Next.js, React, Vue"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="language" className="block text-sm font-medium text-accent-50 mb-2">
-                  Language
-                </label>
-                <input
-                  type="text"
-                  id="language"
-                  name="language"
-                  value={formData.language}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 bg-primary-900 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
-                  placeholder="e.g., typescript, javascript"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="packageManager" className="block text-sm font-medium text-accent-50 mb-2">
-                  Package Manager
-                </label>
-                <input
-                  type="text"
-                  id="packageManager"
-                  name="packageManager"
-                  value={formData.packageManager}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 bg-primary-900 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
-                  placeholder="e.g., npm, yarn, pnpm, bun"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="testFramework" className="block text-sm font-medium text-accent-50 mb-2">
-                  Test Framework
-                </label>
-                <input
-                  type="text"
-                  id="testFramework"
-                  name="testFramework"
-                  value={formData.testFramework}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 bg-primary-900 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
-                  placeholder="e.g., jest, vitest, cypress"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="lintTool" className="block text-sm font-medium text-accent-50 mb-2">
-                  Lint Tool
-                </label>
-                <input
-                  type="text"
-                  id="lintTool"
-                  name="lintTool"
-                  value={formData.lintTool}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 bg-primary-900 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
-                  placeholder="e.g., eslint, tslint"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="buildTool" className="block text-sm font-medium text-accent-50 mb-2">
-                  Build Tool
-                </label>
-                <input
-                  type="text"
-                  id="buildTool"
-                  name="buildTool"
-                  value={formData.buildTool}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 bg-primary-900 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
-                  placeholder="e.g., webpack, vite, rollup"
-                />
-              </div>
-            </div>
-          </div>
 
           {/* Submit Button */}
           <div className="flex justify-end space-x-3 pt-4">

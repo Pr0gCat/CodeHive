@@ -12,7 +12,6 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [globalSettings, setGlobalSettings] = useState<any>(null);
   const [agentStatus, setAgentStatus] = useState<string>('unknown');
 
   const fetchAgentStatus = async () => {
@@ -30,7 +29,6 @@ export default function ProjectsPage() {
 
   useEffect(() => {
     fetchProjects();
-    fetchGlobalSettings();
     fetchAgentStatus();
     
     // Update agent status every 5 seconds
@@ -55,17 +53,6 @@ export default function ProjectsPage() {
     }
   };
 
-  const fetchGlobalSettings = async () => {
-    try {
-      const response = await fetch('/api/settings');
-      const data = await response.json();
-      if (data.success) {
-        setGlobalSettings(data.data);
-      }
-    } catch {
-      // Ignore errors for global settings
-    }
-  };
 
   const getAgentStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -242,7 +229,6 @@ export default function ProjectsPage() {
       <ProjectImportModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
-        globalSettings={globalSettings}
       />
     </div>
   );

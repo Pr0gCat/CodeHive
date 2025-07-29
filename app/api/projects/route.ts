@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma, ProjectStatus } from '@/lib/db';
+import { logProjectEvent } from '@/lib/logging/project-logger';
 import { z } from 'zod';
 
 const createProjectSchema = z.object({
@@ -62,6 +63,9 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    // Log the project creation
+    logProjectEvent.projectCreated(project.id, project.name);
 
     return NextResponse.json(
       {
