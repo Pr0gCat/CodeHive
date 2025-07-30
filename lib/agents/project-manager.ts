@@ -201,48 +201,96 @@ export class ProjectManagerAgent {
   }
 
   private async generateProjectSummary(context: ProjectContext): Promise<string> {
-    const { name, framework, language, techStack, structure } = context;
+    const { name, localPath, structure } = context;
     
-    // Determine the primary language and framework
-    const primaryLanguage = language || techStack?.language || 'Unknown';
-    const primaryFramework = framework || techStack?.framework || '';
-    
-    // Generate file statistics
-    const totalFiles = structure?.files.length || 0;
-    const sourceFiles = structure?.sourceFiles.length || 0;
-    const testFiles = structure?.testFiles.length || 0;
-    
-    // Create a concise project summary
-    let summary = `A ${primaryLanguage} project`;
-    
-    if (primaryFramework) {
-      summary += ` built with ${primaryFramework}`;
-    }
-    
-    // Add file count context
-    if (totalFiles > 0) {
-      summary += ` containing ${totalFiles} files`;
+    try {
+      console.log(`🤖 Generating project description using Claude Code for: ${name}`);
       
-      if (sourceFiles > 0) {
-        summary += ` (${sourceFiles} source`;
-        if (testFiles > 0) {
-          summary += `, ${testFiles} test`;
+      // Prepare project analysis data for Claude Code
+      const analysisData = {
+        projectName: name,
+        totalFiles: structure?.files.length || 0,
+        sourceFiles: structure?.sourceFiles.length || 0,
+        testFiles: structure?.testFiles.length || 0,
+        directories: structure?.directories?.slice(0, 10) || [], // Top 10 directories
+        keyFiles: structure?.files
+          ?.filter(f => {
+            const fileName = f.path.toLowerCase();
+            return fileName.includes('readme') || 
+                   fileName.includes('package.json') ||
+                   fileName.includes('main') ||
+                   fileName.includes('index') ||
+                   fileName.includes('app') ||
+                   fileName.includes('server');
+          })
+          ?.slice(0, 5)
+          ?.map(f => f.path) || [],
+        configFiles: structure?.configFiles?.slice(0, 5) || [],
+        packageFiles: structure?.packageFiles || [],
+      };
+
+      // Use Claude Code via executor to analyze the project
+      const prompt = `Analyze this project structure and generate a brief, accurate description of what this software project does. Focus on functionality, not technical stack.
+
+Project: ${name}
+Directory structure: ${analysisData.directories.join(', ')}
+Key files: ${analysisData.keyFiles.join(', ')}
+Config files: ${analysisData.configFiles.join(', ')}
+Package files: ${analysisData.packageFiles.join(', ')}
+Total files: ${analysisData.totalFiles} (${analysisData.sourceFiles} source, ${analysisData.testFiles} test)
+
+Respond with only a brief description (3-6 words maximum) of what this project does. Examples:
+- "E-commerce platform"
+- "Task management app" 
+- "API service"
+- "Documentation site"
+- "Chat application"
+- "Data visualization tool"
+
+Description:`;
+
+      const result = await this.executor.execute({
+        type: 'project-analysis',
+        name: 'project-description-generator',
+        purpose: 'Generate brief project description',
+        capabilities: ['analyze', 'describe'],
+        dependencies: [],
+        constraints: ['brief-output'],
+        prompt,
+      }, {
+        projectPath: localPath,
+        timeout: 30000, // 30 second timeout
+        maxTokens: 100, // Short response
+      });
+
+      if (result.success && result.output) {
+        // Clean up the response - remove common prefixes and keep it brief
+        let description = result.output.trim()
+          .replace(/^(Description:|The project is|This is|This project is)\s*/i, '')
+          .replace(/\.$/, '')
+          .trim();
+        
+        // Ensure it's not too long (max 50 characters)
+        if (description.length > 50) {
+          description = description.substring(0, 50).trim();
+          // Cut at last space to avoid cutting words
+          const lastSpace = description.lastIndexOf(' ');
+          if (lastSpace > 20) {
+            description = description.substring(0, lastSpace);
+          }
         }
-        summary += ')';
+        
+        console.log(`✅ Generated description: "${description}"`);
+        return description || 'Software project';
+      } else {
+        console.warn('Claude Code analysis failed, falling back to basic description');
+        return 'Software project';
       }
+      
+    } catch (error) {
+      console.error('Error generating project summary with Claude Code:', error);
+      return 'Software project';
     }
-    
-    // Add tech stack details if available
-    const techDetails = [];
-    if (techStack?.packageManager) techDetails.push(techStack.packageManager);
-    if (techStack?.testFramework) techDetails.push(techStack.testFramework);
-    if (techStack?.buildTool) techDetails.push(techStack.buildTool);
-    
-    if (techDetails.length > 0) {
-      summary += `. Uses ${techDetails.join(', ')} for development workflow`;
-    }
-    
-    return summary + '.';
   }
 
   private async generateClaudeMd(context: ProjectContext, recommendations: AgentRecommendation[]): Promise<string> {
@@ -407,17 +455,13 @@ When making changes to this codebase:
 
     console.log(`🔍 Analyzing project: ${project.name}`);
 
-    // Get global settings for defaults
-    const globalSettings = await prisma.globalSettings.findUnique({
-      where: { id: 'global' },
-    });
 
     // Analyze project structure
     const structure = await this.analyzer.analyzeStructure(project.localPath);
     
-    // Use project-specific settings if available, otherwise fall back to global preferences
-    const framework = project.framework || globalSettings?.preferredFramework || undefined;
-    const language = project.language || globalSettings?.preferredLanguage || undefined;
+    // Use project-specific settings
+    const framework = project.framework || undefined;
+    const language = project.language || undefined;
     
     // Extract dependencies
     const dependencies = await this.analyzer.extractDependencies(project.localPath);
@@ -432,12 +476,12 @@ When making changes to this codebase:
       dependencies,
       structure,
       techStack: {
-        framework: project.framework || globalSettings?.preferredFramework || undefined,
-        language: project.language || globalSettings?.preferredLanguage || undefined,
-        packageManager: project.packageManager || globalSettings?.preferredPackageManager || undefined,
-        testFramework: project.testFramework || globalSettings?.preferredTestFramework || undefined,
-        lintTool: project.lintTool || globalSettings?.preferredLintTool || undefined,
-        buildTool: project.buildTool || globalSettings?.preferredBuildTool || undefined,
+        framework: project.framework || undefined,
+        language: project.language || undefined,
+        packageManager: project.packageManager || undefined,
+        testFramework: project.testFramework || undefined,
+        lintTool: project.lintTool || undefined,
+        buildTool: project.buildTool || undefined,
       },
     };
 
@@ -680,12 +724,15 @@ When making changes to this codebase:
   }
 
   private async storeProjectAnalysis(projectId: string, context: ProjectContext): Promise<void> {
+    // Generate brief description using the same logic as summary
+    const summary = await this.generateProjectSummary(context);
+    
     // Store analysis in a JSON field or separate table
     // For now, we'll use the project's description field to store basic info
     await prisma.project.update({
       where: { id: projectId },
       data: {
-        description: `${context.framework || 'Unknown'} project with ${context.language || 'unknown'} (${context.structure?.files.length || 0} files)`,
+        description: summary,
       },
     });
   }

@@ -39,11 +39,15 @@ export default function ProjectLogsModal({
         const response = await fetch(`/api/projects/${projectId}/logs?limit=100`);
         const data = await response.json();
         
-        if (data.success) {
+        if (data.success && Array.isArray(data.data)) {
           setLogs(data.data);
+        } else {
+          console.warn('Invalid logs data received:', data);
+          setLogs([]);
         }
       } catch (error) {
         console.error('Failed to fetch initial logs:', error);
+        setLogs([]);
       }
     };
 
@@ -134,7 +138,9 @@ export default function ProjectLogsModal({
     }
   };
 
-  const filteredLogs = filter === 'all' ? logs : logs.filter(log => log.level === filter);
+  const filteredLogs = Array.isArray(logs) 
+    ? (filter === 'all' ? logs : logs.filter(log => log.level === filter))
+    : [];
 
   if (!isOpen) return null;
 

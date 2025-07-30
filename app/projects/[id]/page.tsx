@@ -239,6 +239,9 @@ export default function ProjectPage({ params }: ProjectPageProps) {
             </div>
             
             <div className="flex items-center space-x-4">
+              <div className="text-sm text-primary-400">
+                Last updated {new Date(project.updatedAt).toLocaleDateString()}
+              </div>
               <button
                 onClick={handleProjectReview}
                 disabled={reviewLoading}
@@ -277,9 +280,6 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                 </svg>
                 <span>Settings</span>
               </button>
-              <div className="text-sm text-primary-400">
-                Last updated {new Date(project.updatedAt).toLocaleDateString()}
-              </div>
             </div>
           </div>
 

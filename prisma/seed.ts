@@ -7,7 +7,7 @@ async function main() {
   const demoProject = await prisma.project.create({
     data: {
       name: 'CodeHive Demo Project',
-      description: 'A demonstration project showing CodeHive capabilities',
+      description: 'Demo project',
       localPath: 'repos/codehive-demo',
       status: ProjectStatus.ACTIVE,
       kanbanCards: {

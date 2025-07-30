@@ -24,6 +24,9 @@ CodeHive is a multi-agent software development platform that orchestrates Claude
 - ✅ Database models for Cycles, Tests, Queries, and Artifacts
 - ✅ TDD Cycle Engine with RED-GREEN-REFACTOR-REVIEW phases
 - ✅ Type-safe status constants and database client
+- ✅ Project Manager with Claude Code integration for intelligent descriptions
+- ✅ Real-time project logs with Server-Sent Events
+- ✅ Improved UI layout with better information organization
 - 🔄 Decision Point system (in progress)
 - 🔄 AI test generation (pending)
 - 🔄 Development Dashboard UI (pending)
@@ -119,6 +122,7 @@ mvn test
    - **Test Runner**: Multi-framework testing, coverage analysis, CI/CD integration
    - **Git Operations**: Version control, branching, repository health monitoring
    - **Documentation**: README generation, code docs, API documentation
+   - **Project Manager**: Orchestrates agents and generates intelligent project descriptions using Claude Code
    - Each agent has command validation, prompt templates, and execution tracking
 
 2. **Language-Agnostic Tech Stack**: Flexible preference system supporting any technology:
@@ -297,6 +301,24 @@ NODE_ENV="development"
 ```
 
 The configuration module validates all required variables on startup and provides type-safe access throughout the application.
+
+## Recent Improvements
+
+### Project Manager Intelligence
+- **AI-Generated Descriptions**: Project Manager now uses Claude Code to analyze project structure and generate intelligent, brief functional descriptions (e.g., "E-commerce platform", "API service", "Chat application")
+- **Automated Analysis**: When projects are reviewed, Claude Code examines file structure, directories, and key files to understand project functionality
+- **Fallback Protection**: Robust error handling ensures system remains stable if Claude Code analysis fails
+
+### UI/UX Enhancements
+- **ProjectLogsModal**: Fixed array handling bug preventing log display errors
+- **Project View Layout**: Improved information organization with "Last updated" timestamp positioned next to action buttons
+- **Real-time Logs**: Server-Sent Events integration for live project log streaming
+- **Type Safety**: Enhanced type checking throughout the application to prevent runtime errors
+
+### Bug Fixes
+- Fixed `filteredLogs.map is not a function` error with proper array validation
+- Improved error handling for API responses in log components
+- Enhanced project analysis stability with Claude Code integration
 
 ## Development Workflow
 
