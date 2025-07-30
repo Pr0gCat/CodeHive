@@ -2,11 +2,14 @@
 
 /* Core Animation Keyframes */
 @keyframes pulse-glow {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
   }
   50% {
-    box-shadow: 0 0 40px rgba(59, 130, 246, 0.8), 0 0 60px rgba(59, 130, 246, 0.4);
+    box-shadow:
+      0 0 40px rgba(59, 130, 246, 0.8),
+      0 0 60px rgba(59, 130, 246, 0.4);
   }
 }
 
@@ -43,13 +46,16 @@
 }
 
 @keyframes holographic-flicker {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     text-shadow: 0 0 10px rgba(34, 197, 94, 0.8);
   }
   50% {
     opacity: 0.8;
-    text-shadow: 0 0 20px rgba(34, 197, 94, 1), 0 0 30px rgba(34, 197, 94, 0.5);
+    text-shadow:
+      0 0 20px rgba(34, 197, 94, 1),
+      0 0 30px rgba(34, 197, 94, 0.5);
   }
 }
 
@@ -86,7 +92,8 @@
 }
 
 @keyframes particle-float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0px) translateX(0px);
   }
   25% {
@@ -179,7 +186,8 @@
 }
 
 @keyframes breathing {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     filter: brightness(1);
   }
@@ -219,7 +227,9 @@
 .typewriter-effect {
   overflow: hidden;
   white-space: nowrap;
-  animation: typewriter 3s steps(40, end), holographic-flicker 1s ease-in-out infinite 3s;
+  animation:
+    typewriter 3s steps(40, end),
+    holographic-flicker 1s ease-in-out infinite 3s;
 }
 
 .particle {
@@ -261,8 +271,9 @@
 
 .neon-border {
   border: 2px solid transparent;
-  background: linear-gradient(45deg, #1e40af, #7c3aed, #059669) padding-box,
-              linear-gradient(45deg, #3b82f6, #8b5cf6, #10b981) border-box;
+  background:
+    linear-gradient(45deg, #1e40af, #7c3aed, #059669) padding-box,
+    linear-gradient(45deg, #3b82f6, #8b5cf6, #10b981) border-box;
 }
 
 /* Responsive Animations */
@@ -278,11 +289,11 @@
   .particle {
     animation-duration: 8s;
   }
-  
+
   .neural-pulse {
     animation-duration: 4s;
   }
-  
+
   .holographic-flicker {
     animation-duration: 3s;
   }

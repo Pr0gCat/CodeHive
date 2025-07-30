@@ -11,12 +11,14 @@ CodeHive 現在具備完整的功能請求處理系統，實現了從自然語�
 **文件**: `lib/agents/project-manager.ts`
 
 **新增方法**:
+
 - `processFeatureRequest()` - 分析自然語言功能請求
 - `createEpicFromRequest()` - 從分析結果創建 Epic
 - `breakdownEpicToStories()` - 將 Epic 分解為 Stories
 - `maintainProjectClaudeMd()` - 動態維護項目 CLAUDE.md
 
 **功能**:
+
 - 使用 Claude Code 智能分析功能請求
 - 自動生成 Epic 標題、描述和 Story 分解
 - 估算工作量和優先級
@@ -27,6 +29,7 @@ CodeHive 現在具備完整的功能請求處理系統，實現了從自然語�
 **文件**: `lib/feature-request/processor.ts`
 
 **核心功能**:
+
 - 完整的功能請求處理流程
 - 自動創建 Epic → Stories → TDD Cycles
 - 項目 backlog 狀態監控
@@ -34,6 +37,7 @@ CodeHive 現在具備完整的功能請求處理系統，實現了從自然語�
 - 功能請求質量驗證
 
 **工作流程**:
+
 1. 驗證功能請求質量
 2. AI 分析並分解為結構化需求
 3. 創建 Epic 記錄
@@ -46,11 +50,13 @@ CodeHive 現在具備完整的功能請求處理系統，實現了從自然語�
 **文件**: `app/api/projects/[id]/feature-requests/route.ts`
 
 **端點**:
+
 - `GET` - 獲取項目 backlog 狀態
 - `POST` - 處理新功能請求
 - `PUT` - 優化項目 backlog
 
 **功能**:
+
 - 輸入驗證和質量檢查
 - 完整的錯誤處理
 - 詳細的執行結果返回
@@ -60,11 +66,13 @@ CodeHive 現在具備完整的功能請求處理系統，實現了從自然語�
 **文件**: `app/api/projects/[id]/claude-md/route.ts`
 
 **端點**:
+
 - `GET` - 獲取當前 CLAUDE.md 內容
 - `PUT` - 更新/維護 CLAUDE.md
 - `POST` - 從頭重新生成 CLAUDE.md
 
 **功能**:
+
 - 動態內容更新
 - Epic/Story 進度追蹤
 - 開發重點展示
@@ -74,6 +82,7 @@ CodeHive 現在具備完整的功能請求處理系統，實現了從自然語�
 **文件**: `app/api/agents/project-manager/route.ts`
 
 **新增動作**:
+
 - `process-feature-request` - 處理功能請求
 - `maintain-claude-md` - 維護 CLAUDE.md
 - `create-epic` - 創建 Epic
@@ -129,21 +138,25 @@ CLAUDE.md 更新
 ## 智能特性
 
 ### 1. 自然語言處理
+
 - 支持任意格式的功能請求
 - 智能提取業務需求和技術約束
 - 自動生成用戶故事格式
 
 ### 2. 智能估算
+
 - 根據複雜度自動分配 Story Points
 - 智能優先級排序
 - 依賴關係分析
 
 ### 3. 質量控制
+
 - 輸入驗證和建議
 - 語言清晰度檢查
 - 最佳實踐建議
 
 ### 4. 上下文維護
+
 - 項目 CLAUDE.md 實時更新
 - 開發重點追蹤
 - 進度可視化
