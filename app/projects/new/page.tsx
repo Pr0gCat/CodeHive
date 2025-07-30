@@ -37,7 +37,6 @@ export default function NewProjectPage() {
 
   useEffect(() => {
     fetchAvailableRepos();
-    fetchGlobalSettings();
   }, []);
 
   const fetchAvailableRepos = async () => {
@@ -57,27 +56,6 @@ export default function NewProjectPage() {
     }
   };
 
-  const fetchGlobalSettings = async () => {
-    try {
-      const response = await fetch('/api/settings');
-      const data = await response.json();
-      if (data.success) {
-        setGlobalSettings(data.data);
-        // Pre-populate form with global defaults
-        setFormData(prev => ({
-          ...prev,
-          framework: data.data?.preferredFramework || '',
-          language: data.data?.preferredLanguage || '',
-          packageManager: data.data?.preferredPackageManager || '',
-          testFramework: data.data?.preferredTestFramework || '',
-          lintTool: data.data?.preferredLintTool || '',
-          buildTool: data.data?.preferredBuildTool || '',
-        }));
-      }
-    } catch (error) {
-      console.error('Error fetching global settings:', error);
-    }
-  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

@@ -43,22 +43,6 @@ model Project {
   @@map("projects")
 }
 
-model GlobalSettings {
-  id          String   @id @default("global")
-  
-  // Global Tech Stack Preferences
-  preferredFramework   String?  // e.g., "Next.js", "React", "Vue.js"
-  preferredLanguage    String?  // e.g., "typescript", "javascript", "python"
-  preferredPackageManager String? // e.g., "npm", "yarn", "pnpm", "bun"
-  preferredTestFramework String? // e.g., "jest", "vitest", "cypress"
-  preferredLintTool    String?  // e.g., "eslint", "tslint", "pylint"
-  preferredBuildTool   String?  // e.g., "webpack", "vite", "rollup"
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("global_settings")
-}
 
 model ProjectSettings {
   id          String   @id @default(cuid())
