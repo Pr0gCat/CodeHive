@@ -18,6 +18,24 @@ export async function GET(
     const cards = await prisma.kanbanCard.findMany({
       where: { projectId: params.id },
       include: {
+        epic: {
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            phase: true,
+            mvpPriority: true,
+          },
+        },
+        cycles: {
+          select: {
+            id: true,
+            title: true,
+            phase: true,
+            status: true,
+          },
+          orderBy: { sequence: 'asc' },
+        },
         agentTasks: {
           orderBy: { createdAt: 'desc' },
         },

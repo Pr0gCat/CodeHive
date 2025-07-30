@@ -1,5 +1,7 @@
 import { prisma, Cycle, Test, Query, Artifact } from '@/lib/db';
 import { CyclePhase, CycleStatus, TestStatus, QueryUrgency } from '@/lib/db';
+import { BranchManager } from '@/lib/git/branch-manager';
+import { WorkspaceManager } from '@/lib/workspace/workspace-manager';
 
 /**
  * Feature request interface for defining what to build
@@ -29,15 +31,25 @@ export interface CycleResult {
  */
 export class TDDCycleEngine {
   private projectId: string;
+  private projectPath: string;
+  private branchManager: BranchManager;
+  private workspaceManager: WorkspaceManager;
 
-  constructor(projectId: string) {
+  constructor(projectId: string, projectPath: string) {
     this.projectId = projectId;
+    this.projectPath = projectPath;
+    this.branchManager = new BranchManager(projectPath);
+    this.workspaceManager = new WorkspaceManager(projectPath);
   }
 
   /**
    * Start a new TDD cycle for a feature
    */
   async startCycle(featureRequest: FeatureRequest): Promise<Cycle> {
+    // 初始化工作空間管理器
+    await this.workspaceManager.initialize();
+
+    // 創建週期記錄
     const cycle = await prisma.cycle.create({
       data: {
         projectId: this.projectId,
@@ -49,6 +61,21 @@ export class TDDCycleEngine {
         constraints: featureRequest.constraints ? JSON.stringify(featureRequest.constraints) : null,
       },
     });
+
+    // 創建功能分支
+    const branchResult = await this.branchManager.createFeatureBranch(
+      cycle.id,
+      featureRequest.title
+    );
+
+    if (!branchResult.success) {
+      // 如果分支創建失敗，回滾週期創建
+      await prisma.cycle.delete({ where: { id: cycle.id } });
+      throw new Error(`Failed to create feature branch: ${branchResult.error}`);
+    }
+
+    console.log(`🚀 Started TDD cycle: ${cycle.title}`);
+    console.log(`📌 Branch: ${branchResult.output}`);
 
     return cycle;
   }
@@ -104,6 +131,12 @@ export class TDDCycleEngine {
   private async executeRedPhase(cycle: Cycle): Promise<CycleResult> {
     console.log(`🔴 RED Phase: Generating tests for "${cycle.title}"`);
 
+    // 創建檢查點分支
+    await this.branchManager.createCheckpointBranch(cycle.id, 'red');
+
+    // 創建工作空間快照
+    await this.workspaceManager.createSnapshot(cycle.id, `feature/cycle-${cycle.id}`, 'RED');
+
     const criteria = JSON.parse(cycle.acceptanceCriteria) as string[];
     const tests: Test[] = [];
 
@@ -111,6 +144,16 @@ export class TDDCycleEngine {
     for (const criterion of criteria) {
       const test = await this.generateTest(cycle.id, criterion);
       tests.push(test);
+    }
+
+    // 提交測試檔案
+    const commitResult = await this.branchManager.commitChanges(
+      `add failing tests for ${cycle.title}`,
+      'RED'
+    );
+
+    if (!commitResult.success) {
+      console.error(`Failed to commit test files: ${commitResult.error}`);
     }
 
     // Update cycle to GREEN phase
@@ -137,6 +180,12 @@ export class TDDCycleEngine {
   private async executeGreenPhase(cycle: Cycle): Promise<CycleResult> {
     console.log(`🟢 GREEN Phase: Implementing code for "${cycle.title}"`);
 
+    // 創建檢查點分支
+    await this.branchManager.createCheckpointBranch(cycle.id, 'green');
+
+    // 創建工作空間快照
+    await this.workspaceManager.createSnapshot(cycle.id, `feature/cycle-${cycle.id}`, 'GREEN');
+
     const failingTests = cycle.tests.filter(t => t.status === TestStatus.FAILING);
     const artifacts: Artifact[] = [];
 
@@ -148,6 +197,16 @@ export class TDDCycleEngine {
 
     // Update test statuses (simulated - in real implementation, would run tests)
     await this.updateTestStatuses(cycle.tests, TestStatus.PASSING);
+
+    // 提交實現代碼
+    const commitResult = await this.branchManager.commitChanges(
+      `implement minimal code to pass tests`,
+      'GREEN'
+    );
+
+    if (!commitResult.success) {
+      console.error(`Failed to commit implementation: ${commitResult.error}`);
+    }
 
     // Update cycle to REFACTOR phase
     const updatedCycle = await prisma.cycle.update({
@@ -173,6 +232,12 @@ export class TDDCycleEngine {
   private async executeRefactorPhase(cycle: Cycle): Promise<CycleResult> {
     console.log(`🔵 REFACTOR Phase: Improving code quality for "${cycle.title}"`);
 
+    // 創建檢查點分支
+    await this.branchManager.createCheckpointBranch(cycle.id, 'refactor');
+
+    // 創建工作空間快照
+    await this.workspaceManager.createSnapshot(cycle.id, `feature/cycle-${cycle.id}`, 'REFACTOR');
+
     const refactoredArtifacts: Artifact[] = [];
 
     // Refactor existing code artifacts
@@ -180,6 +245,16 @@ export class TDDCycleEngine {
     for (const artifact of codeArtifacts) {
       const refactored = await this.refactorCode(cycle.id, artifact);
       refactoredArtifacts.push(refactored);
+    }
+
+    // 提交重構代碼
+    const commitResult = await this.branchManager.commitChanges(
+      `improve code quality and maintainability`,
+      'REFACTOR'
+    );
+
+    if (!commitResult.success) {
+      console.error(`Failed to commit refactoring: ${commitResult.error}`);
     }
 
     // Update cycle to REVIEW phase
@@ -206,10 +281,19 @@ export class TDDCycleEngine {
   private async executeReviewPhase(cycle: Cycle): Promise<CycleResult> {
     console.log(`👁️ REVIEW Phase: Validating "${cycle.title}"`);
 
+    // 創建檢查點分支
+    await this.branchManager.createCheckpointBranch(cycle.id, 'review');
+
+    // 創建工作空間快照
+    await this.workspaceManager.createSnapshot(cycle.id, `feature/cycle-${cycle.id}`, 'REVIEW');
+
     // Check if all tests are passing
     const allTestsPassing = cycle.tests.every(t => t.status === TestStatus.PASSING);
     
     if (!allTestsPassing) {
+      // 如果測試失敗，回滾到 GREEN 階段的檢查點
+      await this.branchManager.rollbackToCheckpoint('checkpoint/green-phase-start');
+      
       // Go back to GREEN phase if tests are failing
       const updatedCycle = await prisma.cycle.update({
         where: { id: cycle.id },
@@ -226,6 +310,25 @@ export class TDDCycleEngine {
         status: 'FAILED',
         nextPhase: CyclePhase.GREEN,
       };
+    }
+
+    // 提交最終驗證結果
+    const commitResult = await this.branchManager.commitChanges(
+      `final validation and quality checks`,
+      'REVIEW'
+    );
+
+    if (!commitResult.success) {
+      console.error(`Failed to commit review: ${commitResult.error}`);
+    }
+
+    // 創建合併請求
+    const mergeResult = await this.branchManager.createMergeRequest(cycle.id);
+    
+    if (!mergeResult.success) {
+      console.error(`Failed to create merge request: ${mergeResult.error}`);
+    } else {
+      console.log(`✅ Created merge request: ${mergeResult.output}`);
     }
 
     // Mark cycle as completed
@@ -247,63 +350,189 @@ export class TDDCycleEngine {
   }
 
   /**
-   * Generate a test from an acceptance criterion
+   * Generate a test from an acceptance criterion using AI
    */
   private async generateTest(cycleId: string, criterion: string): Promise<Test> {
-    // This is a simplified version - in reality, this would use AI to generate actual test code
-    const testName = `should ${criterion.toLowerCase()}`;
-    const testCode = this.generateTestCode(criterion);
+    try {
+      // Get project context
+      const cycle = await prisma.cycle.findUnique({
+        where: { id: cycleId },
+        include: { project: true },
+      });
 
-    return await prisma.test.create({
-      data: {
-        cycleId,
-        name: testName,
-        description: `Test for: ${criterion}`,
-        code: testCode,
-        status: TestStatus.FAILING,
-        filePath: this.generateTestFilePath(testName),
+      if (!cycle) {
+        throw new Error(`Cycle ${cycleId} not found`);
       }
-    });
+
+      const projectContext = {
+        id: cycle.project.id,
+        name: cycle.project.name,
+        localPath: cycle.project.localPath,
+        techStack: {
+          framework: cycle.project.framework,
+          language: cycle.project.language,
+          testFramework: cycle.project.testFramework,
+        },
+      };
+
+      // Use AI integration to generate real test
+      const aiIntegration = await import('@/lib/tdd/ai-integration');
+      const ai = new aiIntegration.AITDDIntegration();
+
+      const result = await ai.generateTestCode({
+        cycleId,
+        acceptanceCriterion: criterion,
+        projectContext,
+      });
+
+      // If there's a decision query, create it
+      if (result.decision) {
+        console.log(`💭 Decision point created: ${result.decision.title}`);
+      }
+
+      return result.test;
+    } catch (error) {
+      console.error('AI test generation failed, falling back to template:', error);
+      
+      // Fallback to template-based generation
+      const testName = `should ${criterion.toLowerCase()}`;
+      const testCode = this.generateTestCode(criterion);
+
+      return await prisma.test.create({
+        data: {
+          cycleId,
+          name: testName,
+          description: `Test for: ${criterion}`,
+          code: testCode,
+          status: TestStatus.FAILING,
+          filePath: this.generateTestFilePath(testName),
+        }
+      });
+    }
   }
 
   /**
-   * Generate implementation code for a test
+   * Generate implementation code for a test using AI
    */
   private async generateImplementation(cycleId: string, test: Test): Promise<Artifact> {
-    // This is a simplified version - in reality, this would use AI to generate actual implementation
-    const implementationCode = this.generateImplementationCode(test);
+    try {
+      // Get project context
+      const cycle = await prisma.cycle.findUnique({
+        where: { id: cycleId },
+        include: { project: true },
+      });
 
-    return await prisma.artifact.create({
-      data: {
-        cycleId,
-        type: 'CODE',
-        name: `${test.name.replace(/\s+/g, '')}.implementation`,
-        path: this.generateImplementationPath(test.name),
-        content: implementationCode,
-        purpose: `Implementation for test: ${test.name}`,
-        phase: CyclePhase.GREEN,
+      if (!cycle) {
+        throw new Error(`Cycle ${cycleId} not found`);
       }
-    });
+
+      const projectContext = {
+        id: cycle.project.id,
+        name: cycle.project.name,
+        localPath: cycle.project.localPath,
+        techStack: {
+          framework: cycle.project.framework,
+          language: cycle.project.language,
+          testFramework: cycle.project.testFramework,
+        },
+      };
+
+      // Use AI integration to generate real implementation
+      const aiIntegration = await import('@/lib/tdd/ai-integration');
+      const ai = new aiIntegration.AITDDIntegration();
+
+      const result = await ai.generateImplementationCode({
+        cycleId,
+        test,
+        projectContext,
+      });
+
+      // If there's a decision query, create it
+      if (result.decision) {
+        console.log(`💭 Decision point created: ${result.decision.title}`);
+      }
+
+      return result.artifact;
+    } catch (error) {
+      console.error('AI implementation generation failed, falling back to template:', error);
+      
+      // Fallback to template-based generation
+      const implementationCode = this.generateImplementationCode(test);
+
+      return await prisma.artifact.create({
+        data: {
+          cycleId,
+          type: 'CODE',
+          name: `${test.name.replace(/\s+/g, '')}.implementation`,
+          path: this.generateImplementationPath(test.name),
+          content: implementationCode,
+          purpose: `Implementation for test: ${test.name}`,
+          phase: CyclePhase.GREEN,
+        }
+      });
+    }
   }
 
   /**
-   * Refactor existing code
+   * Refactor existing code using AI
    */
   private async refactorCode(cycleId: string, artifact: Artifact): Promise<Artifact> {
-    // This is a simplified version - in reality, this would use AI to refactor code
-    const refactoredCode = this.improveCodeQuality(artifact.content);
+    try {
+      // Get project context
+      const cycle = await prisma.cycle.findUnique({
+        where: { id: cycleId },
+        include: { project: true },
+      });
 
-    return await prisma.artifact.create({
-      data: {
-        cycleId,
-        type: 'CODE',
-        name: `${artifact.name}.refactored`,
-        path: artifact.path,
-        content: refactoredCode,
-        purpose: `Refactored version of: ${artifact.name}`,
-        phase: CyclePhase.REFACTOR,
+      if (!cycle) {
+        throw new Error(`Cycle ${cycleId} not found`);
       }
-    });
+
+      const projectContext = {
+        id: cycle.project.id,
+        name: cycle.project.name,
+        localPath: cycle.project.localPath,
+        techStack: {
+          framework: cycle.project.framework,
+          language: cycle.project.language,
+          testFramework: cycle.project.testFramework,
+        },
+      };
+
+      // Use AI integration to refactor code
+      const aiIntegration = await import('@/lib/tdd/ai-integration');
+      const ai = new aiIntegration.AITDDIntegration();
+
+      const result = await ai.refactorCode({
+        cycleId,
+        artifact,
+        projectContext,
+      });
+
+      // If there's a decision query, create it
+      if (result.decision) {
+        console.log(`💭 Decision point created: ${result.decision.title}`);
+      }
+
+      return result.artifact;
+    } catch (error) {
+      console.error('AI refactoring failed, falling back to template:', error);
+      
+      // Fallback to simple refactoring
+      const refactoredCode = this.improveCodeQuality(artifact.content);
+
+      return await prisma.artifact.create({
+        data: {
+          cycleId,
+          type: 'CODE',
+          name: `${artifact.name}.refactored`,
+          path: artifact.path,
+          content: refactoredCode,
+          purpose: `Refactored version of: ${artifact.name}`,
+          phase: CyclePhase.REFACTOR,
+        }
+      });
+    }
   }
 
   /**

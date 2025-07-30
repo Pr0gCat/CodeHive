@@ -9,6 +9,10 @@ import KanbanBoard from '../../components/KanbanBoard';
 import ProjectLogsModal from '../../components/ProjectLogsModal';
 import ProjectSettingsModal from '../../components/ProjectSettingsModal';
 import UserQueriesPanel from '../../components/UserQueriesPanel';
+import TDDDashboard from '../../components/TDDDashboard';
+import EpicDashboard from '../../components/EpicDashboard';
+import HierarchicalProjectView from '../../components/HierarchicalProjectView';
+import AIAssistant from '../../components/AIAssistant';
 import { useToast } from '../../components/ui/ToastManager';
 
 interface ProjectPageProps {
@@ -25,14 +29,19 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const [logsModalOpen, setLogsModalOpen] = useState(false);
   const [projectSettings, setProjectSettings] = useState<ProjectSettings | null>(null);
   const [agentStatus, setAgentStatus] = useState<string>('unknown');
-  const [activeTab, setActiveTab] = useState<'kanban' | 'queries'>('kanban');
+  const [activeTab, setActiveTab] = useState<'overview' | 'development' | 'queries'>('overview');
+  const [devSubTab, setDevSubTab] = useState<'kanban' | 'epics' | 'tdd'>('kanban');
 
   // Check URL parameters for tab selection
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tab = urlParams.get('tab');
-    if (tab === 'queries') {
+    if (tab === 'development') {
+      setActiveTab('development');
+    } else if (tab === 'queries') {
       setActiveTab('queries');
+    } else {
+      setActiveTab('overview');
     }
   }, []);
 
@@ -305,42 +314,124 @@ export default function ProjectPage({ params }: ProjectPageProps) {
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col">
           {/* Tabs */}
-          <div className="border-b border-primary-800 bg-primary-950 overflow-x-auto">
-            <div className="flex min-w-max">
+          <div className="border-b border-primary-800 bg-primary-950">
+            <div className="flex">
               <button
-                onClick={() => setActiveTab('kanban')}
-                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  activeTab === 'kanban'
+                onClick={() => setActiveTab('overview')}
+                className={`px-8 py-4 text-base font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                  activeTab === 'overview'
                     ? 'text-accent-50 border-accent-500'
                     : 'text-primary-400 hover:text-accent-50 border-transparent hover:border-primary-600'
                 }`}
               >
-                Kanban 看板
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                總覽
+              </button>
+              <button
+                onClick={() => setActiveTab('development')}
+                className={`px-8 py-4 text-base font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                  activeTab === 'development'
+                    ? 'text-accent-50 border-accent-500'
+                    : 'text-primary-400 hover:text-accent-50 border-transparent hover:border-primary-600'
+                }`}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                </svg>
+                開發
               </button>
               <button
                 onClick={() => setActiveTab('queries')}
-                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                className={`px-8 py-4 text-base font-medium border-b-2 transition-colors flex items-center gap-2 ${
                   activeTab === 'queries'
                     ? 'text-accent-50 border-accent-500'
                     : 'text-primary-400 hover:text-accent-50 border-transparent hover:border-primary-600'
                 }`}
               >
-                代理查詢
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                諮詢
               </button>
             </div>
           </div>
 
           {/* Tab Content */}
           <div className="flex-1 overflow-hidden">
-            {/* Kanban Board */}
-            <div className={`h-full ${activeTab === 'kanban' ? 'block' : 'hidden'}`}>
-              <KanbanBoard
-                projectId={project.id}
-                cards={project.kanbanCards}
-                onCardUpdate={handleCardUpdate}
-                onCardCreate={handleCardCreate}
-                onCardDelete={handleCardDelete}
-              />
+            {/* Project Overview */}
+            <div className={`h-full ${activeTab === 'overview' ? 'block' : 'hidden'}`}>
+              <div className="p-6 h-full overflow-y-auto">
+                <HierarchicalProjectView projectId={project.id} />
+              </div>
+            </div>
+
+            {/* Development Tab with Sub-navigation */}
+            <div className={`h-full flex flex-col ${activeTab === 'development' ? 'block' : 'hidden'}`}>
+              {/* Sub-tabs */}
+              <div className="bg-primary-900 border-b border-primary-800">
+                <div className="flex px-6">
+                  <button
+                    onClick={() => setDevSubTab('kanban')}
+                    className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                      devSubTab === 'kanban'
+                        ? 'text-accent-50 border-accent-500'
+                        : 'text-primary-400 hover:text-accent-50 border-transparent'
+                    }`}
+                  >
+                    看板
+                  </button>
+                  <button
+                    onClick={() => setDevSubTab('epics')}
+                    className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                      devSubTab === 'epics'
+                        ? 'text-accent-50 border-accent-500'
+                        : 'text-primary-400 hover:text-accent-50 border-transparent'
+                    }`}
+                  >
+                    Epic 管理
+                  </button>
+                  <button
+                    onClick={() => setDevSubTab('tdd')}
+                    className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                      devSubTab === 'tdd'
+                        ? 'text-accent-50 border-accent-500'
+                        : 'text-primary-400 hover:text-accent-50 border-transparent'
+                    }`}
+                  >
+                    TDD 開發
+                  </button>
+                </div>
+              </div>
+
+              {/* Sub-tab Content */}
+              <div className="flex-1 overflow-hidden">
+                {/* Kanban Board */}
+                <div className={`h-full ${devSubTab === 'kanban' ? 'block' : 'hidden'}`}>
+                  <KanbanBoard
+                    projectId={project.id}
+                    cards={project.kanbanCards}
+                    onCardUpdate={handleCardUpdate}
+                    onCardCreate={handleCardCreate}
+                    onCardDelete={handleCardDelete}
+                  />
+                </div>
+
+                {/* Epic Dashboard */}
+                <div className={`h-full ${devSubTab === 'epics' ? 'block' : 'hidden'}`}>
+                  <div className="p-6 h-full overflow-y-auto">
+                    <EpicDashboard projectId={project.id} />
+                  </div>
+                </div>
+
+                {/* TDD Dashboard */}
+                <div className={`h-full ${devSubTab === 'tdd' ? 'block' : 'hidden'}`}>
+                  <div className="p-6 h-full overflow-y-auto">
+                    <TDDDashboard projectId={project.id} />
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* User Queries Panel */}
@@ -367,6 +458,9 @@ export default function ProjectPage({ params }: ProjectPageProps) {
         isOpen={logsModalOpen}
         onClose={() => setLogsModalOpen(false)}
       />
+
+      {/* AI Assistant */}
+      <AIAssistant projectId={project.id} />
     </div>
   );
 }

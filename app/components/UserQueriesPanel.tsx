@@ -188,7 +188,7 @@ export default function UserQueriesPanel({ projectId }: UserQueriesPanelProps) {
   return (
     <div className="bg-primary-800 rounded-lg p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-accent-50">代理查詢</h2>
+        <h2 className="text-xl font-semibold text-accent-50">諮詢</h2>
         <div className="flex gap-2">
           <select
             value={filterStatus}

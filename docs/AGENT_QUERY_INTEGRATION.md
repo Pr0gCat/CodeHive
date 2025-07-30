@@ -1,4 +1,4 @@
-# 代理查詢集成指南 (Agent Query Integration Guide)
+# 諮詢集成指南 (Query Integration Guide)
 
 ## 概述
 
