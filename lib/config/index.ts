@@ -3,22 +3,22 @@
  */
 
 import { formatShortNumber } from '@/lib/utils';
-import { configCache, type DatabaseConfig } from './database-config';
+import { configCache } from './database-config';
 
 export interface Config {
   // Database
   databaseUrl: string;
-  
+
   // Claude Code
   claudeCodePath: string;
   claudeDailyTokenLimit: number;
   claudeRateLimitPerMinute: number;
-  
+
   // Application
   appUrl: string;
   wsUrl: string;
   nodeEnv: string;
-  
+
   // Runtime
   isProduction: boolean;
   isDevelopment: boolean;
@@ -51,7 +51,7 @@ const staticConfig: StaticConfig = {
  */
 export async function getConfig(): Promise<Config> {
   const dbConfig = await configCache.getConfig();
-  
+
   return {
     // Database config takes precedence
     databaseUrl: dbConfig.databaseUrl,
@@ -60,7 +60,7 @@ export async function getConfig(): Promise<Config> {
     claudeRateLimitPerMinute: dbConfig.rateLimitPerMinute,
     appUrl: dbConfig.appUrl,
     wsUrl: dbConfig.wsUrl,
-    
+
     // Static config from environment
     nodeEnv: staticConfig.nodeEnv,
     isProduction: staticConfig.isProduction,
@@ -70,21 +70,21 @@ export async function getConfig(): Promise<Config> {
 
 /**
  * Synchronous fallback config for when database is not available
- * Uses sensible defaults since .env file has been removed
+ * Uses environment variables with sensible defaults
  */
 export const fallbackConfig: Config = {
-  // Database - use default SQLite path
-  databaseUrl: 'file:./prisma/codehive.db',
-  
-  // Claude Code - use system default
-  claudeCodePath: 'claude',
-  claudeDailyTokenLimit: 100000000, // 100M tokens
-  claudeRateLimitPerMinute: 50,
-  
-  // Application - use localhost defaults
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  
+  // Database - use environment variable
+  databaseUrl: process.env.DATABASE_URL || 'file:./prisma/codehive.db',
+
+  // Claude Code - use environment variables
+  claudeCodePath: process.env.CLAUDE_CODE_PATH || 'claude',
+  claudeDailyTokenLimit: 100000000, // 100M tokens (from database)
+  claudeRateLimitPerMinute: parseInt(process.env.CLAUDE_RATE_LIMIT || '50'),
+
+  // Application - use environment variables
+  appUrl: process.env.APP_URL || 'http://localhost:3000',
+  wsUrl: process.env.WS_URL || 'ws://localhost:3000',
+
   // Static config from environment (NODE_ENV still needed)
   nodeEnv: staticConfig.nodeEnv,
   isProduction: staticConfig.isProduction,
@@ -96,28 +96,28 @@ export const fallbackConfig: Config = {
  */
 export function validateConfig(config: Config): void {
   const errors: string[] = [];
-  
+
   // Check required paths
   if (!config.databaseUrl) {
     errors.push('Database URL is required');
   }
-  
+
   // Check token limits
   if (config.claudeDailyTokenLimit <= 0) {
     errors.push('Claude daily token limit must be positive');
   }
-  
+
   if (config.claudeRateLimitPerMinute <= 0) {
     errors.push('Claude rate limit per minute must be positive');
   }
-  
+
   // Check URLs
   try {
     new URL(config.appUrl);
   } catch {
     errors.push('App URL must be a valid URL');
   }
-  
+
   if (errors.length > 0) {
     throw new Error(`Configuration validation failed:\n${errors.join('\n')}`);
   }
@@ -137,6 +137,13 @@ if (staticConfig.isDevelopment) {
   });
 }
 
+// Export a synchronous config object for immediate use
+export const config = fallbackConfig;
+
 // Export individual functions for config management
-export { configCache, getDatabaseConfig, updateDatabaseConfig } from './database-config';
+export {
+  configCache,
+  getDatabaseConfig,
+  updateDatabaseConfig,
+} from './database-config';
 export type { DatabaseConfig } from './database-config';

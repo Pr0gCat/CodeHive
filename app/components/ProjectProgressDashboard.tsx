@@ -43,7 +43,7 @@ export default function ProjectProgressDashboard() {
     try {
       const response = await fetch('/api/projects/progress');
       const data = await response.json();
-      
+
       if (data.success) {
         setProjects(data.data);
         setError(null);
@@ -59,11 +59,16 @@ export default function ProjectProgressDashboard() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'ACTIVE': return 'bg-green-900 text-green-300 border border-green-700';
-      case 'PAUSED': return 'bg-yellow-900 text-yellow-300 border border-yellow-700';
-      case 'COMPLETED': return 'bg-blue-900 text-blue-300 border border-blue-700';
-      case 'ARCHIVED': return 'bg-primary-900 text-primary-400 border border-primary-800';
-      default: return 'bg-primary-900 text-primary-400 border border-primary-800';
+      case 'ACTIVE':
+        return 'bg-green-900 text-green-300 border border-green-700';
+      case 'PAUSED':
+        return 'bg-yellow-900 text-yellow-300 border border-yellow-700';
+      case 'COMPLETED':
+        return 'bg-blue-900 text-blue-300 border border-blue-700';
+      case 'ARCHIVED':
+        return 'bg-primary-900 text-primary-400 border border-primary-800';
+      default:
+        return 'bg-primary-900 text-primary-400 border border-primary-800';
     }
   };
 
@@ -80,7 +85,7 @@ export default function ProjectProgressDashboard() {
         <div className="animate-pulse">
           <div className="h-6 bg-primary-800 rounded w-1/3 mb-4"></div>
           <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
+            {[1, 2, 3].map(i => (
               <div key={i} className="h-16 bg-primary-800 rounded"></div>
             ))}
           </div>
@@ -101,7 +106,9 @@ export default function ProjectProgressDashboard() {
     return (
       <div className="bg-primary-900 border border-primary-800 rounded-lg p-6 text-center">
         <div className="text-primary-400 mb-2">No active projects</div>
-        <div className="text-sm text-primary-500">Create a project to see progress tracking</div>
+        <div className="text-sm text-primary-500">
+          Create a project to see progress tracking
+        </div>
       </div>
     );
   }
@@ -116,19 +123,26 @@ export default function ProjectProgressDashboard() {
       </div>
 
       <div className="space-y-4">
-        {projects.map((project) => (
-          <div key={project.id} className="bg-primary-800 border border-primary-700 rounded-lg p-4">
+        {projects.map(project => (
+          <div
+            key={project.id}
+            className="bg-primary-800 border border-primary-700 rounded-lg p-4"
+          >
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
                   <h3 className="font-medium text-accent-50">{project.name}</h3>
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(project.status)}`}>
+                  <span
+                    className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(project.status)}`}
+                  >
                     {project.status}
                   </span>
                 </div>
-                <div className="text-sm text-primary-400">{project.recentActivity}</div>
+                <div className="text-sm text-primary-400">
+                  {project.recentActivity}
+                </div>
               </div>
-              
+
               <div className="text-right">
                 <div className="text-sm font-medium text-accent-50">
                   {project.progress.completed}/{project.progress.total} 個任務
@@ -143,7 +157,9 @@ export default function ProjectProgressDashboard() {
             <div className="mb-3">
               <div className="flex items-center justify-between text-sm mb-1">
                 <span className="text-primary-300">Progress</span>
-                <span className="text-accent-50">{project.progress.percentage}%</span>
+                <span className="text-accent-50">
+                  {project.progress.percentage}%
+                </span>
               </div>
               <div className="w-full bg-primary-700 rounded-full h-2">
                 <div
@@ -157,23 +173,33 @@ export default function ProjectProgressDashboard() {
             <div className="grid grid-cols-5 gap-2 text-xs">
               <div className="text-center">
                 <div className="text-primary-400">待辦清單</div>
-                <div className="font-medium text-accent-50">{project.tasks.backlog}</div>
+                <div className="font-medium text-accent-50">
+                  {project.tasks.backlog}
+                </div>
               </div>
               <div className="text-center">
                 <div className="text-primary-400">Todo</div>
-                <div className="font-medium text-blue-300">{project.tasks.todo}</div>
+                <div className="font-medium text-blue-300">
+                  {project.tasks.todo}
+                </div>
               </div>
               <div className="text-center">
                 <div className="text-primary-400">進行中</div>
-                <div className="font-medium text-yellow-300">{project.tasks.inProgress}</div>
+                <div className="font-medium text-yellow-300">
+                  {project.tasks.inProgress}
+                </div>
               </div>
               <div className="text-center">
                 <div className="text-primary-400">審查中</div>
-                <div className="font-medium text-purple-300">{project.tasks.review}</div>
+                <div className="font-medium text-purple-300">
+                  {project.tasks.review}
+                </div>
               </div>
               <div className="text-center">
                 <div className="text-primary-400">已完成</div>
-                <div className="font-medium text-green-300">{project.tasks.done}</div>
+                <div className="font-medium text-green-300">
+                  {project.tasks.done}
+                </div>
               </div>
             </div>
 
@@ -182,11 +208,18 @@ export default function ProjectProgressDashboard() {
               <div className="flex items-center justify-between text-xs">
                 <span className="text-primary-400">Token Usage Today</span>
                 <div className="flex items-center gap-1">
-                  <span className="text-accent-50">{formatShortNumber(project.tokenUsage.used)}</span>
-                  <div className={`w-2 h-2 rounded-full ${
-                    project.tokenUsage.trend === 'up' ? 'bg-green-500' :
-                    project.tokenUsage.trend === 'down' ? 'bg-red-500' : 'bg-yellow-500'
-                  }`} />
+                  <span className="text-accent-50">
+                    {formatShortNumber(project.tokenUsage.used)}
+                  </span>
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      project.tokenUsage.trend === 'up'
+                        ? 'bg-green-500'
+                        : project.tokenUsage.trend === 'down'
+                          ? 'bg-red-500'
+                          : 'bg-yellow-500'
+                    }`}
+                  />
                 </div>
               </div>
             </div>

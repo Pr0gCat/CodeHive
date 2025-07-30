@@ -16,19 +16,19 @@ interface SliderProps {
   step?: number;
   disabled?: boolean;
   className?: string;
-  
+
   // Visual customization
   color?: 'accent' | 'blue' | 'green' | 'red' | 'yellow';
   size?: 'sm' | 'md' | 'lg';
-  
+
   // Labels and formatting
   formatLabel?: (value: number) => string;
   showValue?: boolean;
   showMinMax?: boolean;
-  
+
   // Markers for suggested values
   markers?: SliderMarker[];
-  
+
   // Accessibility
   'aria-label'?: string;
   'aria-describedby'?: string;
@@ -116,83 +116,98 @@ export default function Slider({
     }
   }, [value, isDragging]);
 
-  const calculateValue = useCallback((clientX: number) => {
-    if (!railRef.current) return value;
+  const calculateValue = useCallback(
+    (clientX: number) => {
+      if (!railRef.current) return value;
 
-    const rect = railRef.current.getBoundingClientRect();
-    const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    const rawValue = min + percentage * (max - min);
-    
-    // Snap to step
-    const steppedValue = Math.round(rawValue / step) * step;
-    return Math.max(min, Math.min(max, steppedValue));
-  }, [min, max, step, value]);
+      const rect = railRef.current.getBoundingClientRect();
+      const percentage = Math.max(
+        0,
+        Math.min(1, (clientX - rect.left) / rect.width)
+      );
+      const rawValue = min + percentage * (max - min);
 
-  const handleMouseDown = useCallback((event: React.MouseEvent) => {
-    if (disabled) return;
-    
-    event.preventDefault();
-    setIsDragging(true);
-    
-    const newValue = calculateValue(event.clientX);
-    setTempValue(newValue);
-    onChange(newValue);
-  }, [disabled, calculateValue, onChange]);
+      // Snap to step
+      const steppedValue = Math.round(rawValue / step) * step;
+      return Math.max(min, Math.min(max, steppedValue));
+    },
+    [min, max, step, value]
+  );
 
-  const handleMouseMove = useCallback((event: MouseEvent) => {
-    if (!isDragging || disabled) return;
-    
-    const newValue = calculateValue(event.clientX);
-    setTempValue(newValue);
-    onChange(newValue);
-  }, [isDragging, disabled, calculateValue, onChange]);
+  const handleMouseDown = useCallback(
+    (event: React.MouseEvent) => {
+      if (disabled) return;
+
+      event.preventDefault();
+      setIsDragging(true);
+
+      const newValue = calculateValue(event.clientX);
+      setTempValue(newValue);
+      onChange(newValue);
+    },
+    [disabled, calculateValue, onChange]
+  );
+
+  const handleMouseMove = useCallback(
+    (event: MouseEvent) => {
+      if (!isDragging || disabled) return;
+
+      const newValue = calculateValue(event.clientX);
+      setTempValue(newValue);
+      onChange(newValue);
+    },
+    [isDragging, disabled, calculateValue, onChange]
+  );
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
   }, []);
 
-  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
-    if (disabled) return;
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      if (disabled) return;
 
-    let newValue = value;
-    const largeStep = (max - min) / 10;
+      let newValue = value;
+      const largeStep = (max - min) / 10;
 
-    switch (event.key) {
-      case 'ArrowLeft':
-      case 'ArrowDown':
-        newValue = Math.max(min, value - step);
-        break;
-      case 'ArrowRight':
-      case 'ArrowUp':
-        newValue = Math.min(max, value + step);
-        break;
-      case 'PageDown':
-        newValue = Math.max(min, value - largeStep);
-        break;
-      case 'PageUp':
-        newValue = Math.min(max, value + largeStep);
-        break;
-      case 'Home':
-        newValue = min;
-        break;
-      case 'End':
-        newValue = max;
-        break;
-      default:
-        return; // Don't prevent default for other keys
-    }
+      switch (event.key) {
+        case 'ArrowLeft':
+        case 'ArrowDown':
+          newValue = Math.max(min, value - step);
+          break;
+        case 'ArrowRight':
+        case 'ArrowUp':
+          newValue = Math.min(max, value + step);
+          break;
+        case 'PageDown':
+          newValue = Math.max(min, value - largeStep);
+          break;
+        case 'PageUp':
+          newValue = Math.min(max, value + largeStep);
+          break;
+        case 'Home':
+          newValue = min;
+          break;
+        case 'End':
+          newValue = max;
+          break;
+        default:
+          return; // Don't prevent default for other keys
+      }
 
-    event.preventDefault();
-    setTempValue(newValue);
-    onChange(newValue);
-  }, [disabled, value, min, max, step, onChange]);
+      event.preventDefault();
+      setTempValue(newValue);
+      onChange(newValue);
+    },
+    [disabled, value, min, max, step, onChange]
+  );
 
   // Add global mouse event listeners when dragging
   useEffect(() => {
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
-      
+
       return () => {
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
@@ -201,26 +216,27 @@ export default function Slider({
   }, [isDragging, handleMouseMove, handleMouseUp]);
 
   const percentage = ((tempValue - min) / (max - min)) * 100;
-  const displayValue = formatLabel ? formatLabel(tempValue) : tempValue.toString();
+  const displayValue = formatLabel
+    ? formatLabel(tempValue)
+    : tempValue.toString();
 
   return (
     <div className={`relative ${sizes.container} ${className}`}>
       {/* Value display */}
       {showValue && (
         <div className="flex justify-center mb-2">
-          <span className={`text-2xl font-bold text-accent-50 transition-all duration-200 ${
-            isDragging ? 'scale-110' : ''
-          }`}>
+          <span
+            className={`text-2xl font-bold text-accent-50 transition-all duration-200 ${
+              isDragging ? 'scale-110' : ''
+            }`}
+          >
             {displayValue}
           </span>
         </div>
       )}
 
       {/* Slider container */}
-      <div 
-        className="relative cursor-pointer"
-        onMouseDown={handleMouseDown}
-      >
+      <div className="relative cursor-pointer" onMouseDown={handleMouseDown}>
         {/* Rail (background track) */}
         <div
           ref={railRef}
@@ -282,13 +298,13 @@ export default function Slider({
         {!showMinMax && markers.length > 0 && (
           <div className="flex justify-between w-full text-xs text-primary-400">
             {markers.map((marker, index) => (
-              <span 
+              <span
                 key={index}
                 className="opacity-60"
-                style={{ 
+                style={{
                   position: 'absolute',
                   left: `${((marker.value - min) / (max - min)) * 100}%`,
-                  transform: 'translateX(-50%)'
+                  transform: 'translateX(-50%)',
                 }}
               >
                 {marker.label}

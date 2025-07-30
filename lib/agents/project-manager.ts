@@ -3,7 +3,11 @@ import { promises as fs } from 'fs';
 import { ProjectAnalyzer } from './analyzers/project-analyzer';
 import { AgentExecutor } from './executor';
 import { SpecificationGenerator } from './generators/spec-generator';
-import { checkRateLimit, checkTokenLimit, logTokenUsage } from './project-settings';
+import {
+  checkRateLimit,
+  checkTokenLimit,
+  logTokenUsage,
+} from './project-settings';
 import { AgentResult, AgentSpec } from './types';
 
 export interface ProjectContext {
@@ -49,6 +53,25 @@ export interface AgentRecommendation {
   estimatedDuration: number;
 }
 
+export interface FeatureRequestAnalysis {
+  title: string;
+  description: string;
+  epicTitle: string;
+  epicDescription: string;
+  stories: StoryBreakdown[];
+  estimatedComplexity: 'LOW' | 'MEDIUM' | 'HIGH' | 'COMPLEX';
+  dependencies: string[];
+}
+
+export interface StoryBreakdown {
+  title: string;
+  description: string;
+  acceptanceCriteria: string[];
+  storyPoints: number;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  dependencies: string[];
+}
+
 export class ProjectManagerAgent {
   private executor: AgentExecutor;
   private analyzer: ProjectAnalyzer;
@@ -62,7 +85,7 @@ export class ProjectManagerAgent {
 
   async reviewProject(projectId: string): Promise<AgentResult> {
     const startTime = Date.now();
-    
+
     try {
       console.log(`📋 Starting project review for project: ${projectId}`);
 
@@ -77,7 +100,7 @@ export class ProjectManagerAgent {
 
       // Estimate tokens for this operation (analysis + generation)
       const estimatedTokens = 2000; // Reasonable estimate for project review
-      
+
       // Check rate and token limits
       const rateLimitCheck = await checkRateLimit(projectId);
       if (!rateLimitCheck.allowed) {
@@ -99,7 +122,9 @@ export class ProjectManagerAgent {
         };
       }
 
-      console.log(`🔍 Reviewing project: ${project.name} at ${project.localPath}`);
+      console.log(
+        `🔍 Reviewing project: ${project.name} at ${project.localPath}`
+      );
 
       // Analyze project structure
       const context = await this.analyzeProject(projectId);
@@ -109,11 +134,14 @@ export class ProjectManagerAgent {
       const projectSummary = await this.generateProjectSummary(context);
 
       // Generate CLAUDE.md content based on analysis
-      const claudeMdContent = await this.generateClaudeMd(context, recommendations);
+      const claudeMdContent = await this.generateClaudeMd(
+        context,
+        recommendations
+      );
 
       // Write CLAUDE.md to the project directory
       const claudeMdPath = `${project.localPath}/CLAUDE.md`;
-      
+
       try {
         // Write CLAUDE.md file directly using Node.js fs
         await fs.writeFile(claudeMdPath, claudeMdContent, 'utf8');
@@ -125,8 +153,10 @@ export class ProjectManagerAgent {
         });
 
         // Calculate actual tokens used (based on content size)
-        const inputTokens = Math.ceil((context.name.length) / 4);
-        const outputTokens = Math.ceil((claudeMdContent.length + projectSummary.length) / 4);
+        const inputTokens = Math.ceil(context.name.length / 4);
+        const outputTokens = Math.ceil(
+          (claudeMdContent.length + projectSummary.length) / 4
+        );
         const totalTokens = inputTokens + outputTokens;
 
         // Log token usage for this review operation
@@ -153,9 +183,9 @@ export class ProjectManagerAgent {
         };
       } catch (writeError) {
         console.error('Failed to write CLAUDE.md:', writeError);
-        
+
         // Log minimal token usage for failed operation
-        const inputTokens = Math.ceil((context.name.length) / 4);
+        const inputTokens = Math.ceil(context.name.length / 4);
         await logTokenUsage(
           projectId,
           'project-manager-review',
@@ -177,7 +207,7 @@ export class ProjectManagerAgent {
       }
     } catch (error) {
       console.error('Project review failed:', error);
-      
+
       // Log minimal token usage for completely failed operation
       try {
         await logTokenUsage(
@@ -192,19 +222,26 @@ export class ProjectManagerAgent {
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error during project review',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Unknown error during project review',
         tokensUsed: 100,
         executionTime: Date.now() - startTime,
       };
     }
   }
 
-  private async generateProjectSummary(context: ProjectContext): Promise<string> {
+  private async generateProjectSummary(
+    context: ProjectContext
+  ): Promise<string> {
     const { name, localPath, structure } = context;
-    
+
     try {
-      console.log(`🤖 Generating project description using Claude Code for: ${name}`);
-      
+      console.log(
+        `🤖 Generating project description using Claude Code for: ${name}`
+      );
+
       // Prepare project analysis data for Claude Code
       const analysisData = {
         projectName: name,
@@ -212,18 +249,21 @@ export class ProjectManagerAgent {
         sourceFiles: structure?.sourceFiles.length || 0,
         testFiles: structure?.testFiles.length || 0,
         directories: structure?.directories?.slice(0, 10) || [], // Top 10 directories
-        keyFiles: structure?.files
-          ?.filter(f => {
-            const fileName = f.path.toLowerCase();
-            return fileName.includes('readme') || 
-                   fileName.includes('package.json') ||
-                   fileName.includes('main') ||
-                   fileName.includes('index') ||
-                   fileName.includes('app') ||
-                   fileName.includes('server');
-          })
-          ?.slice(0, 5)
-          ?.map(f => f.path) || [],
+        keyFiles:
+          structure?.files
+            ?.filter(f => {
+              const fileName = f.path.toLowerCase();
+              return (
+                fileName.includes('readme') ||
+                fileName.includes('package.json') ||
+                fileName.includes('main') ||
+                fileName.includes('index') ||
+                fileName.includes('app') ||
+                fileName.includes('server')
+              );
+            })
+            ?.slice(0, 5)
+            ?.map(f => f.path) || [],
         configFiles: structure?.configFiles?.slice(0, 5) || [],
         packageFiles: structure?.packageFiles || [],
       };
@@ -255,11 +295,15 @@ Description:`;
 
       if (result.success && result.output) {
         // Clean up the response - remove common prefixes and keep it brief
-        let description = result.output.trim()
-          .replace(/^(Description:|The project is|This is|This project is)\s*/i, '')
+        let description = result.output
+          .trim()
+          .replace(
+            /^(Description:|The project is|This is|This project is)\s*/i,
+            ''
+          )
           .replace(/\.$/, '')
           .trim();
-        
+
         // Ensure it's not too long (max 50 characters)
         if (description.length > 50) {
           description = description.substring(0, 50).trim();
@@ -269,26 +313,34 @@ Description:`;
             description = description.substring(0, lastSpace);
           }
         }
-        
+
         console.log(`✅ Generated description: "${description}"`);
         return description || 'Software project';
       } else {
-        console.warn('Claude Code analysis failed, falling back to basic description');
+        console.warn(
+          'Claude Code analysis failed, falling back to basic description'
+        );
         return 'Software project';
       }
-      
     } catch (error) {
-      console.error('Error generating project summary with Claude Code:', error);
+      console.error(
+        'Error generating project summary with Claude Code:',
+        error
+      );
       return 'Software project';
     }
   }
 
-  private async generateClaudeMd(context: ProjectContext, recommendations: AgentRecommendation[]): Promise<string> {
+  private async generateClaudeMd(
+    context: ProjectContext,
+    recommendations: AgentRecommendation[]
+  ): Promise<string> {
     const { name, framework, language, techStack, structure } = context;
-    
+
     // Determine the primary language and framework
     const primaryLanguage = language || techStack?.language || 'Unknown';
-    const primaryFramework = framework || techStack?.framework || 'None specified';
+    const primaryFramework =
+      framework || techStack?.framework || 'None specified';
     const packageManager = techStack?.packageManager || 'npm';
     const testFramework = techStack?.testFramework || 'Not configured';
     const lintTool = techStack?.lintTool || 'Not configured';
@@ -372,15 +424,19 @@ npm run format
 
     // Generate recommendations section
     const topRecommendations = recommendations.slice(0, 5);
-    const recommendationsSection = topRecommendations.length > 0 
-      ? `## Immediate Recommendations
+    const recommendationsSection =
+      topRecommendations.length > 0
+        ? `## Immediate Recommendations
 
-${topRecommendations.map((rec, index) => 
-  `${index + 1}. **${rec.agentType}** (Priority: ${rec.priority}): ${rec.reason}
+${topRecommendations
+  .map(
+    (rec, index) =>
+      `${index + 1}. **${rec.agentType}** (Priority: ${rec.priority}): ${rec.reason}
    - Suggested action: ${rec.suggestedCommand}
    - Estimated time: ${Math.round(rec.estimatedDuration / 60)} minutes`
-).join('\n\n')}` 
-      : '';
+  )
+  .join('\n\n')}`
+        : '';
 
     return `# CLAUDE.md
 
@@ -445,16 +501,17 @@ When making changes to this codebase:
 
     console.log(`🔍 Analyzing project: ${project.name}`);
 
-
     // Analyze project structure
     const structure = await this.analyzer.analyzeStructure(project.localPath);
-    
+
     // Use project-specific settings
     const framework = project.framework || undefined;
     const language = project.language || undefined;
-    
+
     // Extract dependencies
-    const dependencies = await this.analyzer.extractDependencies(project.localPath);
+    const dependencies = await this.analyzer.extractDependencies(
+      project.localPath
+    );
 
     const context: ProjectContext = {
       id: project.id,
@@ -481,8 +538,12 @@ When making changes to this codebase:
     return context;
   }
 
-  async generateAgentSpecs(projectContext: ProjectContext): Promise<AgentSpec[]> {
-    console.log(`🤖 Generating agent specifications for ${projectContext.name}`);
+  async generateAgentSpecs(
+    projectContext: ProjectContext
+  ): Promise<AgentSpec[]> {
+    console.log(
+      `🤖 Generating agent specifications for ${projectContext.name}`
+    );
 
     const specs: AgentSpec[] = [];
 
@@ -493,11 +554,15 @@ When making changes to this codebase:
 
     // Conditional agents based on project type
     if (projectContext.gitUrl) {
-      specs.push(await this.specGenerator.generateGitOperationsAgent(projectContext));
+      specs.push(
+        await this.specGenerator.generateGitOperationsAgent(projectContext)
+      );
     }
 
     if (projectContext.framework) {
-      specs.push(await this.specGenerator.generateFrameworkSpecialist(projectContext));
+      specs.push(
+        await this.specGenerator.generateFrameworkSpecialist(projectContext)
+      );
     }
 
     // Store generated specs
@@ -508,13 +573,16 @@ When making changes to this codebase:
     return specs;
   }
 
-  async recommendNextActions(projectContext: ProjectContext): Promise<AgentRecommendation[]> {
+  async recommendNextActions(
+    projectContext: ProjectContext
+  ): Promise<AgentRecommendation[]> {
     const recommendations: AgentRecommendation[] = [];
 
     // Analyze current project state
     const hasTests = projectContext.structure?.testFiles.length || 0 > 0;
     const hasTypeScript = projectContext.language === 'typescript';
-    const hasPackageFile = projectContext.structure?.packageFiles.length || 0 > 0;
+    const hasPackageFile =
+      projectContext.structure?.packageFiles.length || 0 > 0;
 
     // Code quality recommendations
     if (hasTypeScript) {
@@ -533,7 +601,8 @@ When making changes to this codebase:
         agentType: 'test-runner',
         priority: 9,
         reason: 'No test files found - create test structure',
-        suggestedCommand: 'Set up testing framework and create basic test files',
+        suggestedCommand:
+          'Set up testing framework and create basic test files',
         estimatedDuration: 600, // 10 minutes
       });
     } else {
@@ -547,16 +616,18 @@ When making changes to this codebase:
     }
 
     // Documentation recommendations
-    const hasReadme = projectContext.structure?.files.some(f => 
-      f.path.toLowerCase().includes('readme')
-    ) || false;
+    const hasReadme =
+      projectContext.structure?.files.some(f =>
+        f.path.toLowerCase().includes('readme')
+      ) || false;
 
     if (!hasReadme) {
       recommendations.push({
         agentType: 'documentation',
         priority: 7,
         reason: 'No README found - create project documentation',
-        suggestedCommand: 'Generate comprehensive README with project overview and setup instructions',
+        suggestedCommand:
+          'Generate comprehensive README with project overview and setup instructions',
         estimatedDuration: 420, // 7 minutes
       });
     }
@@ -567,7 +638,8 @@ When making changes to this codebase:
         agentType: 'code-analyzer',
         priority: 5,
         reason: 'Check for outdated dependencies and security issues',
-        suggestedCommand: 'Analyze package dependencies for updates and vulnerabilities',
+        suggestedCommand:
+          'Analyze package dependencies for updates and vulnerabilities',
         estimatedDuration: 240, // 4 minutes
       });
     }
@@ -577,20 +649,22 @@ When making changes to this codebase:
   }
 
   async orchestrateAgents(
-    projectId: string, 
-    cardId: string, 
+    projectId: string,
+    cardId: string,
     agentRecommendations: AgentRecommendation[]
   ): Promise<string[]> {
     const taskIds: string[] = [];
 
-    console.log(`🎯 Orchestrating ${agentRecommendations.length} agents for project ${projectId}`);
+    console.log(
+      `🎯 Orchestrating ${agentRecommendations.length} agents for project ${projectId}`
+    );
 
     // Execute top 3 recommendations
     const topRecommendations = agentRecommendations.slice(0, 3);
 
     for (let i = 0; i < topRecommendations.length; i++) {
       const rec = topRecommendations[i];
-      
+
       try {
         const response = await fetch('/api/agents/execute', {
           method: 'POST',
@@ -653,7 +727,7 @@ When making changes to this codebase:
     }
 
     const analysis = await this.getStoredProjectAnalysis(projectId);
-    
+
     // Calculate health score (0-100)
     let health = 50; // Base score
     const issues: string[] = [];
@@ -668,10 +742,11 @@ When making changes to this codebase:
     }
 
     // Check for documentation
-    const hasReadme = analysis?.structure?.files.some(f => 
-      f.path.toLowerCase().includes('readme')
-    ) || false;
-    
+    const hasReadme =
+      analysis?.structure?.files.some(f =>
+        f.path.toLowerCase().includes('readme')
+      ) || false;
+
     if (hasReadme) {
       health += 15;
     } else {
@@ -713,10 +788,13 @@ When making changes to this codebase:
     };
   }
 
-  private async storeProjectAnalysis(projectId: string, context: ProjectContext): Promise<void> {
+  private async storeProjectAnalysis(
+    projectId: string,
+    context: ProjectContext
+  ): Promise<void> {
     // Generate brief description using the same logic as summary
     const summary = await this.generateProjectSummary(context);
-    
+
     // Store analysis in a JSON field or separate table
     // For now, we'll use the project's description field to store basic info
     await prisma.project.update({
@@ -727,7 +805,10 @@ When making changes to this codebase:
     });
   }
 
-  private async storeAgentSpec(projectId: string, spec: AgentSpec): Promise<void> {
+  private async storeAgentSpec(
+    projectId: string,
+    spec: AgentSpec
+  ): Promise<void> {
     await prisma.agentSpecification.upsert({
       where: {
         projectId_name: {
@@ -756,9 +837,345 @@ When making changes to this codebase:
     });
   }
 
-  private async getStoredProjectAnalysis(projectId: string): Promise<ProjectContext | null> {
+  private async getStoredProjectAnalysis(
+    projectId: string
+  ): Promise<ProjectContext | null> {
     // In a real implementation, this would retrieve from a proper storage
     // For now, return null and analyze on demand
     return null;
+  }
+
+  // === NEW: Epic/Story Management Functions ===
+
+  /**
+   * Process a natural language feature request and create Epic/Story breakdown
+   */
+  async processFeatureRequest(
+    request: string,
+    projectId: string
+  ): Promise<FeatureRequestAnalysis> {
+    const startTime = Date.now();
+
+    try {
+      console.log(`🎯 Processing feature request for project: ${projectId}`);
+
+      // Get project context for informed analysis
+      const context = await this.analyzeProject(projectId);
+
+      // Use Claude Code to analyze the feature request
+      const prompt = `Analyze this feature request and create a structured breakdown for a ${context.language || 'software'} project using ${context.framework || 'standard'} framework.
+
+Feature Request: "${request}"
+
+Project Context:
+- Language: ${context.language || 'Unknown'}
+- Framework: ${context.framework || 'Unknown'}  
+- Existing files: ${context.structure?.sourceFiles.length || 0} source files
+
+Please provide a JSON response with the following structure:
+{
+  "title": "brief title for the request",
+  "description": "detailed description of what user wants",
+  "epicTitle": "Epic title (3-5 words)",
+  "epicDescription": "Epic description explaining the business value", 
+  "stories": [
+    {
+      "title": "Story title (user story format)",
+      "description": "Detailed story description",
+      "acceptanceCriteria": ["criteria 1", "criteria 2", "criteria 3"],
+      "storyPoints": 3,
+      "priority": "HIGH",
+      "dependencies": []
+    }
+  ],
+  "estimatedComplexity": "MEDIUM",
+  "dependencies": ["list of technical dependencies or assumptions"]
+}
+
+Guidelines:
+- Create 3-7 stories per epic
+- Use proper user story format: "As a [user], I want [goal] so that [benefit]"
+- Story points: 1=simple, 2=small, 3=medium, 5=large, 8=complex
+- Keep stories focused and achievable in one sprint
+- Consider the existing tech stack when suggesting implementation`;
+
+      const result = await this.executor.execute(prompt, {
+        workingDirectory: context.localPath,
+        timeout: 45000,
+      });
+
+      if (!result.success || !result.output) {
+        throw new Error('Failed to analyze feature request with Claude Code');
+      }
+
+      // Parse the JSON response
+      let analysis: FeatureRequestAnalysis;
+      try {
+        analysis = JSON.parse(result.output.trim());
+      } catch (parseError) {
+        console.error('Failed to parse Claude Code response:', result.output);
+        throw new Error('Invalid response format from feature analysis');
+      }
+
+      // Log token usage
+      const inputTokens = Math.ceil(request.length / 4);
+      const outputTokens = Math.ceil(result.output.length / 4);
+      await logTokenUsage(
+        projectId,
+        'project-manager-feature-request',
+        inputTokens,
+        outputTokens
+      );
+
+      console.log(`✅ Feature request analyzed: ${analysis.epicTitle}`);
+      return analysis;
+    } catch (error) {
+      console.error('Error processing feature request:', error);
+
+      // Fallback analysis if Claude Code fails
+      return {
+        title: request.length > 50 ? request.substring(0, 50) + '...' : request,
+        description: request,
+        epicTitle: 'New Feature Epic',
+        epicDescription: 'Feature requested by user: ' + request,
+        stories: [
+          {
+            title: 'Implement core functionality',
+            description: request,
+            acceptanceCriteria: [
+              'Feature works as requested',
+              'No errors occur',
+              'User can complete the workflow',
+            ],
+            storyPoints: 5,
+            priority: 'MEDIUM',
+            dependencies: [],
+          },
+        ],
+        estimatedComplexity: 'MEDIUM',
+        dependencies: [],
+      };
+    }
+  }
+
+  /**
+   * Create an Epic from analyzed feature request
+   */
+  async createEpicFromRequest(
+    analysis: FeatureRequestAnalysis,
+    projectId: string
+  ): Promise<string> {
+    try {
+      console.log(`📋 Creating Epic: ${analysis.epicTitle}`);
+
+      // Determine MVP priority based on complexity
+      const mvpPriority =
+        analysis.estimatedComplexity === 'HIGH' ||
+        analysis.estimatedComplexity === 'COMPLEX'
+          ? 'HIGH'
+          : analysis.estimatedComplexity === 'LOW'
+            ? 'MEDIUM'
+            : 'HIGH';
+
+      // Create Epic
+      const epic = await prisma.epic.create({
+        data: {
+          projectId,
+          title: analysis.epicTitle,
+          description: analysis.epicDescription,
+          type: 'FEATURE',
+          phase: 'PLANNING',
+          status: 'ACTIVE',
+          mvpPriority,
+          coreValue: analysis.description,
+          estimatedStoryPoints: analysis.stories.reduce(
+            (sum, story) => sum + story.storyPoints,
+            0
+          ),
+        },
+      });
+
+      console.log(`✅ Created Epic: ${epic.id}`);
+      return epic.id;
+    } catch (error) {
+      console.error('Error creating Epic:', error);
+      throw new Error(
+        `Failed to create Epic: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Break down Epic into Stories and create them in database
+   */
+  async breakdownEpicToStories(
+    epicId: string,
+    stories: StoryBreakdown[]
+  ): Promise<string[]> {
+    try {
+      console.log(`📝 Creating ${stories.length} stories for Epic: ${epicId}`);
+
+      const storyIds: string[] = [];
+
+      for (let i = 0; i < stories.length; i++) {
+        const story = stories[i];
+
+        const kanbanCard = await prisma.kanbanCard.create({
+          data: {
+            projectId: (await prisma.epic.findUnique({
+              where: { id: epicId },
+            }))!.projectId,
+            epicId,
+            title: story.title,
+            description: story.description,
+            status: 'BACKLOG',
+            position: i,
+            storyPoints: story.storyPoints,
+            priority: story.priority,
+            sequence: i,
+            tddEnabled: true,
+            acceptanceCriteria: JSON.stringify(story.acceptanceCriteria),
+          },
+        });
+
+        storyIds.push(kanbanCard.id);
+        console.log(`✅ Created Story: ${story.title}`);
+      }
+
+      // Update Epic phase to IN_PROGRESS
+      await prisma.epic.update({
+        where: { id: epicId },
+        data: { phase: 'IN_PROGRESS' },
+      });
+
+      return storyIds;
+    } catch (error) {
+      console.error('Error creating Stories:', error);
+      throw new Error(
+        `Failed to create Stories: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Maintain and update project CLAUDE.md with current Epic/Story context
+   */
+  async maintainProjectClaudeMd(projectId: string): Promise<void> {
+    try {
+      console.log(`📝 Updating CLAUDE.md for project: ${projectId}`);
+
+      const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        include: {
+          epics: {
+            where: { status: 'ACTIVE' },
+            include: {
+              stories: {
+                orderBy: { sequence: 'asc' },
+              },
+            },
+            orderBy: { sequence: 'asc' },
+          },
+          cycles: {
+            where: { status: 'ACTIVE' },
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+          },
+        },
+      });
+
+      if (!project) {
+        throw new Error(`Project ${projectId} not found`);
+      }
+
+      // Get project analysis
+      const context = await this.analyzeProject(projectId);
+
+      // Generate enhanced CLAUDE.md with Epic/Story context
+      const claudeMdContent = await this.generateEnhancedClaudeMd(
+        context,
+        project
+      );
+
+      // Write to project directory
+      const claudeMdPath = `${project.localPath}/CLAUDE.md`;
+      await fs.writeFile(claudeMdPath, claudeMdContent, 'utf8');
+
+      console.log(`✅ Updated CLAUDE.md: ${claudeMdPath}`);
+    } catch (error) {
+      console.error('Error maintaining CLAUDE.md:', error);
+      throw new Error(
+        `Failed to maintain CLAUDE.md: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Generate enhanced CLAUDE.md with Epic/Story context
+   */
+  private async generateEnhancedClaudeMd(
+    context: ProjectContext,
+    project: any
+  ): Promise<string> {
+    const { name, framework, language, techStack } = context;
+
+    // Current development focus from active Epics
+    const activeEpics = project.epics || [];
+    const activeCycles = project.cycles || [];
+
+    const developmentFocusSection =
+      activeEpics.length > 0
+        ? `## Current Development Focus
+
+${activeEpics
+  .map((epic: any) => {
+    const totalStories = epic.stories.length;
+    const completedStories = epic.stories.filter(
+      (s: any) => s.status === 'DONE'
+    ).length;
+    const progress =
+      totalStories > 0
+        ? Math.round((completedStories / totalStories) * 100)
+        : 0;
+
+    return `### ${epic.title} (${progress}% complete)
+${epic.description}
+
+**Stories in this Epic:**
+${epic.stories
+  .map(
+    (story: any, index: number) =>
+      `${index + 1}. [${story.status}] ${story.title} (${story.storyPoints || 0} pts)`
+  )
+  .join('\n')}`;
+  })
+  .join('\n\n')}
+
+## Active Development Cycles
+
+${
+  activeCycles.length > 0
+    ? activeCycles
+        .map(
+          (cycle: any) =>
+            `- **${cycle.title}** (Phase: ${cycle.phase}) - ${cycle.description || 'In progress'}`
+        )
+        .join('\n')
+    : 'No active cycles'
+}`
+        : '';
+
+    // Base CLAUDE.md content
+    const baseContent = await this.generateClaudeMd(context, []);
+
+    // Insert development focus after project overview
+    const enhancedContent = baseContent.replace(
+      '## Project Structure',
+      `${developmentFocusSection}
+
+## Project Structure`
+    );
+
+    return enhancedContent;
   }
 }

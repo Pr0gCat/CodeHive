@@ -17,7 +17,7 @@ export async function GET() {
     // Get today's token usage
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const todayStats = await prisma.tokenUsage.aggregate({
       where: {
         timestamp: {
@@ -36,7 +36,7 @@ export async function GET() {
     // Get this week's token usage
     const weekStart = new Date(today);
     weekStart.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
-    
+
     const weekStats = await prisma.tokenUsage.aggregate({
       where: {
         timestamp: {
@@ -69,9 +69,12 @@ export async function GET() {
       },
     });
 
-    const totalTokens = (tokenStats._sum.inputTokens || 0) + (tokenStats._sum.outputTokens || 0);
-    const todayTokens = (todayStats._sum.inputTokens || 0) + (todayStats._sum.outputTokens || 0);
-    const weekTokens = (weekStats._sum.inputTokens || 0) + (weekStats._sum.outputTokens || 0);
+    const totalTokens =
+      (tokenStats._sum.inputTokens || 0) + (tokenStats._sum.outputTokens || 0);
+    const todayTokens =
+      (todayStats._sum.inputTokens || 0) + (todayStats._sum.outputTokens || 0);
+    const weekTokens =
+      (weekStats._sum.inputTokens || 0) + (weekStats._sum.outputTokens || 0);
 
     return NextResponse.json({
       success: true,

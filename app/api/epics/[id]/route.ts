@@ -9,7 +9,9 @@ const updateEpicSchema = z.object({
   type: z.enum(['MVP', 'ENHANCEMENT', 'FEATURE', 'BUGFIX']).optional(),
   phase: z.enum(['PLANNING', 'IN_PROGRESS', 'DONE', 'CANCELLED']).optional(),
   status: z.enum(['ACTIVE', 'PAUSED', 'COMPLETED', 'ARCHIVED']).optional(),
-  mvpPriority: z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'FUTURE']).optional(),
+  mvpPriority: z
+    .enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'FUTURE'])
+    .optional(),
   coreValue: z.string().optional(),
   estimatedStoryPoints: z.number().int().min(0).optional(),
   actualStoryPoints: z.number().int().min(0).optional(),
@@ -109,20 +111,30 @@ export async function GET(
 
     // Calculate detailed progress
     const totalStories = epic.stories.length;
-    const storiesByStatus = epic.stories.reduce((acc, story) => {
-      acc[story.status] = (acc[story.status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const storiesByStatus = epic.stories.reduce(
+      (acc, story) => {
+        acc[story.status] = (acc[story.status] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
-    const totalStoryPoints = epic.stories.reduce((sum, story) => sum + (story.storyPoints || 0), 0);
+    const totalStoryPoints = epic.stories.reduce(
+      (sum, story) => sum + (story.storyPoints || 0),
+      0
+    );
     const completedStoryPoints = epic.stories
       .filter(story => story.status === 'DONE')
       .reduce((sum, story) => sum + (story.storyPoints || 0), 0);
 
     // Calculate TDD cycles progress
-    const totalCycles = epic.stories.reduce((sum, story) => sum + story.cycles.length, 0);
+    const totalCycles = epic.stories.reduce(
+      (sum, story) => sum + story.cycles.length,
+      0
+    );
     const completedCycles = epic.stories.reduce(
-      (sum, story) => sum + story.cycles.filter(cycle => cycle.status === 'COMPLETED').length,
+      (sum, story) =>
+        sum + story.cycles.filter(cycle => cycle.status === 'COMPLETED').length,
       0
     );
 
@@ -133,17 +145,26 @@ export async function GET(
           total: totalStories,
           byStatus: storiesByStatus,
           completed: storiesByStatus.DONE || 0,
-          percentage: totalStories > 0 ? Math.round(((storiesByStatus.DONE || 0) / totalStories) * 100) : 0,
+          percentage:
+            totalStories > 0
+              ? Math.round(((storiesByStatus.DONE || 0) / totalStories) * 100)
+              : 0,
         },
         storyPoints: {
           total: totalStoryPoints,
           completed: completedStoryPoints,
-          percentage: totalStoryPoints > 0 ? Math.round((completedStoryPoints / totalStoryPoints) * 100) : 0,
+          percentage:
+            totalStoryPoints > 0
+              ? Math.round((completedStoryPoints / totalStoryPoints) * 100)
+              : 0,
         },
         cycles: {
           total: totalCycles,
           completed: completedCycles,
-          percentage: totalCycles > 0 ? Math.round((completedCycles / totalCycles) * 100) : 0,
+          percentage:
+            totalCycles > 0
+              ? Math.round((completedCycles / totalCycles) * 100)
+              : 0,
         },
       },
     };
@@ -191,7 +212,7 @@ export async function PUT(
 
     // Update epic
     const updateData: any = { ...validatedData };
-    
+
     // Handle date conversions
     if (validatedData.startDate) {
       updateData.startDate = new Date(validatedData.startDate);
@@ -231,7 +252,7 @@ export async function PUT(
     });
   } catch (error) {
     console.error('Error updating epic:', error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {
@@ -283,13 +304,13 @@ export async function DELETE(
 
     // Check if epic has dependencies from other epics
     if (existingEpic.dependents.length > 0) {
-      const dependentTitles = existingEpic.dependents.map(dep => dep.epic);
+      const dependentEpicIds = existingEpic.dependents.map(dep => dep.epicId);
       return NextResponse.json(
         {
           success: false,
           error: 'Cannot delete epic that other epics depend on',
           details: {
-            dependents: dependentTitles,
+            dependents: dependentEpicIds,
           },
         },
         { status: 400 }

@@ -17,34 +17,26 @@ body {
 .scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-gutter: stable;
-}
-
-.scrollbar-thin-horizontal {
-  scrollbar-width: thin;
-  scrollbar-gutter: stable;
+  scrollbar-color: rgb(107, 114, 128) rgb(31, 41, 55); /* thumb track */
 }
 
 /* Webkit scrollbar styles */
 .scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 
-.scrollbar-thin-horizontal::-webkit-scrollbar {
-  height: 12px;
-}
-
-.scrollbar-thin-horizontal::-webkit-scrollbar-track {
+.scrollbar-thin::-webkit-scrollbar-track {
   background: rgb(31, 41, 55); /* primary-800 */
-  border-radius: 6px;
+  border-radius: 4px;
 }
 
-.scrollbar-thin-horizontal::-webkit-scrollbar-thumb {
-  background: rgb(75, 85, 99); /* primary-600 */
-  border-radius: 6px;
-}
-
-.scrollbar-thin-horizontal::-webkit-scrollbar-thumb:hover {
+.scrollbar-thin::-webkit-scrollbar-thumb {
   background: rgb(107, 114, 128); /* primary-500 */
+  border-radius: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgb(156, 163, 175); /* primary-400 */
 }
 
 .scrollbar-track-primary-800::-webkit-scrollbar-track {
@@ -59,4 +51,27 @@ body {
 
 .scrollbar-thumb-primary-600::-webkit-scrollbar-thumb:hover {
   background: rgb(107, 114, 128); /* primary-500 */
+}
+
+/* Auto-hide scrollbars */
+.scrollbar-auto-hide::-webkit-scrollbar {
+  width: 6px;
+  height: 8px;
+}
+
+.scrollbar-auto-hide::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-auto-hide::-webkit-scrollbar-thumb {
+  background: rgba(75, 85, 99, 0.5);
+  border-radius: 3px;
+}
+
+.scrollbar-auto-hide:hover::-webkit-scrollbar-thumb {
+  background: rgb(75, 85, 99);
+}
+
+.scrollbar-auto-hide::-webkit-scrollbar-thumb:hover {
+  background: rgb(107, 114, 128);
 }

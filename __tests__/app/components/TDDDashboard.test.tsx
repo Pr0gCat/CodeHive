@@ -1,18 +1,18 @@
-import React from 'react'
-import { render, screen, waitFor, fireEvent } from '@testing-library/react'
-import '@testing-library/jest-dom'
-import TDDDashboard from '@/app/components/TDDDashboard'
+import React from 'react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import TDDDashboard from '@/app/components/TDDDashboard';
 
 // Mock the toast hook
-const mockShowToast = jest.fn()
+const mockShowToast = jest.fn();
 jest.mock('@/app/components/ui/ToastManager', () => ({
   useToast: () => ({
     showToast: mockShowToast,
   }),
-}))
+}));
 
 // Mock fetch
-global.fetch = jest.fn()
+global.fetch = jest.fn();
 
 const mockCycles = [
   {
@@ -58,85 +58,89 @@ const mockCycles = [
     tests: [],
     artifacts: [],
   },
-]
+];
 
 describe('TDDDashboard', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    jest.clearAllMocks();
     // Mock successful fetch by default
-    ;(global.fetch as jest.Mock).mockResolvedValue({
+    (global.fetch as jest.Mock).mockResolvedValue({
       json: jest.fn().mockResolvedValue({
         success: true,
         data: mockCycles,
       }),
-    })
-  })
+    });
+  });
 
   afterEach(() => {
-    jest.restoreAllMocks()
-  })
+    jest.restoreAllMocks();
+  });
 
   it('should render loading state initially', () => {
-    render(<TDDDashboard projectId="test-project-id" />)
-    
-    expect(screen.getByText('TDD 開發儀表板')).toBeInTheDocument()
+    render(<TDDDashboard projectId="test-project-id" />);
+
+    expect(screen.getByText('TDD 開發儀表板')).toBeInTheDocument();
     // Should show loading animation
-    expect(document.querySelector('.animate-pulse')).toBeInTheDocument()
-  })
+    expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
+  });
 
   it('should render active cycle dashboard', async () => {
-    render(<TDDDashboard projectId="test-project-id" />)
+    render(<TDDDashboard projectId="test-project-id" />);
 
     await waitFor(() => {
-      expect(screen.getByText('User Authentication')).toBeInTheDocument()
-    })
+      expect(screen.getByText('User Authentication')).toBeInTheDocument();
+    });
 
-    expect(screen.getByText('Implement user login system')).toBeInTheDocument()
-    expect(screen.getByText('RED')).toBeInTheDocument()
-    expect(screen.getByText('執行 RED 階段')).toBeInTheDocument()
-  })
+    expect(screen.getByText('Implement user login system')).toBeInTheDocument();
+    expect(screen.getByText('RED')).toBeInTheDocument();
+    expect(screen.getByText('執行 RED 階段')).toBeInTheDocument();
+  });
 
   it('should display tests status correctly', async () => {
-    render(<TDDDashboard projectId="test-project-id" />)
+    render(<TDDDashboard projectId="test-project-id" />);
 
     await waitFor(() => {
-      expect(screen.getByText('should validate user credentials')).toBeInTheDocument()
-    })
+      expect(
+        screen.getByText('should validate user credentials')
+      ).toBeInTheDocument();
+    });
 
-    expect(screen.getByText('should reject invalid credentials')).toBeInTheDocument()
-    expect(screen.getByText('150ms')).toBeInTheDocument()
-    expect(screen.getByText('100ms')).toBeInTheDocument()
-    
+    expect(
+      screen.getByText('should reject invalid credentials')
+    ).toBeInTheDocument();
+    expect(screen.getByText('150ms')).toBeInTheDocument();
+    expect(screen.getByText('100ms')).toBeInTheDocument();
+
     // Should show failing test icons (✗)
-    const failingIcons = screen.getAllByText('✗')
-    expect(failingIcons).toHaveLength(2)
-  })
+    const failingIcons = screen.getAllByText('✗');
+    expect(failingIcons).toHaveLength(2);
+  });
 
   it('should show phase progress correctly', async () => {
-    render(<TDDDashboard projectId="test-project-id" />)
+    render(<TDDDashboard projectId="test-project-id" />);
 
     await waitFor(() => {
-      expect(screen.getByText('RED 階段')).toBeInTheDocument()
-    })
+      expect(screen.getByText('RED 階段')).toBeInTheDocument();
+    });
 
     // Should highlight RED phase in progress
-    const progressBars = document.querySelectorAll('.flex-1.h-2.rounded-full')
-    expect(progressBars[0]).toHaveClass('bg-red-500')
-  })
+    const progressBars = document.querySelectorAll('.flex-1.h-2.rounded-full');
+    expect(progressBars[0]).toHaveClass('bg-red-500');
+  });
 
   it('should display recent artifacts', async () => {
-    render(<TDDDashboard projectId="test-project-id" />)
+    render(<TDDDashboard projectId="test-project-id" />);
 
     await waitFor(() => {
-      expect(screen.getByText('最近生成的檔案')).toBeInTheDocument()
-    })
+      expect(screen.getByText('最近生成的檔案')).toBeInTheDocument();
+    });
 
-    expect(screen.getByText('auth.test.ts')).toBeInTheDocument()
-    expect(screen.getByText('TEST')).toBeInTheDocument()
-  })
+    expect(screen.getByText('auth.test.ts')).toBeInTheDocument();
+    expect(screen.getByText('TEST')).toBeInTheDocument();
+  });
 
   it('should execute phase when button clicked', async () => {
-    ;(global.fetch as jest.Mock)
+    (global.fetch as jest.Mock)
       .mockResolvedValueOnce({
         json: jest.fn().mockResolvedValue({
           success: true,
@@ -148,29 +152,31 @@ describe('TDDDashboard', () => {
           success: true,
           data: { nextPhase: 'GREEN' },
         }),
-      })
+      });
 
-    render(<TDDDashboard projectId="test-project-id" />)
-
-    await waitFor(() => {
-      expect(screen.getByText('執行 RED 階段')).toBeInTheDocument()
-    })
-
-    const executeButton = screen.getByText('執行 RED 階段')
-    fireEvent.click(executeButton)
+    render(<TDDDashboard projectId="test-project-id" />);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        '/api/cycles/cycle-1/execute',
-        { method: 'PUT' }
-      )
-    })
+      expect(screen.getByText('執行 RED 階段')).toBeInTheDocument();
+    });
 
-    expect(mockShowToast).toHaveBeenCalledWith('執行階段成功：GREEN', 'success')
-  })
+    const executeButton = screen.getByText('執行 RED 階段');
+    fireEvent.click(executeButton);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith('/api/cycles/cycle-1/execute', {
+        method: 'PUT',
+      });
+    });
+
+    expect(mockShowToast).toHaveBeenCalledWith(
+      '執行階段成功：GREEN',
+      'success'
+    );
+  });
 
   it('should handle execution errors', async () => {
-    ;(global.fetch as jest.Mock)
+    (global.fetch as jest.Mock)
       .mockResolvedValueOnce({
         json: jest.fn().mockResolvedValue({
           success: true,
@@ -182,114 +188,117 @@ describe('TDDDashboard', () => {
           success: false,
           error: 'Execution failed',
         }),
-      })
+      });
 
-    render(<TDDDashboard projectId="test-project-id" />)
-
-    await waitFor(() => {
-      expect(screen.getByText('執行 RED 階段')).toBeInTheDocument()
-    })
-
-    const executeButton = screen.getByText('執行 RED 階段')
-    fireEvent.click(executeButton)
+    render(<TDDDashboard projectId="test-project-id" />);
 
     await waitFor(() => {
-      expect(mockShowToast).toHaveBeenCalledWith('Execution failed', 'error')
-    })
-  })
+      expect(screen.getByText('執行 RED 階段')).toBeInTheDocument();
+    });
+
+    const executeButton = screen.getByText('執行 RED 階段');
+    fireEvent.click(executeButton);
+
+    await waitFor(() => {
+      expect(mockShowToast).toHaveBeenCalledWith('Execution failed', 'error');
+    });
+  });
 
   it('should disable execute button when loading', async () => {
-    render(<TDDDashboard projectId="test-project-id" />)
+    render(<TDDDashboard projectId="test-project-id" />);
 
     await waitFor(() => {
-      expect(screen.getByText('執行 RED 階段')).toBeInTheDocument()
-    })
+      expect(screen.getByText('執行 RED 階段')).toBeInTheDocument();
+    });
 
-    const executeButton = screen.getByText('執行 RED 階段')
-    fireEvent.click(executeButton)
+    const executeButton = screen.getByText('執行 RED 階段');
+    fireEvent.click(executeButton);
 
     // Button should be disabled during execution
-    expect(executeButton).toBeDisabled()
-    expect(screen.getByText('執行中...')).toBeInTheDocument()
-  })
+    expect(executeButton).toBeDisabled();
+    expect(screen.getByText('執行中...')).toBeInTheDocument();
+  });
 
   it('should show completed cycles section', async () => {
-    render(<TDDDashboard projectId="test-project-id" />)
+    render(<TDDDashboard projectId="test-project-id" />);
 
     await waitFor(() => {
-      expect(screen.getByText('已完成的週期')).toBeInTheDocument()
-    })
+      expect(screen.getByText('已完成的週期')).toBeInTheDocument();
+    });
 
-    expect(screen.getByText('Shopping Cart')).toBeInTheDocument()
-    expect(screen.getByText('已完成')).toBeInTheDocument()
-  })
+    expect(screen.getByText('Shopping Cart')).toBeInTheDocument();
+    expect(screen.getByText('已完成')).toBeInTheDocument();
+  });
 
   it('should show empty state when no active cycle', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValue({
+    (global.fetch as jest.Mock).mockResolvedValue({
       json: jest.fn().mockResolvedValue({
         success: true,
         data: [mockCycles[1]], // Only completed cycle
       }),
-    })
+    });
 
-    render(<TDDDashboard projectId="test-project-id" />)
+    render(<TDDDashboard projectId="test-project-id" />);
 
     await waitFor(() => {
-      expect(screen.getByText('目前沒有活躍的 TDD 週期')).toBeInTheDocument()
-    })
+      expect(screen.getByText('目前沒有活躍的 TDD 週期')).toBeInTheDocument();
+    });
 
-    expect(screen.getByText('開始新的 TDD 週期')).toBeInTheDocument()
-  })
+    expect(screen.getByText('開始新的 TDD 週期')).toBeInTheDocument();
+  });
 
   it('should handle fetch errors', async () => {
-    ;(global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'))
+    (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
 
-    render(<TDDDashboard projectId="test-project-id" />)
+    render(<TDDDashboard projectId="test-project-id" />);
 
     await waitFor(() => {
-      expect(mockShowToast).toHaveBeenCalledWith('無法載入 TDD 週期', 'error')
-    })
-  })
+      expect(mockShowToast).toHaveBeenCalledWith('無法載入 TDD 週期', 'error');
+    });
+  });
 
   it('should handle API error responses', async () => {
-    ;(global.fetch as jest.Mock).mockResolvedValue({
+    (global.fetch as jest.Mock).mockResolvedValue({
       json: jest.fn().mockResolvedValue({
         success: false,
         error: 'Database connection failed',
       }),
-    })
+    });
 
-    render(<TDDDashboard projectId="test-project-id" />)
+    render(<TDDDashboard projectId="test-project-id" />);
 
     await waitFor(() => {
-      expect(mockShowToast).toHaveBeenCalledWith('Database connection failed', 'error')
-    })
-  })
+      expect(mockShowToast).toHaveBeenCalledWith(
+        'Database connection failed',
+        'error'
+      );
+    });
+  });
 
   it('should show correct phase icons', async () => {
     const cyclesWithDifferentPhases = [
       { ...mockCycles[0], phase: 'GREEN' },
       { ...mockCycles[0], id: 'cycle-2', phase: 'REFACTOR' },
       { ...mockCycles[0], id: 'cycle-3', phase: 'REVIEW' },
-    ]
+    ];
 
-    ;(global.fetch as jest.Mock).mockResolvedValue({
+    (global.fetch as jest.Mock).mockResolvedValue({
       json: jest.fn().mockResolvedValue({
         success: true,
         data: cyclesWithDifferentPhases,
       }),
-    })
+    });
 
-    render(<TDDDashboard projectId="test-project-id" />)
+    render(<TDDDashboard projectId="test-project-id" />);
 
     await waitFor(() => {
-      expect(screen.getByText('GREEN')).toBeInTheDocument()
-    })
+      expect(screen.getByText('GREEN')).toBeInTheDocument();
+    });
 
     // Each phase should have its specific icon (SVG elements)
-    const svgElements = document.querySelectorAll('svg')
-    expect(svgElements.length).toBeGreaterThan(0)
-  })
+    const svgElements = document.querySelectorAll('svg');
+    expect(svgElements.length).toBeGreaterThan(0);
+  });
 
   it('should show correct test status icons', async () => {
     const cycleWithMixedTests = {
@@ -299,55 +308,55 @@ describe('TDDDashboard', () => {
         { ...mockCycles[0].tests[1], status: 'FAILING' },
         { ...mockCycles[0].tests[0], id: 'test-3', status: 'SKIPPED' },
       ],
-    }
+    };
 
-    ;(global.fetch as jest.Mock).mockResolvedValue({
+    (global.fetch as jest.Mock).mockResolvedValue({
       json: jest.fn().mockResolvedValue({
         success: true,
         data: [cycleWithMixedTests],
       }),
-    })
+    });
 
-    render(<TDDDashboard projectId="test-project-id" />)
+    render(<TDDDashboard projectId="test-project-id" />);
 
     await waitFor(() => {
-      expect(screen.getByText('✓')).toBeInTheDocument() // Passing
-      expect(screen.getByText('✗')).toBeInTheDocument() // Failing
-      expect(screen.getByText('⚠')).toBeInTheDocument() // Skipped
-    })
-  })
+      expect(screen.getByText('✓')).toBeInTheDocument(); // Passing
+      expect(screen.getByText('✗')).toBeInTheDocument(); // Failing
+      expect(screen.getByText('⚠')).toBeInTheDocument(); // Skipped
+    });
+  });
 
   it('should auto-refresh data every 5 seconds', async () => {
-    jest.useFakeTimers()
+    jest.useFakeTimers();
 
-    render(<TDDDashboard projectId="test-project-id" />)
+    render(<TDDDashboard projectId="test-project-id" />);
 
     // Initial fetch
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(1)
-    })
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
 
     // Fast-forward 5 seconds
-    jest.advanceTimersByTime(5000)
+    jest.advanceTimersByTime(5000);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(2)
-    })
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
 
-    jest.useRealTimers()
-  })
+    jest.useRealTimers();
+  });
 
   it('should cleanup interval on unmount', () => {
-    jest.useFakeTimers()
-    const clearIntervalSpy = jest.spyOn(global, 'clearInterval')
+    jest.useFakeTimers();
+    const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
 
-    const { unmount } = render(<TDDDashboard projectId="test-project-id" />)
-    
-    unmount()
+    const { unmount } = render(<TDDDashboard projectId="test-project-id" />);
 
-    expect(clearIntervalSpy).toHaveBeenCalled()
+    unmount();
 
-    jest.useRealTimers()
-    clearIntervalSpy.mockRestore()
-  })
-})
+    expect(clearIntervalSpy).toHaveBeenCalled();
+
+    jest.useRealTimers();
+    clearIntervalSpy.mockRestore();
+  });
+});

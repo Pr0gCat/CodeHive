@@ -1,10 +1,10 @@
 // Mock environment variables
-process.env.DATABASE_URL = 'file:./test.db'
-process.env.CLAUDE_CODE_PATH = 'mock-claude'
-process.env.CLAUDE_DAILY_TOKEN_LIMIT = '1000000'
-process.env.CLAUDE_RATE_LIMIT_PER_MINUTE = '50'
-process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000'
-process.env.NODE_ENV = 'test'
+process.env.DATABASE_URL = 'file:./test.db';
+process.env.CLAUDE_CODE_PATH = 'mock-claude';
+process.env.CLAUDE_DAILY_TOKEN_LIMIT = '1000000';
+process.env.CLAUDE_RATE_LIMIT_PER_MINUTE = '50';
+process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000';
+process.env.NODE_ENV = 'test';
 
 // Mock prisma
 jest.mock('@/lib/db', () => ({
@@ -85,7 +85,7 @@ jest.mock('@/lib/db', () => ({
     INTEGRATION: 'INTEGRATION',
     CLARIFICATION: 'CLARIFICATION',
   },
-}))
+}));
 
 // Mock fs promises
 jest.mock('fs', () => ({
@@ -99,12 +99,12 @@ jest.mock('fs', () => ({
     copyFile: jest.fn(),
     rm: jest.fn(),
   },
-}))
+}));
 
 // Mock child_process
 jest.mock('child_process', () => ({
   exec: jest.fn(),
-}))
+}));
 
 // Mock crypto
 jest.mock('crypto', () => ({
@@ -112,7 +112,7 @@ jest.mock('crypto', () => ({
     update: jest.fn().mockReturnThis(),
     digest: jest.fn(() => 'mocked-hash'),
   })),
-}))
+}));
 
 // Setup console spies
 global.console = {
@@ -121,4 +121,4 @@ global.console = {
   error: jest.fn(),
   warn: jest.fn(),
   info: jest.fn(),
-}
+};

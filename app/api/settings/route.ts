@@ -3,25 +3,27 @@ import { prisma } from '@/lib/db';
 import { configCache } from '@/lib/config';
 import { z } from 'zod';
 
-const globalSettingsSchema = z.object({
-  dailyTokenLimit: z.number().min(1000000).max(500000000), // 1M to 500M
-  warningThreshold: z.number().min(0.1).max(0.95), // 10% to 95%
-  criticalThreshold: z.number().min(0.1).max(0.99), // 10% to 99%
-  allocationStrategy: z.number().min(0.0).max(1.0), // 0% to 100%
-  autoResumeEnabled: z.boolean(),
-  pauseOnWarning: z.boolean(),
-  // Claude API Configuration
-  claudeCodePath: z.string().min(1),
-  rateLimitPerMinute: z.number().min(1).max(1000),
-  // Application URLs
-  appUrl: z.string().url(),
-  wsUrl: z.string().min(1),
-  // Database Configuration
-  databaseUrl: z.string().min(1),
-}).refine((data) => data.warningThreshold < data.criticalThreshold, {
-  message: "Warning threshold must be less than critical threshold",
-  path: ["warningThreshold"],
-});
+const globalSettingsSchema = z
+  .object({
+    dailyTokenLimit: z.number().min(1000000).max(500000000), // 1M to 500M
+    warningThreshold: z.number().min(0.1).max(0.95), // 10% to 95%
+    criticalThreshold: z.number().min(0.1).max(0.99), // 10% to 99%
+    allocationStrategy: z.number().min(0.0).max(1.0), // 0% to 100%
+    autoResumeEnabled: z.boolean(),
+    pauseOnWarning: z.boolean(),
+    // Claude API Configuration
+    claudeCodePath: z.string().min(1),
+    rateLimitPerMinute: z.number().min(1).max(1000),
+    // Application URLs
+    appUrl: z.string().url(),
+    wsUrl: z.string().min(1),
+    // Database Configuration
+    databaseUrl: z.string().min(1),
+  })
+  .refine(data => data.warningThreshold < data.criticalThreshold, {
+    message: 'Warning threshold must be less than critical threshold',
+    path: ['warningThreshold'],
+  });
 
 export async function GET() {
   try {
@@ -31,9 +33,9 @@ export async function GET() {
       create: {
         id: 'global',
         dailyTokenLimit: 100000000, // 100M tokens
-        warningThreshold: 0.75,      // 75%
-        criticalThreshold: 0.90,     // 90%
-        allocationStrategy: 0.5,     // 50% mix
+        warningThreshold: 0.75, // 75%
+        criticalThreshold: 0.9, // 90%
+        allocationStrategy: 0.5, // 50% mix
         autoResumeEnabled: true,
         pauseOnWarning: false,
         claudeCodePath: 'claude',
@@ -42,7 +44,7 @@ export async function GET() {
         wsUrl: 'ws://localhost:3000',
         databaseUrl: 'file:./prisma/codehive.db',
       },
-      update: {} // Don't change existing settings
+      update: {}, // Don't change existing settings
     });
 
     return NextResponse.json({
@@ -112,7 +114,7 @@ export async function PUT(request: NextRequest) {
 async function recalculateProjectBudgets(globalSettings: any) {
   try {
     const projectBudgets = await prisma.projectBudget.findMany();
-    
+
     // Update each project budget with new daily token amounts
     for (const budget of projectBudgets) {
       const newDailyBudget = Math.floor(

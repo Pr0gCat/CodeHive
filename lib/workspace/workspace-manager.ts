@@ -1,7 +1,7 @@
+import { prisma } from '@/lib/db';
+import crypto from 'crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
-import crypto from 'crypto';
-import { prisma } from '@/lib/db';
 
 export interface WorkspaceSnapshot {
   cycleId: string;
@@ -64,10 +64,14 @@ export class WorkspaceManager {
   /**
    * 創建工作空間快照
    */
-  async createSnapshot(cycleId: string, branchName: string, phase: string): Promise<WorkspaceSnapshot> {
+  async createSnapshot(
+    cycleId: string,
+    branchName: string,
+    phase: string
+  ): Promise<WorkspaceSnapshot> {
     const snapshotId = `snapshot-${cycleId}-${Date.now()}`;
     const snapshotDir = path.join(this.snapshotPath, snapshotId);
-    
+
     await fs.mkdir(snapshotDir, { recursive: true });
 
     // 獲取所有需要快照的檔案
@@ -134,22 +138,24 @@ export class WorkspaceManager {
   /**
    * 分析檔案變更
    */
-  async analyzeChanges(cycleId: string, previousSnapshotId?: string): Promise<FileChange[]> {
+  async analyzeChanges(
+    cycleId: string,
+    previousSnapshotId?: string
+  ): Promise<FileChange[]> {
     const changes: FileChange[] = [];
-    
+
     if (!previousSnapshotId) {
       return changes;
     }
 
-    const previousSnapshot = await this.loadSnapshotMetadata(previousSnapshotId);
+    const previousSnapshot =
+      await this.loadSnapshotMetadata(previousSnapshotId);
     if (!previousSnapshot) {
       return changes;
     }
 
     const currentFiles = await this.getRelevantFiles(cycleId);
-    const previousFiles = new Map(
-      previousSnapshot.files.map(f => [f.path, f])
-    );
+    const previousFiles = new Map(previousSnapshot.files.map(f => [f.path, f]));
 
     // 檢查新增和修改的檔案
     for (const filePath of currentFiles) {
@@ -176,7 +182,7 @@ export class WorkspaceManager {
     }
 
     // 檢查刪除的檔案
-    for (const [filePath, file] of previousFiles) {
+    for (const [filePath, file] of Array.from(previousFiles)) {
       changes.push({
         type: 'DELETE',
         path: filePath,
@@ -192,16 +198,16 @@ export class WorkspaceManager {
    */
   async detectConflicts(cycleId1: string, cycleId2: string): Promise<string[]> {
     const conflicts: string[] = [];
-    
+
     const files1 = await this.getRelevantFiles(cycleId1);
     const files2 = await this.getRelevantFiles(cycleId2);
-    
+
     const commonFiles = files1.filter(f => files2.includes(f));
-    
+
     for (const filePath of commonFiles) {
       const isModified1 = await this.isFileModified(filePath, cycleId1);
       const isModified2 = await this.isFileModified(filePath, cycleId2);
-      
+
       if (isModified1 && isModified2) {
         conflicts.push(filePath);
       }
@@ -240,7 +246,7 @@ export class WorkspaceManager {
     }
 
     const files: string[] = [];
-    
+
     // 從 artifacts 中提取檔案路徑
     for (const artifact of cycle.artifacts) {
       if (artifact.path) {
@@ -256,7 +262,7 @@ export class WorkspaceManager {
     const sourceFiles = await this.findSourceFiles();
     files.push(...sourceFiles);
 
-    return [...new Set(files)]; // 去重
+    return Array.from(new Set(files)); // 去重
   }
 
   private async findTestFiles(): Promise<string[]> {
@@ -267,7 +273,10 @@ export class WorkspaceManager {
       const dirPath = path.join(this.projectPath, dir);
       try {
         await fs.access(dirPath);
-        const testFiles = await this.findFilesRecursive(dirPath, /\.(test|spec)\.(ts|js|tsx|jsx)$/);
+        const testFiles = await this.findFilesRecursive(
+          dirPath,
+          /\.(test|spec)\.(ts|js|tsx|jsx)$/
+        );
         files.push(...testFiles);
       } catch {
         // 目錄不存在，跳過
@@ -285,7 +294,10 @@ export class WorkspaceManager {
       const dirPath = path.join(this.projectPath, dir);
       try {
         await fs.access(dirPath);
-        const sourceFiles = await this.findFilesRecursive(dirPath, /\.(ts|js|tsx|jsx)$/);
+        const sourceFiles = await this.findFilesRecursive(
+          dirPath,
+          /\.(ts|js|tsx|jsx)$/
+        );
         files.push(...sourceFiles);
       } catch {
         // 目錄不存在，跳過
@@ -295,14 +307,21 @@ export class WorkspaceManager {
     return files;
   }
 
-  private async findFilesRecursive(dir: string, pattern: RegExp): Promise<string[]> {
+  private async findFilesRecursive(
+    dir: string,
+    pattern: RegExp
+  ): Promise<string[]> {
     const files: string[] = [];
     const entries = await fs.readdir(dir, { withFileTypes: true });
 
     for (const entry of entries) {
       const fullPath = path.join(dir, entry.name);
-      
-      if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'node_modules') {
+
+      if (
+        entry.isDirectory() &&
+        !entry.name.startsWith('.') &&
+        entry.name !== 'node_modules'
+      ) {
         const subFiles = await this.findFilesRecursive(fullPath, pattern);
         files.push(...subFiles);
       } else if (entry.isFile() && pattern.test(entry.name)) {
@@ -314,7 +333,10 @@ export class WorkspaceManager {
     return files;
   }
 
-  private async snapshotFile(filePath: string, snapshotDir: string): Promise<FileSnapshot | null> {
+  private async snapshotFile(
+    filePath: string,
+    snapshotDir: string
+  ): Promise<FileSnapshot | null> {
     try {
       const fullPath = path.join(this.projectPath, filePath);
       const content = await this.readFile(filePath);
@@ -338,7 +360,10 @@ export class WorkspaceManager {
     }
   }
 
-  private async restoreFile(file: FileSnapshot, snapshotDir: string): Promise<void> {
+  private async restoreFile(
+    file: FileSnapshot,
+    snapshotDir: string
+  ): Promise<void> {
     const fullPath = path.join(this.projectPath, file.path);
     const snapshotFilePath = path.join(snapshotDir, file.path);
 
@@ -352,7 +377,7 @@ export class WorkspaceManager {
 
   private async readFile(filePath: string): Promise<string> {
     const fullPath = path.join(this.projectPath, filePath);
-    
+
     // 使用快取
     if (this.fileCache.has(filePath)) {
       return this.fileCache.get(filePath)!;
@@ -360,7 +385,7 @@ export class WorkspaceManager {
 
     const content = await fs.readFile(fullPath, 'utf-8');
     this.fileCache.set(filePath, content);
-    
+
     return content;
   }
 
@@ -368,7 +393,10 @@ export class WorkspaceManager {
     return crypto.createHash('sha256').update(content).digest('hex');
   }
 
-  private async isFileModified(filePath: string, cycleId: string): Promise<boolean> {
+  private async isFileModified(
+    filePath: string,
+    cycleId: string
+  ): Promise<boolean> {
     // 簡化版本 - 實際應該比較與基準分支的差異
     try {
       await fs.access(path.join(this.projectPath, filePath));
@@ -378,14 +406,26 @@ export class WorkspaceManager {
     }
   }
 
-  private async saveSnapshotMetadata(snapshot: WorkspaceSnapshot): Promise<void> {
-    const metadataPath = path.join(this.snapshotPath, snapshot.snapshotId, 'metadata.json');
+  private async saveSnapshotMetadata(
+    snapshot: WorkspaceSnapshot
+  ): Promise<void> {
+    const metadataPath = path.join(
+      this.snapshotPath,
+      snapshot.snapshotId,
+      'metadata.json'
+    );
     await fs.writeFile(metadataPath, JSON.stringify(snapshot, null, 2));
   }
 
-  private async loadSnapshotMetadata(snapshotId: string): Promise<WorkspaceSnapshot | null> {
+  private async loadSnapshotMetadata(
+    snapshotId: string
+  ): Promise<WorkspaceSnapshot | null> {
     try {
-      const metadataPath = path.join(this.snapshotPath, snapshotId, 'metadata.json');
+      const metadataPath = path.join(
+        this.snapshotPath,
+        snapshotId,
+        'metadata.json'
+      );
       const content = await fs.readFile(metadataPath, 'utf-8');
       return JSON.parse(content);
     } catch {
@@ -395,10 +435,10 @@ export class WorkspaceManager {
 
   private async updateGitignore(): Promise<void> {
     const gitignorePath = path.join(this.projectPath, '.gitignore');
-    
+
     try {
       let content = await fs.readFile(gitignorePath, 'utf-8');
-      
+
       if (!content.includes('.codehive')) {
         content += '\n# CodeHive\n.codehive/\n';
         await fs.writeFile(gitignorePath, content);

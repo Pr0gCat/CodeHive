@@ -1,7 +1,13 @@
 import { claudeCode } from '@/lib/claude-code';
 import { tokenTracker } from '@/lib/claude-code/token-tracker';
 import { AgentResult, AgentExecutionOptions } from './types';
-import { getProjectSettings, checkRateLimit, checkTokenLimit, logTokenUsage, canRunParallelAgent } from './project-settings';
+import {
+  getProjectSettings,
+  checkRateLimit,
+  checkTokenLimit,
+  logTokenUsage,
+  canRunParallelAgent,
+} from './project-settings';
 
 export interface ExecutorOptions extends AgentExecutionOptions {
   projectId?: string;
@@ -22,7 +28,7 @@ export class AgentExecutor {
       timeout = 300000, // 5 minutes default
       maxRetries = 3,
     } = options;
-    
+
     const {
       workingDirectory = process.cwd(),
       environment = {},
@@ -76,7 +82,10 @@ export class AgentExecutor {
       }
 
       // Also check legacy token tracker for backward compatibility
-      const canExecute = await tokenTracker.canExecute(projectId, estimatedTokens);
+      const canExecute = await tokenTracker.canExecute(
+        projectId,
+        estimatedTokens
+      );
       if (!canExecute.allowed) {
         return {
           success: false,
@@ -93,29 +102,34 @@ export class AgentExecutor {
 
     while (attempt < maxRetries) {
       attempt++;
-      
+
       try {
         // Use enhanced file operations if we have a project context
-        const result = projectId && workingDirectory !== process.cwd()
-          ? await claudeCode.executeWithFileOperations(prompt, workingDirectory, {
-              timeout,
-              environment,
-            })
-          : await claudeCode.execute(prompt, {
-              workingDirectory,
-              timeout,
-              environment,
-            });
+        const result =
+          projectId && workingDirectory !== process.cwd()
+            ? await claudeCode.executeWithFileOperations(
+                prompt,
+                workingDirectory,
+                {
+                  timeout,
+                  environment,
+                }
+              )
+            : await claudeCode.execute(prompt, {
+                workingDirectory,
+                timeout,
+                environment,
+              });
 
         const executionTime = Date.now() - startTime;
         totalTokensUsed = result.tokensUsed || 0;
-        
+
         if (result.success) {
           // Track token usage with new system
           if (projectId && totalTokensUsed > 0) {
             const inputTokens = Math.ceil(prompt.length / 4);
             const outputTokens = totalTokensUsed - inputTokens;
-            
+
             await logTokenUsage(
               projectId,
               agentType || 'unknown',
@@ -144,12 +158,12 @@ export class AgentExecutor {
       } catch (error) {
         lastError = error as Error;
         console.error(`Agent execution attempt ${attempt} failed:`, error);
-        
+
         // If it's the last attempt, don't retry
         if (attempt >= maxRetries) {
           break;
         }
-        
+
         // Exponential backoff
         const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
         await this.sleep(delay);
@@ -157,11 +171,11 @@ export class AgentExecutor {
     }
 
     const executionTime = Date.now() - startTime;
-    
+
     // Track failed execution tokens (minimal usage)
     if (projectId) {
       const inputTokens = Math.ceil(prompt.length / 4);
-      
+
       await logTokenUsage(
         projectId,
         agentType || 'unknown',
@@ -177,7 +191,7 @@ export class AgentExecutor {
         timestamp: new Date(),
       });
     }
-    
+
     return {
       success: false,
       error: lastError?.message || 'Unknown error occurred',
@@ -185,7 +199,6 @@ export class AgentExecutor {
       tokensUsed: estimatedTokens / 2,
     };
   }
-
 
   private sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));

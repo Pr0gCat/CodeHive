@@ -5,7 +5,11 @@ import { RateLimiter } from './rate-limiter';
 import { PerformanceTracker } from './performance-tracker';
 import { AgentFactory, AgentExecutionRequest } from './agent-factory';
 import { ProjectManagerAgent } from './project-manager';
-import { getProjectSettings, canQueueTask, canRunParallelAgent } from './project-settings';
+import {
+  getProjectSettings,
+  canQueueTask,
+  canRunParallelAgent,
+} from './project-settings';
 
 export class TaskQueue {
   private executor: AgentExecutor;
@@ -26,14 +30,22 @@ export class TaskQueue {
     // Check if project can queue more tasks
     const queueCheck = await canQueueTask(task.projectId);
     if (!queueCheck.allowed) {
-      throw new Error(`Cannot queue task: ${queueCheck.reason} (${queueCheck.currentSize}/${queueCheck.maxSize})`);
+      throw new Error(
+        `Cannot queue task: ${queueCheck.reason} (${queueCheck.currentSize}/${queueCheck.maxSize})`
+      );
     }
 
     // Get project settings to determine default priority if not specified
     const settings = await getProjectSettings(task.projectId);
-    const priority = task.priority || (settings.taskPriority === 'LOW' ? 1 : 
-                                      settings.taskPriority === 'NORMAL' ? 5 :
-                                      settings.taskPriority === 'HIGH' ? 8 : 10);
+    const priority =
+      task.priority ||
+      (settings.taskPriority === 'LOW'
+        ? 1
+        : settings.taskPriority === 'NORMAL'
+          ? 5
+          : settings.taskPriority === 'HIGH'
+            ? 8
+            : 10);
 
     const queuedTask = await prisma.queuedTask.create({
       data: {
@@ -104,7 +116,7 @@ export class TaskQueue {
     }
   }
 
-  // Legacy method for backward compatibility - now just calls toggleQueue  
+  // Legacy method for backward compatibility - now just calls toggleQueue
   async resumeQueue(): Promise<void> {
     if (this.status === QueueStatus.PAUSED) {
       await this.toggleQueue();
@@ -150,10 +162,7 @@ export class TaskQueue {
       // Get next pending task with highest priority
       const queuedTask = await prisma.queuedTask.findFirst({
         where: { status: 'PENDING' },
-        orderBy: [
-          { priority: 'desc' },
-          { createdAt: 'asc' },
-        ],
+        orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
       });
 
       if (!queuedTask) {
@@ -222,7 +231,7 @@ export class TaskQueue {
       try {
         // Find or create agent specification
         const agentSpec = await prisma.agentSpecification.findFirst({
-          where: { 
+          where: {
             projectId: queuedTask.projectId,
             type: queuedTask.agentType,
           },
@@ -240,20 +249,24 @@ export class TaskQueue {
         console.error('Error recording performance metrics:', error);
       }
 
-      console.log(`Task ${queuedTask.taskId} ${result.success ? 'completed' : 'failed'}`);
-
+      console.log(
+        `Task ${queuedTask.taskId} ${result.success ? 'completed' : 'failed'}`
+      );
     } catch (error) {
       console.error('Error processing task:', error);
       // Continue processing other tasks
     }
   }
 
-  private async executeTask(payload: any, projectId: string): Promise<AgentResult> {
+  private async executeTask(
+    payload: any,
+    projectId: string
+  ): Promise<AgentResult> {
     try {
       // Get project details and context
       const project = await prisma.project.findUnique({
         where: { id: projectId },
-        select: { 
+        select: {
           id: true,
           name: true,
           localPath: true,

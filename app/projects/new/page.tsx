@@ -43,7 +43,7 @@ export default function NewProjectPage() {
     try {
       const response = await fetch('/api/repos/available');
       const data = await response.json();
-      
+
       if (data.success) {
         setAvailableRepos(data.data);
       } else {
@@ -56,8 +56,9 @@ export default function NewProjectPage() {
     }
   };
 
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -80,7 +81,7 @@ export default function NewProjectPage() {
         ...prev,
         localPath: repo.path,
         gitUrl: repo.gitUrl || '',
-        name: prev.name || repo.name // Auto-fill name if empty
+        name: prev.name || repo.name, // Auto-fill name if empty
       }));
     }
   };
@@ -114,12 +115,14 @@ export default function NewProjectPage() {
   };
 
   return (
-    <div className="min-h-screen bg-primary-950">
+    <div className="h-screen bg-primary-950 overflow-hidden">
       <Navbar />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 h-full overflow-y-auto">
         <div className="max-w-2xl mx-auto">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-accent-50 mb-2">建立新專案</h1>
+            <h1 className="text-3xl font-bold text-accent-50 mb-2">
+              建立新專案
+            </h1>
             <p className="text-primary-300">設定新的多 Agent 開發專案</p>
           </div>
 
@@ -129,8 +132,18 @@ export default function NewProjectPage() {
                 <div className="bg-red-900 border border-red-700 rounded-md p-4">
                   <div className="flex">
                     <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      <svg
+                        className="h-5 w-5 text-red-300"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
                       </svg>
                     </div>
                     <div className="ml-3">
@@ -141,7 +154,10 @@ export default function NewProjectPage() {
               )}
 
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-primary-300 mb-2">
+                <label
+                  htmlFor="name"
+                  className="block text-sm font-medium text-primary-300 mb-2"
+                >
                   專案名稱 *
                 </label>
                 <input
@@ -157,7 +173,10 @@ export default function NewProjectPage() {
               </div>
 
               <div>
-                <label htmlFor="description" className="block text-sm font-medium text-primary-300 mb-2">
+                <label
+                  htmlFor="description"
+                  className="block text-sm font-medium text-primary-300 mb-2"
+                >
                   描述
                 </label>
                 <textarea
@@ -172,16 +191,23 @@ export default function NewProjectPage() {
               </div>
 
               <div>
-                <label htmlFor="repoSelect" className="block text-sm font-medium text-primary-300 mb-2">
+                <label
+                  htmlFor="repoSelect"
+                  className="block text-sm font-medium text-primary-300 mb-2"
+                >
                   選擇儲存庫 *
                 </label>
                 {loadingRepos ? (
                   <div className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-md">
-                    <div className="text-primary-400 text-sm">載入可用儲存庫中...</div>
+                    <div className="text-primary-400 text-sm">
+                      載入可用儲存庫中...
+                    </div>
                   </div>
                 ) : availableRepos.length === 0 ? (
                   <div className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-md">
-                    <div className="text-primary-400 text-sm">在 repos/ 目錄中找不到可用的儲存庫</div>
+                    <div className="text-primary-400 text-sm">
+                      在 repos/ 目錄中找不到可用的儲存庫
+                    </div>
                   </div>
                 ) : (
                   <select
@@ -192,42 +218,58 @@ export default function NewProjectPage() {
                     className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
                   >
                     <option value="">選擇儲存庫資料夾...</option>
-                    {availableRepos.map((repo) => (
+                    {availableRepos.map(repo => (
                       <option key={repo.path} value={repo.path}>
-                        {repo.name} ({repo.projectType}) {repo.hasGit ? '🔗' : ''}
+                        {repo.name} ({repo.projectType}){' '}
+                        {repo.hasGit ? '🔗' : ''}
                       </option>
                     ))}
                   </select>
                 )}
-                
+
                 {selectedRepo && (
                   <div className="mt-2 p-3 bg-primary-800 border border-primary-700 rounded-md">
                     <div className="text-sm space-y-1">
                       <div className="text-primary-300">
-                        <span className="font-medium">路徑：</span> <span className="font-mono text-primary-400">{selectedRepo.path}</span>
+                        <span className="font-medium">路徑：</span>{' '}
+                        <span className="font-mono text-primary-400">
+                          {selectedRepo.path}
+                        </span>
                       </div>
                       <div className="text-primary-300">
-                        <span className="font-medium">類型：</span> <span className="text-accent-50">{selectedRepo.projectType}</span>
+                        <span className="font-medium">類型：</span>{' '}
+                        <span className="text-accent-50">
+                          {selectedRepo.projectType}
+                        </span>
                       </div>
                       <div className="text-primary-300">
-                        <span className="font-medium">檔案：</span> <span className="text-accent-50">{selectedRepo.fileCount}</span>
+                        <span className="font-medium">檔案：</span>{' '}
+                        <span className="text-accent-50">
+                          {selectedRepo.fileCount}
+                        </span>
                       </div>
                       {selectedRepo.hasGit && (
                         <div className="text-primary-300">
-                          <span className="font-medium">Git：</span> <span className="text-green-400">✓ 已偵測到儲存庫</span>
+                          <span className="font-medium">Git：</span>{' '}
+                          <span className="text-green-400">
+                            ✓ 已偵測到儲存庫
+                          </span>
                         </div>
                       )}
                     </div>
                   </div>
                 )}
-                
+
                 <p className="mt-1 text-sm text-primary-400">
                   從 repos/ 目錄中選擇尚未建立為專案的可用資料夾
                 </p>
               </div>
 
               <div>
-                <label htmlFor="gitUrl" className="block text-sm font-medium text-primary-300 mb-2">
+                <label
+                  htmlFor="gitUrl"
+                  className="block text-sm font-medium text-primary-300 mb-2"
+                >
                   Git 儲存庫網址
                 </label>
                 <input
@@ -241,23 +283,27 @@ export default function NewProjectPage() {
                   disabled={!!(selectedRepo?.hasGit && selectedRepo?.gitUrl)}
                 />
                 <p className="mt-1 text-sm text-primary-400">
-                  {selectedRepo?.hasGit && selectedRepo?.gitUrl 
-                    ? '已自動從儲存庫偵測到 Git 網址' 
-                    : '選填：用於版本控制整合的 Git 儲存庫網址'
-                  }
+                  {selectedRepo?.hasGit && selectedRepo?.gitUrl
+                    ? '已自動從儲存庫偵測到 Git 網址'
+                    : '選填：用於版本控制整合的 Git 儲存庫網址'}
                 </p>
               </div>
 
               {/* Tech Stack Configuration */}
               <div className="space-y-4 pt-4 border-t border-primary-700">
-                <h3 className="text-lg font-semibold text-accent-50">技術堆疊設定</h3>
+                <h3 className="text-lg font-semibold text-accent-50">
+                  技術堆疊設定
+                </h3>
                 <p className="text-sm text-primary-400">
                   指定此專案的工具和框架。留空則使用全域預設值。
                 </p>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="framework" className="block text-sm font-medium text-primary-300 mb-2">
+                    <label
+                      htmlFor="framework"
+                      className="block text-sm font-medium text-primary-300 mb-2"
+                    >
                       框架
                     </label>
                     <input
@@ -272,7 +318,10 @@ export default function NewProjectPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="language" className="block text-sm font-medium text-primary-300 mb-2">
+                    <label
+                      htmlFor="language"
+                      className="block text-sm font-medium text-primary-300 mb-2"
+                    >
                       語言
                     </label>
                     <input
@@ -287,7 +336,10 @@ export default function NewProjectPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="packageManager" className="block text-sm font-medium text-primary-300 mb-2">
+                    <label
+                      htmlFor="packageManager"
+                      className="block text-sm font-medium text-primary-300 mb-2"
+                    >
                       套件管理器
                     </label>
                     <input
@@ -302,7 +354,10 @@ export default function NewProjectPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="testFramework" className="block text-sm font-medium text-primary-300 mb-2">
+                    <label
+                      htmlFor="testFramework"
+                      className="block text-sm font-medium text-primary-300 mb-2"
+                    >
                       測試框架
                     </label>
                     <input
@@ -317,7 +372,10 @@ export default function NewProjectPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="lintTool" className="block text-sm font-medium text-primary-300 mb-2">
+                    <label
+                      htmlFor="lintTool"
+                      className="block text-sm font-medium text-primary-300 mb-2"
+                    >
                       程式碼檢查工具
                     </label>
                     <input
@@ -332,7 +390,10 @@ export default function NewProjectPage() {
                   </div>
 
                   <div>
-                    <label htmlFor="buildTool" className="block text-sm font-medium text-primary-300 mb-2">
+                    <label
+                      htmlFor="buildTool"
+                      className="block text-sm font-medium text-primary-300 mb-2"
+                    >
                       建置工具
                     </label>
                     <input
@@ -362,9 +423,24 @@ export default function NewProjectPage() {
                 >
                   {loading ? (
                     <span className="flex items-center">
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-accent-50" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <svg
+                        className="animate-spin -ml-1 mr-2 h-4 w-4 text-accent-50"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                       </svg>
                       建立中...
                     </span>

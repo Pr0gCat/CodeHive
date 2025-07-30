@@ -63,7 +63,10 @@ export async function GET(
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch dependencies',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to fetch dependencies',
       },
       { status: 500 }
     );
@@ -172,13 +175,16 @@ export async function POST(
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: dependency,
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        success: true,
+        data: dependency,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error('Error creating epic dependency:', error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {
@@ -193,7 +199,10 @@ export async function POST(
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to create dependency',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to create dependency',
       },
       { status: 500 }
     );
@@ -201,13 +210,16 @@ export async function POST(
 }
 
 // Helper function to detect circular dependencies
-async function checkCircularDependency(startEpicId: string, targetEpicId: string): Promise<boolean> {
+async function checkCircularDependency(
+  startEpicId: string,
+  targetEpicId: string
+): Promise<boolean> {
   const visited = new Set<string>();
   const stack = [startEpicId];
 
   while (stack.length > 0) {
     const currentEpicId = stack.pop()!;
-    
+
     if (currentEpicId === targetEpicId) {
       return true; // Circular dependency found
     }

@@ -7,17 +7,20 @@
 ## 卡片等待查詢時的視覺指示
 
 ### 1. 視覺變化
+
 - **透明度降低**：卡片變為 75% 透明度
 - **虛線邊框**：添加黃色虛線邊框
 - **鼠標樣式**：變為 `cursor-not-allowed`
 - **動畫指示器**：黃色脈衝動畫點
 
 ### 2. 功能限制
+
 - **禁用拖拽**：無法移動卡片到其他列
 - **禁用代理執行**：隱藏 "Run agent" 按鈕
 - **保持編輯功能**：仍然可以編輯卡片內容
 
 ### 3. 查詢信息顯示
+
 - **查詢列表**：顯示所有待處理的查詢
 - **緊急程度標識**：阻塞性查詢用紅色，建議性查詢用藍色
 - **查詢類型**：顯示查詢的類型（架構、業務邏輯等）
@@ -26,6 +29,7 @@
 ## 代理如何使用查詢系統
 
 ### 1. 創建阻塞性查詢
+
 ```typescript
 import { createBlockingQuery } from '@/lib/agents/query-helper';
 
@@ -38,7 +42,7 @@ const query = await createBlockingQuery(
   {
     feature: 'user authentication',
     codeContext: 'auth/login.ts',
-    options: ['JWT', 'Session', 'OAuth2']
+    options: ['JWT', 'Session', 'OAuth2'],
   }
 );
 
@@ -51,6 +55,7 @@ if (hasAnswer) {
 ```
 
 ### 2. 創建建議性查詢
+
 ```typescript
 import { createAdvisoryQuery } from '@/lib/agents/query-helper';
 
@@ -62,12 +67,13 @@ await createAdvisoryQuery(
   '建議使用 TypeScript 的嚴格模式來提高代碼質量',
   {
     feature: 'code quality',
-    suggestion: 'Enable strict mode in tsconfig.json'
+    suggestion: 'Enable strict mode in tsconfig.json',
   }
 );
 ```
 
 ### 3. 檢查查詢狀態
+
 ```typescript
 import { hasBlockingQueries, getCardQueries } from '@/lib/agents/query-helper';
 
@@ -86,7 +92,9 @@ console.log(`Card has ${queries.length} pending queries`);
 ## 查詢類型和使用場景
 
 ### 1. 架構查詢 (ARCHITECTURE)
+
 **使用場景**：系統設計決策
+
 ```typescript
 await createQuery({
   projectId,
@@ -95,12 +103,14 @@ await createQuery({
   question: '選擇主數據庫：PostgreSQL vs MySQL vs SQLite',
   context: { cardId, feature: 'database setup' },
   urgency: 'BLOCKING',
-  priority: 'HIGH'
+  priority: 'HIGH',
 });
 ```
 
 ### 2. 業務邏輯查詢 (BUSINESS_LOGIC)
+
 **使用場景**：業務規則和流程
+
 ```typescript
 await createQuery({
   projectId,
@@ -109,12 +119,14 @@ await createQuery({
   question: '訂單狀態轉換規則：待付款 -> 已付款 -> 已發貨 -> 已完成？',
   context: { cardId, feature: 'order management' },
   urgency: 'BLOCKING',
-  priority: 'HIGH'
+  priority: 'HIGH',
 });
 ```
 
 ### 3. 用戶界面查詢 (UI_UX)
+
 **使用場景**：用戶體驗設計
+
 ```typescript
 await createQuery({
   projectId,
@@ -123,12 +135,14 @@ await createQuery({
   question: '登錄頁面佈局：1) 簡潔單頁 2) 分步驟引導 3) 社交登錄優先？',
   context: { cardId, feature: 'login page' },
   urgency: 'ADVISORY',
-  priority: 'MEDIUM'
+  priority: 'MEDIUM',
 });
 ```
 
 ### 4. 集成查詢 (INTEGRATION)
+
 **使用場景**：第三方服務集成
+
 ```typescript
 await createQuery({
   projectId,
@@ -137,12 +151,14 @@ await createQuery({
   question: '選擇支付服務：Stripe vs PayPal vs 本地支付？',
   context: { cardId, feature: 'payment integration' },
   urgency: 'BLOCKING',
-  priority: 'HIGH'
+  priority: 'HIGH',
 });
 ```
 
 ### 5. 澄清查詢 (CLARIFICATION)
+
 **使用場景**：需求澄清
+
 ```typescript
 await createQuery({
   projectId,
@@ -151,25 +167,28 @@ await createQuery({
   question: '管理員可以刪除其他用戶的內容嗎？',
   context: { cardId, feature: 'user permissions' },
   urgency: 'BLOCKING',
-  priority: 'HIGH'
+  priority: 'HIGH',
 });
 ```
 
 ## 最佳實踐
 
 ### 1. 查詢創建
+
 - **清晰的標題**：簡潔描述問題核心
 - **具體的問題**：提供足夠的上下文和選項
 - **正確的緊急程度**：只有真正阻塞開發的問題才設為 BLOCKING
 - **相關的上下文**：包含代碼位置、功能描述等
 
 ### 2. 查詢處理
+
 - **及時回應**：盡快回答阻塞性查詢
 - **詳細回答**：提供完整的決策理由
 - **使用評論**：在需要討論時使用評論功能
 - **記錄決策**：在回答中記錄決策原因
 
 ### 3. 開發流程
+
 - **檢查查詢狀態**：在開始開發前檢查是否有阻塞性查詢
 - **等待用戶回應**：使用 `waitForQueryResponse` 等待用戶回答
 - **根據回答調整**：根據用戶回答調整開發方向
@@ -178,6 +197,7 @@ await createQuery({
 ## 錯誤處理
 
 ### 1. 查詢超時
+
 ```typescript
 try {
   const hasAnswer = await waitForQueryResponse(queryId, 300000); // 5分鐘超時
@@ -193,6 +213,7 @@ try {
 ```
 
 ### 2. 查詢創建失敗
+
 ```typescript
 try {
   const query = await createBlockingQuery(projectId, cardId, title, question);
@@ -205,28 +226,32 @@ try {
 ## 監控和調試
 
 ### 1. 查詢狀態監控
+
 ```typescript
 // 定期檢查查詢狀態
 setInterval(async () => {
   const queries = await getCardQueries(projectId, cardId);
   const blockingQueries = queries.filter(q => q.urgency === 'BLOCKING');
-  
+
   if (blockingQueries.length > 0) {
-    console.log(`Card ${cardId} has ${blockingQueries.length} blocking queries`);
+    console.log(
+      `Card ${cardId} has ${blockingQueries.length} blocking queries`
+    );
   }
 }, 60000); // 每分鐘檢查一次
 ```
 
 ### 2. 查詢統計
+
 ```typescript
 // 獲取項目查詢統計
 const queryStats = await prisma.query.groupBy({
   by: ['status', 'urgency'],
   where: { projectId },
-  _count: true
+  _count: true,
 });
 
 console.log('Query statistics:', queryStats);
 ```
 
-這個集成系統確保了 AI 代理和用戶之間的有效協作，讓開發過程更加順暢和可控。 
+這個集成系統確保了 AI 代理和用戶之間的有效協作，讓開發過程更加順暢和可控。

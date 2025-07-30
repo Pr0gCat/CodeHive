@@ -1,7 +1,7 @@
-import './globals.css';
 import { Inter } from 'next/font/google';
-import { ThemeProvider } from './contexts/ThemeContext';
 import ToastManager from './components/ui/ToastManager';
+import { ThemeProvider } from './contexts/ThemeContext';
+import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -16,12 +16,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className="h-full">
+      <body className={`${inter.className} h-full overflow-hidden`}>
         <ThemeProvider>
-          <ToastManager>
-            {children}
-          </ToastManager>
+          <ToastManager>{children}</ToastManager>
         </ThemeProvider>
       </body>
     </html>

@@ -6,7 +6,7 @@ export class ProjectAnalyzer {
   async analyzeStructure(projectPath: string): Promise<ProjectStructure> {
     try {
       const files = await this.walkDirectory(projectPath);
-      
+
       const structure: ProjectStructure = {
         directories: [],
         files: files,
@@ -20,10 +20,20 @@ export class ProjectAnalyzer {
       for (const file of files) {
         const fileName = basename(file.path).toLowerCase();
         const ext = extname(file.path).toLowerCase();
-        const relativePath = file.path.replace(projectPath, '').replace(/\\/g, '/');
+        const relativePath = file.path
+          .replace(projectPath, '')
+          .replace(/\\/g, '/');
 
         // Package files
-        if (['package.json', 'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'bun.lockb'].includes(fileName)) {
+        if (
+          [
+            'package.json',
+            'package-lock.json',
+            'yarn.lock',
+            'pnpm-lock.yaml',
+            'bun.lockb',
+          ].includes(fileName)
+        ) {
           structure.packageFiles.push(relativePath);
         }
 
@@ -45,7 +55,8 @@ export class ProjectAnalyzer {
 
       // Get unique directories
       const dirSet = new Set(
-        files.map(f => f.path.replace(projectPath, '').replace(/\\/g, '/'))
+        files
+          .map(f => f.path.replace(projectPath, '').replace(/\\/g, '/'))
           .map(p => p.split('/').slice(0, -1).join('/'))
           .filter(d => d.length > 0)
       );
@@ -70,8 +81,13 @@ export class ProjectAnalyzer {
       // Check package.json for framework indicators
       const packageJsonPath = join(projectPath, 'package.json');
       try {
-        const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf-8'));
-        const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
+        const packageJson = JSON.parse(
+          await fs.readFile(packageJsonPath, 'utf-8')
+        );
+        const deps = {
+          ...packageJson.dependencies,
+          ...packageJson.devDependencies,
+        };
 
         // Framework detection order (most specific first)
         if (deps['next']) return 'Next.js';
@@ -90,12 +106,14 @@ export class ProjectAnalyzer {
 
       // Check for framework-specific files
       const files = await fs.readdir(projectPath);
-      if (files.includes('next.config.js') || files.includes('next.config.ts')) return 'Next.js';
+      if (files.includes('next.config.js') || files.includes('next.config.ts'))
+        return 'Next.js';
       if (files.includes('vue.config.js')) return 'Vue.js';
       if (files.includes('angular.json')) return 'Angular';
       if (files.includes('svelte.config.js')) return 'Svelte';
       if (files.includes('gatsby-config.js')) return 'Gatsby';
-      if (files.includes('nuxt.config.js') || files.includes('nuxt.config.ts')) return 'Nuxt.js';
+      if (files.includes('nuxt.config.js') || files.includes('nuxt.config.ts'))
+        return 'Nuxt.js';
 
       return undefined;
     } catch (error) {
@@ -108,13 +126,18 @@ export class ProjectAnalyzer {
     try {
       const files = await this.walkDirectory(projectPath);
       const extensions = files.map(f => extname(f.path).toLowerCase());
-      const extCounts = extensions.reduce((acc, ext) => {
-        acc[ext] = (acc[ext] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
+      const extCounts = extensions.reduce(
+        (acc, ext) => {
+          acc[ext] = (acc[ext] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
 
       // Sort by count
-      const sortedExts = Object.entries(extCounts).sort(([, a], [, b]) => b - a);
+      const sortedExts = Object.entries(extCounts).sort(
+        ([, a], [, b]) => b - a
+      );
 
       // Language detection
       for (const [ext] of sortedExts) {
@@ -162,8 +185,13 @@ export class ProjectAnalyzer {
       // Node.js dependencies
       try {
         const packageJsonPath = join(projectPath, 'package.json');
-        const packageJson = JSON.parse(await fs.readFile(packageJsonPath, 'utf-8'));
-        const deps = { ...packageJson.dependencies, ...packageJson.devDependencies };
+        const packageJson = JSON.parse(
+          await fs.readFile(packageJsonPath, 'utf-8')
+        );
+        const deps = {
+          ...packageJson.dependencies,
+          ...packageJson.devDependencies,
+        };
         dependencies.push(...Object.keys(deps));
       } catch {
         // No package.json
@@ -173,10 +201,13 @@ export class ProjectAnalyzer {
       try {
         const requirementsPath = join(projectPath, 'requirements.txt');
         const requirements = await fs.readFile(requirementsPath, 'utf-8');
-        const pythonDeps = requirements.split('\n')
+        const pythonDeps = requirements
+          .split('\n')
           .map(line => line.trim())
           .filter(line => line && !line.startsWith('#'))
-          .map(line => line.split('==')[0].split('>=')[0].split('<=')[0].trim());
+          .map(line =>
+            line.split('==')[0].split('>=')[0].split('<=')[0].trim()
+          );
         dependencies.push(...pythonDeps);
       } catch {
         // No requirements.txt
@@ -187,8 +218,11 @@ export class ProjectAnalyzer {
         const pomPath = join(projectPath, 'pom.xml');
         const pomContent = await fs.readFile(pomPath, 'utf-8');
         // Simple regex to extract artifactId from dependencies
-        const matches = pomContent.match(/<artifactId>([^<]+)<\/artifactId>/g) || [];
-        const javaDeps = matches.map(match => match.replace(/<\/?artifactId>/g, ''));
+        const matches =
+          pomContent.match(/<artifactId>([^<]+)<\/artifactId>/g) || [];
+        const javaDeps = matches.map(match =>
+          match.replace(/<\/?artifactId>/g, '')
+        );
         dependencies.push(...javaDeps);
       } catch {
         // No pom.xml
@@ -201,7 +235,10 @@ export class ProjectAnalyzer {
     }
   }
 
-  private async walkDirectory(dirPath: string, files: FileInfo[] = []): Promise<FileInfo[]> {
+  private async walkDirectory(
+    dirPath: string,
+    files: FileInfo[] = []
+  ): Promise<FileInfo[]> {
     try {
       const entries = await fs.readdir(dirPath, { withFileTypes: true });
 
@@ -299,8 +336,10 @@ export class ProjectAnalyzer {
       'pyproject.toml',
     ];
 
-    return configFiles.includes(fileName) || 
-           ['.json', '.yml', '.yaml', '.toml', '.ini', '.conf'].includes(ext);
+    return (
+      configFiles.includes(fileName) ||
+      ['.json', '.yml', '.yaml', '.toml', '.ini', '.conf'].includes(ext)
+    );
   }
 
   private isTestFile(fileName: string, relativePath: string): boolean {
@@ -315,18 +354,36 @@ export class ProjectAnalyzer {
 
     const testDirs = ['/test/', '/tests/', '/__tests__/', '/spec/', '/specs/'];
 
-    return testPatterns.some(pattern => pattern.test(fileName)) ||
-           testDirs.some(dir => relativePath.includes(dir));
+    return (
+      testPatterns.some(pattern => pattern.test(fileName)) ||
+      testDirs.some(dir => relativePath.includes(dir))
+    );
   }
 
   private isSourceFile(ext: string): boolean {
     const sourceExts = [
-      '.js', '.jsx', '.ts', '.tsx',
-      '.py', '.java', '.go', '.rs',
-      '.cpp', '.cc', '.cxx', '.c',
-      '.cs', '.php', '.rb', '.swift',
-      '.kt', '.scala', '.clj', '.elm',
-      '.vue', '.svelte',
+      '.js',
+      '.jsx',
+      '.ts',
+      '.tsx',
+      '.py',
+      '.java',
+      '.go',
+      '.rs',
+      '.cpp',
+      '.cc',
+      '.cxx',
+      '.c',
+      '.cs',
+      '.php',
+      '.rb',
+      '.swift',
+      '.kt',
+      '.scala',
+      '.clj',
+      '.elm',
+      '.vue',
+      '.svelte',
     ];
 
     return sourceExts.includes(ext);

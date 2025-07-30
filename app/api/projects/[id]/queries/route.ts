@@ -30,7 +30,7 @@ export async function GET(
 
     if (cardId) {
       where.context = {
-        contains: `"cardId":"${cardId}"`
+        contains: `"cardId":"${cardId}"`,
       };
     }
 
@@ -124,4 +124,4 @@ export async function POST(
       { status: 500 }
     );
   }
-} 
+}

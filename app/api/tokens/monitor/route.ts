@@ -61,8 +61,10 @@ async function getGlobalMonitorData(globalSettings: any, todayStart: Date) {
     },
   });
 
-  const totalTokensUsed = (todayUsage._sum.inputTokens || 0) + (todayUsage._sum.outputTokens || 0);
-  const usagePercentage = (totalTokensUsed / globalSettings.dailyTokenLimit) * 100;
+  const totalTokensUsed =
+    (todayUsage._sum.inputTokens || 0) + (todayUsage._sum.outputTokens || 0);
+  const usagePercentage =
+    (totalTokensUsed / globalSettings.dailyTokenLimit) * 100;
 
   // Get project-wise usage
   const projectUsage = await prisma.project.findMany({
@@ -127,16 +129,23 @@ async function getGlobalMonitorData(globalSettings: any, todayStart: Date) {
       summary: {
         totalProjects: projectData.length,
         projectsOverBudget: projectData.filter(p => p.isOverBudget).length,
-        projectsNearLimit: projectData.filter(p => p.usagePercentage > 80).length,
-        averageUsage: projectData.length > 0 
-          ? projectData.reduce((sum, p) => sum + p.usagePercentage, 0) / projectData.length 
-          : 0,
+        projectsNearLimit: projectData.filter(p => p.usagePercentage > 80)
+          .length,
+        averageUsage:
+          projectData.length > 0
+            ? projectData.reduce((sum, p) => sum + p.usagePercentage, 0) /
+              projectData.length
+            : 0,
       },
     },
   });
 }
 
-async function getProjectMonitorData(projectId: string, globalSettings: any, todayStart: Date) {
+async function getProjectMonitorData(
+  projectId: string,
+  globalSettings: any,
+  todayStart: Date
+) {
   // Get project with budget and usage
   const project = await prisma.project.findUnique({
     where: { id: projectId },

@@ -53,16 +53,18 @@ export default function UserQueriesPanel({ projectId }: UserQueriesPanelProps) {
       if (filterStatus) params.append('status', filterStatus);
       if (filterUrgency) params.append('urgency', filterUrgency);
 
-      const response = await fetch(`/api/projects/${projectId}/queries?${params}`);
+      const response = await fetch(
+        `/api/projects/${projectId}/queries?${params}`
+      );
       const data = await response.json();
 
       if (data.success) {
         setQueries(data.data);
       } else {
-        showToast('錯誤', data.error || '無法載入查詢', 'error');
+        showToast(data.error || '無法載入查詢', 'error');
       }
     } catch (error) {
-      showToast('錯誤', '無法載入查詢', 'error');
+      showToast('無法載入查詢', 'error');
     } finally {
       setLoading(false);
     }
@@ -86,12 +88,12 @@ export default function UserQueriesPanel({ projectId }: UserQueriesPanelProps) {
       if (data.success) {
         setCommentText('');
         fetchQueries();
-        showToast('成功', '評論已添加', 'success');
+        showToast('評論已添加', 'success');
       } else {
-        showToast('錯誤', data.error || '無法添加評論', 'error');
+        showToast(data.error || '無法添加評論', 'error');
       }
     } catch (error) {
-      showToast('錯誤', '無法添加評論', 'error');
+      showToast('無法添加評論', 'error');
     }
   };
 
@@ -102,9 +104,9 @@ export default function UserQueriesPanel({ projectId }: UserQueriesPanelProps) {
       const response = await fetch(`/api/queries/${queryId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           answer: answerText,
-          status: 'ANSWERED'
+          status: 'ANSWERED',
         }),
       });
 
@@ -113,12 +115,12 @@ export default function UserQueriesPanel({ projectId }: UserQueriesPanelProps) {
         setAnswerText('');
         setSelectedQuery(null);
         fetchQueries();
-        showToast('成功', '查詢已回答', 'success');
+        showToast('查詢已回答', 'success');
       } else {
-        showToast('錯誤', data.error || '無法回答查詢', 'error');
+        showToast(data.error || '無法回答查詢', 'error');
       }
     } catch (error) {
-      showToast('錯誤', '無法回答查詢', 'error');
+      showToast('無法回答查詢', 'error');
     }
   };
 
@@ -133,40 +135,53 @@ export default function UserQueriesPanel({ projectId }: UserQueriesPanelProps) {
       const data = await response.json();
       if (data.success) {
         fetchQueries();
-        showToast('成功', '查詢已忽略', 'success');
+        showToast('查詢已忽略', 'success');
       } else {
-        showToast('錯誤', data.error || '無法忽略查詢', 'error');
+        showToast(data.error || '無法忽略查詢', 'error');
       }
     } catch (error) {
-      showToast('錯誤', '無法忽略查詢', 'error');
+      showToast('無法忽略查詢', 'error');
     }
   };
 
   const getUrgencyColor = (urgency: string) => {
     switch (urgency) {
-      case 'BLOCKING': return 'text-red-500 bg-red-100';
-      case 'ADVISORY': return 'text-blue-500 bg-blue-100';
-      default: return 'text-gray-500 bg-gray-100';
+      case 'BLOCKING':
+        return 'text-red-500 bg-red-100';
+      case 'ADVISORY':
+        return 'text-blue-500 bg-blue-100';
+      default:
+        return 'text-gray-500 bg-gray-100';
     }
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'HIGH': return 'text-red-600';
-      case 'MEDIUM': return 'text-yellow-600';
-      case 'LOW': return 'text-green-600';
-      default: return 'text-gray-600';
+      case 'HIGH':
+        return 'text-red-600';
+      case 'MEDIUM':
+        return 'text-yellow-600';
+      case 'LOW':
+        return 'text-green-600';
+      default:
+        return 'text-gray-600';
     }
   };
 
   const getTypeLabel = (type: string) => {
     switch (type) {
-      case 'ARCHITECTURE': return '架構';
-      case 'BUSINESS_LOGIC': return '業務邏輯';
-      case 'UI_UX': return '用戶界面';
-      case 'INTEGRATION': return '集成';
-      case 'CLARIFICATION': return '澄清';
-      default: return type;
+      case 'ARCHITECTURE':
+        return '架構';
+      case 'BUSINESS_LOGIC':
+        return '業務邏輯';
+      case 'UI_UX':
+        return '用戶界面';
+      case 'INTEGRATION':
+        return '集成';
+      case 'CLARIFICATION':
+        return '澄清';
+      default:
+        return type;
     }
   };
 
@@ -192,7 +207,7 @@ export default function UserQueriesPanel({ projectId }: UserQueriesPanelProps) {
         <div className="flex gap-2">
           <select
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
+            onChange={e => setFilterStatus(e.target.value)}
             className="px-3 py-1 bg-primary-700 border border-primary-600 text-accent-50 rounded text-sm"
           >
             <option value="">所有狀態</option>
@@ -202,7 +217,7 @@ export default function UserQueriesPanel({ projectId }: UserQueriesPanelProps) {
           </select>
           <select
             value={filterUrgency}
-            onChange={(e) => setFilterUrgency(e.target.value)}
+            onChange={e => setFilterUrgency(e.target.value)}
             className="px-3 py-1 bg-primary-700 border border-primary-600 text-accent-50 rounded text-sm"
           >
             <option value="">所有緊急程度</option>
@@ -218,7 +233,7 @@ export default function UserQueriesPanel({ projectId }: UserQueriesPanelProps) {
         </div>
       ) : (
         <div className="space-y-4">
-          {queries.map((query) => (
+          {queries.map(query => (
             <div
               key={query.id}
               className="bg-primary-700 rounded-lg p-4 border border-primary-600"
@@ -226,11 +241,20 @@ export default function UserQueriesPanel({ projectId }: UserQueriesPanelProps) {
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${getUrgencyColor(query.urgency)}`}>
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-medium ${getUrgencyColor(query.urgency)}`}
+                    >
                       {query.urgency === 'BLOCKING' ? '阻塞' : '建議'}
                     </span>
-                    <span className={`text-xs font-medium ${getPriorityColor(query.priority)}`}>
-                      {query.priority === 'HIGH' ? '高' : query.priority === 'MEDIUM' ? '中' : '低'}優先級
+                    <span
+                      className={`text-xs font-medium ${getPriorityColor(query.priority)}`}
+                    >
+                      {query.priority === 'HIGH'
+                        ? '高'
+                        : query.priority === 'MEDIUM'
+                          ? '中'
+                          : '低'}
+                      優先級
                     </span>
                     <span className="text-xs text-primary-400 bg-primary-600 px-2 py-1 rounded">
                       {getTypeLabel(query.type)}
@@ -255,7 +279,9 @@ export default function UserQueriesPanel({ projectId }: UserQueriesPanelProps) {
 
               {query.answer && (
                 <div className="bg-green-900 border border-green-700 rounded p-3 mb-3">
-                  <div className="text-sm font-medium text-green-300 mb-1">回答：</div>
+                  <div className="text-sm font-medium text-green-300 mb-1">
+                    回答：
+                  </div>
                   <p className="text-green-200 text-sm">{query.answer}</p>
                   <div className="text-xs text-green-400 mt-2">
                     回答於 {new Date(query.answeredAt!).toLocaleString()}
@@ -265,19 +291,28 @@ export default function UserQueriesPanel({ projectId }: UserQueriesPanelProps) {
 
               {query.comments.length > 0 && (
                 <div className="mb-3">
-                  <div className="text-sm font-medium text-primary-300 mb-2">評論：</div>
+                  <div className="text-sm font-medium text-primary-300 mb-2">
+                    評論：
+                  </div>
                   <div className="space-y-2">
-                    {query.comments.map((comment) => (
-                      <div key={comment.id} className="bg-primary-600 rounded p-2">
+                    {query.comments.map(comment => (
+                      <div
+                        key={comment.id}
+                        className="bg-primary-600 rounded p-2"
+                      >
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs font-medium text-accent-400">
-                            {comment.author === 'user' ? '用戶' : comment.author}
+                            {comment.author === 'user'
+                              ? '用戶'
+                              : comment.author}
                           </span>
                           <span className="text-xs text-primary-400">
                             {new Date(comment.createdAt).toLocaleString()}
                           </span>
                         </div>
-                        <p className="text-sm text-primary-200">{comment.content}</p>
+                        <p className="text-sm text-primary-200">
+                          {comment.content}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -302,7 +337,11 @@ export default function UserQueriesPanel({ projectId }: UserQueriesPanelProps) {
                   </>
                 )}
                 <button
-                  onClick={() => setSelectedQuery(selectedQuery?.id === query.id ? null : query)}
+                  onClick={() =>
+                    setSelectedQuery(
+                      selectedQuery?.id === query.id ? null : query
+                    )
+                  }
                   className="px-3 py-1 bg-primary-600 text-primary-200 text-sm rounded hover:bg-primary-700"
                 >
                   {selectedQuery?.id === query.id ? '隱藏評論' : '添加評論'}
@@ -313,7 +352,7 @@ export default function UserQueriesPanel({ projectId }: UserQueriesPanelProps) {
                 <div className="mt-3 p-3 bg-primary-600 rounded">
                   <textarea
                     value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
+                    onChange={e => setCommentText(e.target.value)}
                     placeholder="添加評論..."
                     className="w-full p-2 bg-primary-700 border border-primary-600 text-accent-50 rounded text-sm resize-none focus:outline-none focus:ring-2 focus:ring-accent-500"
                     rows={3}
@@ -351,13 +390,15 @@ export default function UserQueriesPanel({ projectId }: UserQueriesPanelProps) {
               {selectedQuery.context && (
                 <div className="bg-primary-700 p-3 rounded text-sm text-primary-300">
                   <strong>上下文：</strong>
-                  <pre className="whitespace-pre-wrap mt-1">{selectedQuery.context}</pre>
+                  <pre className="whitespace-pre-wrap mt-1">
+                    {selectedQuery.context}
+                  </pre>
                 </div>
               )}
             </div>
             <textarea
               value={answerText}
-              onChange={(e) => setAnswerText(e.target.value)}
+              onChange={e => setAnswerText(e.target.value)}
               placeholder="輸入您的回答..."
               className="w-full p-3 bg-primary-700 border border-primary-600 text-accent-50 rounded resize-none focus:outline-none focus:ring-2 focus:ring-accent-500"
               rows={6}
@@ -384,4 +425,4 @@ export default function UserQueriesPanel({ projectId }: UserQueriesPanelProps) {
       )}
     </div>
   );
-} 
+}

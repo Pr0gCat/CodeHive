@@ -8,7 +8,9 @@ const createEpicSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().optional(),
   type: z.enum(['MVP', 'ENHANCEMENT', 'FEATURE', 'BUGFIX']).default('FEATURE'),
-  mvpPriority: z.enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'FUTURE']).default('MEDIUM'),
+  mvpPriority: z
+    .enum(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'FUTURE'])
+    .default('MEDIUM'),
   coreValue: z.string().optional(),
   estimatedStoryPoints: z.number().int().min(0).default(0),
   startDate: z.string().datetime().optional(),
@@ -73,17 +75,19 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      orderBy: [
-        { sequence: 'asc' },
-        { createdAt: 'desc' },
-      ],
+      orderBy: [{ sequence: 'asc' }, { createdAt: 'desc' }],
     });
 
     // Calculate progress for each epic
-    const epicsWithProgress = epics.map((epic) => {
+    const epicsWithProgress = epics.map(epic => {
       const totalStories = epic.stories.length;
-      const completedStories = epic.stories.filter(story => story.status === 'DONE').length;
-      const totalStoryPoints = epic.stories.reduce((sum, story) => sum + (story.storyPoints || 0), 0);
+      const completedStories = epic.stories.filter(
+        story => story.status === 'DONE'
+      ).length;
+      const totalStoryPoints = epic.stories.reduce(
+        (sum, story) => sum + (story.storyPoints || 0),
+        0
+      );
       const completedStoryPoints = epic.stories
         .filter(story => story.status === 'DONE')
         .reduce((sum, story) => sum + (story.storyPoints || 0), 0);
@@ -95,7 +99,10 @@ export async function GET(request: NextRequest) {
           storiesTotal: totalStories,
           storyPointsCompleted: completedStoryPoints,
           storyPointsTotal: totalStoryPoints,
-          percentage: totalStories > 0 ? Math.round((completedStories / totalStories) * 100) : 0,
+          percentage:
+            totalStories > 0
+              ? Math.round((completedStories / totalStories) * 100)
+              : 0,
         },
       };
     });
@@ -141,7 +148,9 @@ export async function POST(request: NextRequest) {
     const epic = await prisma.epic.create({
       data: {
         ...validatedData,
-        startDate: validatedData.startDate ? new Date(validatedData.startDate) : null,
+        startDate: validatedData.startDate
+          ? new Date(validatedData.startDate)
+          : null,
         dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
       },
       include: {
@@ -159,13 +168,16 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: epic,
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        success: true,
+        data: epic,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error('Error creating epic:', error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {

@@ -117,7 +117,10 @@ export async function GET(
     const hierarchicalData = organizeHierarchicalData(project);
 
     // Calculate MVP phase progress
-    const mvpPhaseProgress = calculateMVPPhaseProgress(project.mvpPhases, project.epics);
+    const mvpPhaseProgress = calculateMVPPhaseProgress(
+      project.mvpPhases,
+      project.epics
+    );
 
     // Identify blockers and risks
     const blockers = identifyBlockers(project.epics);
@@ -146,7 +149,10 @@ export async function GET(
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch project overview',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to fetch project overview',
       },
       { status: 500 }
     );
@@ -172,16 +178,24 @@ function calculateProjectStats(project: any) {
   };
 
   // Story statistics
-  const allStories = epics.flatMap((epic: any) => epic.stories).concat(standaloneStories);
+  const allStories = epics
+    .flatMap((epic: any) => epic.stories)
+    .concat(standaloneStories);
   const storyStats = {
     total: allStories.length,
-    withEpics: epics.reduce((sum: number, epic: any) => sum + epic.stories.length, 0),
+    withEpics: epics.reduce(
+      (sum: number, epic: any) => sum + epic.stories.length,
+      0
+    ),
     standalone: standaloneStories.length,
     byStatus: allStories.reduce((acc: any, story: any) => {
       acc[story.status] = (acc[story.status] || 0) + 1;
       return acc;
     }, {}),
-    totalStoryPoints: allStories.reduce((sum: number, story: any) => sum + (story.storyPoints || 0), 0),
+    totalStoryPoints: allStories.reduce(
+      (sum: number, story: any) => sum + (story.storyPoints || 0),
+      0
+    ),
     completedStoryPoints: allStories
       .filter((story: any) => story.status === 'DONE')
       .reduce((sum: number, story: any) => sum + (story.storyPoints || 0), 0),
@@ -202,10 +216,27 @@ function calculateProjectStats(project: any) {
 
   // Overall progress
   const overallProgress = {
-    epics: epicStats.total > 0 ? Math.round(((epicStats.byPhase.DONE || 0) / epicStats.total) * 100) : 0,
-    stories: storyStats.total > 0 ? Math.round(((storyStats.byStatus.DONE || 0) / storyStats.total) * 100) : 0,
-    storyPoints: storyStats.totalStoryPoints > 0 ? Math.round((storyStats.completedStoryPoints / storyStats.totalStoryPoints) * 100) : 0,
-    cycles: cycleStats.total > 0 ? Math.round(((cycleStats.byStatus.COMPLETED || 0) / cycleStats.total) * 100) : 0,
+    epics:
+      epicStats.total > 0
+        ? Math.round(((epicStats.byPhase.DONE || 0) / epicStats.total) * 100)
+        : 0,
+    stories:
+      storyStats.total > 0
+        ? Math.round(((storyStats.byStatus.DONE || 0) / storyStats.total) * 100)
+        : 0,
+    storyPoints:
+      storyStats.totalStoryPoints > 0
+        ? Math.round(
+            (storyStats.completedStoryPoints / storyStats.totalStoryPoints) *
+              100
+          )
+        : 0,
+    cycles:
+      cycleStats.total > 0
+        ? Math.round(
+            ((cycleStats.byStatus.COMPLETED || 0) / cycleStats.total) * 100
+          )
+        : 0,
   };
 
   return {
@@ -228,12 +259,19 @@ function organizeHierarchicalData(project: any) {
       progress: {
         stories: {
           total: epic.stories.length,
-          completed: epic.stories.filter((s: any) => s.status === 'DONE').length,
+          completed: epic.stories.filter((s: any) => s.status === 'DONE')
+            .length,
         },
         cycles: {
-          total: epic.stories.reduce((sum: number, s: any) => sum + s.cycles.length, 0),
-          completed: epic.stories.reduce((sum: number, s: any) => 
-            sum + s.cycles.filter((c: any) => c.status === 'COMPLETED').length, 0
+          total: epic.stories.reduce(
+            (sum: number, s: any) => sum + s.cycles.length,
+            0
+          ),
+          completed: epic.stories.reduce(
+            (sum: number, s: any) =>
+              sum +
+              s.cycles.filter((c: any) => c.status === 'COMPLETED').length,
+            0
           ),
         },
       },
@@ -244,7 +282,9 @@ function organizeHierarchicalData(project: any) {
         storyPoints: story.storyPoints,
         tddEnabled: story.tddEnabled,
         cycles: story.cycles,
-        hasBlockers: story.dependencies.some((dep: any) => dep.dependsOn.status !== 'DONE'),
+        hasBlockers: story.dependencies.some(
+          (dep: any) => dep.dependsOn.status !== 'DONE'
+        ),
       })),
       dependencies: epic.dependencies,
     })),
@@ -263,10 +303,15 @@ function calculateMVPPhaseProgress(mvpPhases: any[], epics: any[]) {
   return mvpPhases.map(phase => {
     const coreFeatureIds = JSON.parse(phase.coreFeatures || '[]');
     const coreEpics = epics.filter(epic => coreFeatureIds.includes(epic.id));
-    
-    const totalStories = coreEpics.reduce((sum, epic) => sum + epic.stories.length, 0);
-    const completedStories = coreEpics.reduce((sum, epic) => 
-      sum + epic.stories.filter((s: any) => s.status === 'DONE').length, 0
+
+    const totalStories = coreEpics.reduce(
+      (sum, epic) => sum + epic.stories.length,
+      0
+    );
+    const completedStories = coreEpics.reduce(
+      (sum, epic) =>
+        sum + epic.stories.filter((s: any) => s.status === 'DONE').length,
+      0
     );
 
     return {
@@ -279,7 +324,10 @@ function calculateMVPPhaseProgress(mvpPhases: any[], epics: any[]) {
         stories: {
           total: totalStories,
           completed: completedStories,
-          percentage: totalStories > 0 ? Math.round((completedStories / totalStories) * 100) : 0,
+          percentage:
+            totalStories > 0
+              ? Math.round((completedStories / totalStories) * 100)
+              : 0,
         },
       },
       coreEpics: coreEpics.map(epic => ({
@@ -297,7 +345,9 @@ function identifyBlockers(epics: any[]) {
 
   for (const epic of epics) {
     // Check epic-level dependencies
-    const blockedBy = epic.dependencies.filter((dep: any) => dep.dependsOn.phase !== 'DONE');
+    const blockedBy = epic.dependencies.filter(
+      (dep: any) => dep.dependsOn.phase !== 'DONE'
+    );
     if (blockedBy.length > 0) {
       blockers.push({
         type: 'epic',
@@ -313,7 +363,10 @@ function identifyBlockers(epics: any[]) {
 
     // Check story-level dependencies
     for (const story of epic.stories) {
-      const storyBlockers = story.dependencies?.filter((dep: any) => dep.dependsOn.status !== 'DONE') || [];
+      const storyBlockers =
+        story.dependencies?.filter(
+          (dep: any) => dep.dependsOn.status !== 'DONE'
+        ) || [];
       if (storyBlockers.length > 0) {
         blockers.push({
           type: 'story',

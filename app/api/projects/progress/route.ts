@@ -7,71 +7,86 @@ export async function GET(request: NextRequest) {
     const projects = await prisma.project.findMany({
       where: {
         status: {
-          in: ['ACTIVE', 'PAUSED'] // Only show active and paused projects
-        }
+          in: ['ACTIVE', 'PAUSED'], // Only show active and paused projects
+        },
       },
       include: {
         kanbanCards: true,
         tokenUsage: {
           where: {
             timestamp: {
-              gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
-            }
-          }
+              gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24 hours
+            },
+          },
         },
         queuedTasks: {
           where: {
             status: {
-              in: ['PENDING', 'RUNNING']
-            }
-          }
-        }
+              in: ['PENDING', 'RUNNING'],
+            },
+          },
+        },
       },
       orderBy: {
-        updatedAt: 'desc'
-      }
+        updatedAt: 'desc',
+      },
     });
 
     // Transform data for the progress dashboard
     const projectProgress = await Promise.all(
-      projects.map(async (project) => {
+      projects.map(async project => {
         // Calculate task progress
         const tasks = {
-          backlog: project.kanbanCards.filter(card => card.status === 'BACKLOG').length,
-          todo: project.kanbanCards.filter(card => card.status === 'TODO').length,
-          inProgress: project.kanbanCards.filter(card => card.status === 'IN_PROGRESS').length,
-          review: project.kanbanCards.filter(card => card.status === 'REVIEW').length,
-          done: project.kanbanCards.filter(card => card.status === 'DONE').length,
+          backlog: project.kanbanCards.filter(card => card.status === 'BACKLOG')
+            .length,
+          todo: project.kanbanCards.filter(card => card.status === 'TODO')
+            .length,
+          inProgress: project.kanbanCards.filter(
+            card => card.status === 'IN_PROGRESS'
+          ).length,
+          review: project.kanbanCards.filter(card => card.status === 'REVIEW')
+            .length,
+          done: project.kanbanCards.filter(card => card.status === 'DONE')
+            .length,
         };
 
-        const totalTasks = Object.values(tasks).reduce((sum, count) => sum + count, 0);
+        const totalTasks = Object.values(tasks).reduce(
+          (sum, count) => sum + count,
+          0
+        );
         const completedTasks = tasks.done;
-        const progressPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+        const progressPercentage =
+          totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
         // Calculate token usage for today
-        const todayTokenUsage = project.tokenUsage.reduce((sum, usage) => sum + usage.inputTokens + usage.outputTokens, 0);
-        
+        const todayTokenUsage = project.tokenUsage.reduce(
+          (sum, usage) => sum + usage.inputTokens + usage.outputTokens,
+          0
+        );
+
         // Get token usage trend (compare with yesterday)
         const yesterdayStart = new Date(Date.now() - 48 * 60 * 60 * 1000);
         const yesterdayEnd = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        
+
         const yesterdayUsage = await prisma.tokenUsage.aggregate({
           where: {
             projectId: project.id,
             timestamp: {
               gte: yesterdayStart,
-              lt: yesterdayEnd
-            }
+              lt: yesterdayEnd,
+            },
           },
           _sum: {
             inputTokens: true,
-            outputTokens: true
-          }
+            outputTokens: true,
+          },
         });
 
-        const yesterdayTotal = (yesterdayUsage._sum.inputTokens || 0) + (yesterdayUsage._sum.outputTokens || 0);
+        const yesterdayTotal =
+          (yesterdayUsage._sum.inputTokens || 0) +
+          (yesterdayUsage._sum.outputTokens || 0);
         let trend: 'up' | 'down' | 'stable' = 'stable';
-        
+
         if (todayTokenUsage > yesterdayTotal * 1.1) {
           trend = 'up';
         } else if (todayTokenUsage < yesterdayTotal * 0.9) {
@@ -88,30 +103,29 @@ export async function GET(request: NextRequest) {
           progress: {
             completed: completedTasks,
             total: totalTasks,
-            percentage: progressPercentage
+            percentage: progressPercentage,
           },
           tasks,
           activeAgents: project.queuedTasks.length,
           recentActivity,
           tokenUsage: {
             used: todayTokenUsage,
-            trend
-          }
+            trend,
+          },
         };
       })
     );
 
     return NextResponse.json({
       success: true,
-      data: projectProgress
+      data: projectProgress,
     });
-
   } catch (error) {
     console.error('Error fetching project progress:', error);
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to fetch project progress'
+        error: 'Failed to fetch project progress',
       },
       { status: 500 }
     );
@@ -124,29 +138,35 @@ async function getRecentActivity(projectId: string): Promise<string> {
     const recentAgentTask = await prisma.agentTask.findFirst({
       where: {
         card: {
-          projectId: projectId
-        }
+          projectId: projectId,
+        },
       },
       orderBy: {
-        createdAt: 'desc'
-      }
+        createdAt: 'desc',
+      },
     });
 
-    if (recentAgentTask && recentAgentTask.createdAt > new Date(Date.now() - 60 * 60 * 1000)) {
+    if (
+      recentAgentTask &&
+      recentAgentTask.createdAt > new Date(Date.now() - 60 * 60 * 1000)
+    ) {
       return `Agent ${recentAgentTask.agentType} ${recentAgentTask.status.toLowerCase()} - ${formatTimeAgo(recentAgentTask.createdAt)}`;
     }
 
     // Check for recent card updates
     const recentCard = await prisma.kanbanCard.findFirst({
       where: {
-        projectId: projectId
+        projectId: projectId,
       },
       orderBy: {
-        updatedAt: 'desc'
-      }
+        updatedAt: 'desc',
+      },
     });
 
-    if (recentCard && recentCard.updatedAt > new Date(Date.now() - 60 * 60 * 1000)) {
+    if (
+      recentCard &&
+      recentCard.updatedAt > new Date(Date.now() - 60 * 60 * 1000)
+    ) {
       return `Card "${recentCard.title}" updated - ${formatTimeAgo(recentCard.updatedAt)}`;
     }
 
@@ -154,11 +174,11 @@ async function getRecentActivity(projectId: string): Promise<string> {
     const queuedTask = await prisma.queuedTask.findFirst({
       where: {
         projectId: projectId,
-        status: 'PENDING'
+        status: 'PENDING',
       },
       orderBy: {
-        createdAt: 'desc'
-      }
+        createdAt: 'desc',
+      },
     });
 
     if (queuedTask) {

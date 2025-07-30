@@ -16,8 +16,8 @@ export default function TokenLimitSlider({
   onChange,
   disabled = false,
   className = '',
-  min = 1000000,   // 1M tokens
-  max = 500000000,  // 500M tokens
+  min = 1000000, // 1M tokens
+  max = 500000000, // 500M tokens
 }: TokenLimitSliderProps) {
   const formatTokens = (tokens: number): string => {
     if (tokens >= 1000000000) {
@@ -70,13 +70,26 @@ export default function TokenLimitSlider({
         aria-describedby="token-limit-help"
       />
 
-      <div id="token-limit-help" className="mt-3 p-3 bg-primary-800 rounded-md border border-primary-700">
-        <h4 className="text-sm font-medium text-primary-300 mb-2">建議值參考：</h4>
+      <div
+        id="token-limit-help"
+        className="mt-3 p-3 bg-primary-800 rounded-md border border-primary-700"
+      >
+        <h4 className="text-sm font-medium text-primary-300 mb-2">
+          建議值參考：
+        </h4>
         <ul className="text-xs text-primary-400 space-y-1">
-          <li>• <strong>10M Tokens</strong>：小型專案，個人開發</li>
-          <li>• <strong>50M Tokens</strong>：中型專案，團隊協作</li>
-          <li>• <strong>100M Tokens</strong>：大型專案，密集開發</li>
-          <li>• <strong>250M+ Tokens</strong>：企業級專案，AI 工廠</li>
+          <li>
+            • <strong>10M Tokens</strong>：小型專案，個人開發
+          </li>
+          <li>
+            • <strong>50M Tokens</strong>：中型專案，團隊協作
+          </li>
+          <li>
+            • <strong>100M Tokens</strong>：大型專案，密集開發
+          </li>
+          <li>
+            • <strong>250M+ Tokens</strong>：企業級專案，AI 工廠
+          </li>
         </ul>
       </div>
     </div>

@@ -1,7 +1,13 @@
 import { AgentExecutor } from '@/lib/agents/executor';
 import { ProjectContext } from '@/lib/agents/project-manager';
-import { prisma, Test, Artifact, Query } from '@/lib/db';
-import { QueryType, QueryUrgency } from '@/lib/db';
+import {
+  Artifact,
+  prisma,
+  Query,
+  Test,
+  QueryTypeType,
+  QueryUrgencyType,
+} from '@/lib/db';
 
 export interface TestGenerationRequest {
   cycleId: string;
@@ -22,11 +28,11 @@ export interface RefactoringRequest {
 }
 
 export interface AIDecisionPoint {
-  type: QueryType;
+  type: QueryTypeType;
   title: string;
   question: string;
   context: any;
-  urgency: QueryUrgency;
+  urgency: QueryUrgencyType;
 }
 
 /**
@@ -42,11 +48,16 @@ export class AITDDIntegration {
   /**
    * Generate real test code using Claude Code
    */
-  async generateTestCode(request: TestGenerationRequest): Promise<{ test: Test; decision?: Query }> {
+  async generateTestCode(
+    request: TestGenerationRequest
+  ): Promise<{ test: Test; decision?: Query }> {
     const { cycleId, acceptanceCriterion, projectContext } = request;
 
     // Build AI prompt for test generation
-    const prompt = this.buildTestGenerationPrompt(acceptanceCriterion, projectContext);
+    const prompt = this.buildTestGenerationPrompt(
+      acceptanceCriterion,
+      projectContext
+    );
 
     try {
       // Execute with Claude Code
@@ -62,10 +73,17 @@ export class AITDDIntegration {
       }
 
       // Parse generated test from result
-      const generatedTest = this.parseGeneratedTest(result.output || '', acceptanceCriterion);
+      const generatedTest = this.parseGeneratedTest(
+        result.output || '',
+        acceptanceCriterion
+      );
 
       // Check if AI needs architectural decision
-      const decision = await this.checkForDecisionPoint(result.output || '', cycleId, 'test-generation');
+      const decision = await this.checkForDecisionPoint(
+        result.output || '',
+        cycleId,
+        'test-generation'
+      );
 
       // Create test record
       const test = await prisma.test.create({
@@ -82,15 +100,16 @@ export class AITDDIntegration {
       return { test, decision };
     } catch (error) {
       console.error('Test generation failed:', error);
-      
+
       // Check if this is a system error that should not create a query
       const errorMessage = String(error);
-      const isSystemError = errorMessage.includes('Rate limit exceeded') || 
-                           errorMessage.includes('token limit') ||
-                           errorMessage.includes('API error') ||
-                           errorMessage.includes('Network error') ||
-                           errorMessage.includes('timeout');
-      
+      const isSystemError =
+        errorMessage.includes('Rate limit exceeded') ||
+        errorMessage.includes('token limit') ||
+        errorMessage.includes('API error') ||
+        errorMessage.includes('Network error') ||
+        errorMessage.includes('timeout');
+
       // Only create decision queries for actual AI/content issues, not system errors
       if (!isSystemError) {
         const decision = await this.createDecisionQuery(
@@ -111,7 +130,9 @@ export class AITDDIntegration {
   /**
    * Generate implementation code to make tests pass
    */
-  async generateImplementationCode(request: CodeGenerationRequest): Promise<{ artifact: Artifact; decision?: Query }> {
+  async generateImplementationCode(
+    request: CodeGenerationRequest
+  ): Promise<{ artifact: Artifact; decision?: Query }> {
     const { cycleId, test, projectContext } = request;
 
     // Build AI prompt for implementation
@@ -130,10 +151,17 @@ export class AITDDIntegration {
       }
 
       // Parse generated implementation
-      const implementation = this.parseGeneratedCode(result.output || '', test.name);
+      const implementation = this.parseGeneratedCode(
+        result.output || '',
+        test.name
+      );
 
       // Check for architectural decisions
-      const decision = await this.checkForDecisionPoint(result.output || '', cycleId, 'implementation');
+      const decision = await this.checkForDecisionPoint(
+        result.output || '',
+        cycleId,
+        'implementation'
+      );
 
       // Create artifact record
       const artifact = await prisma.artifact.create({
@@ -151,15 +179,16 @@ export class AITDDIntegration {
       return { artifact, decision };
     } catch (error) {
       console.error('Implementation generation failed:', error);
-      
+
       // Check if this is a system error that should not create a query
       const errorMessage = String(error);
-      const isSystemError = errorMessage.includes('Rate limit exceeded') || 
-                           errorMessage.includes('token limit') ||
-                           errorMessage.includes('API error') ||
-                           errorMessage.includes('Network error') ||
-                           errorMessage.includes('timeout');
-      
+      const isSystemError =
+        errorMessage.includes('Rate limit exceeded') ||
+        errorMessage.includes('token limit') ||
+        errorMessage.includes('API error') ||
+        errorMessage.includes('Network error') ||
+        errorMessage.includes('timeout');
+
       // Only create decision queries for actual AI/content issues, not system errors
       if (!isSystemError) {
         const decision = await this.createDecisionQuery(
@@ -180,7 +209,9 @@ export class AITDDIntegration {
   /**
    * Refactor code while maintaining test passing status
    */
-  async refactorCode(request: RefactoringRequest): Promise<{ artifact: Artifact; decision?: Query }> {
+  async refactorCode(
+    request: RefactoringRequest
+  ): Promise<{ artifact: Artifact; decision?: Query }> {
     const { cycleId, artifact, projectContext } = request;
 
     // Build AI prompt for refactoring
@@ -199,10 +230,17 @@ export class AITDDIntegration {
       }
 
       // Parse refactored code
-      const refactored = this.parseRefactoredCode(result.output || '', artifact.name);
+      const refactored = this.parseRefactoredCode(
+        result.output || '',
+        artifact.name
+      );
 
       // Check for design decisions
-      const decision = await this.checkForDecisionPoint(result.output || '', cycleId, 'refactoring');
+      const decision = await this.checkForDecisionPoint(
+        result.output || '',
+        cycleId,
+        'refactoring'
+      );
 
       // Create new artifact for refactored code
       const newArtifact = await prisma.artifact.create({
@@ -220,15 +258,16 @@ export class AITDDIntegration {
       return { artifact: newArtifact, decision };
     } catch (error) {
       console.error('Refactoring failed:', error);
-      
+
       // Check if this is a system error that should not create a query
       const errorMessage = String(error);
-      const isSystemError = errorMessage.includes('Rate limit exceeded') || 
-                           errorMessage.includes('token limit') ||
-                           errorMessage.includes('API error') ||
-                           errorMessage.includes('Network error') ||
-                           errorMessage.includes('timeout');
-      
+      const isSystemError =
+        errorMessage.includes('Rate limit exceeded') ||
+        errorMessage.includes('token limit') ||
+        errorMessage.includes('API error') ||
+        errorMessage.includes('Network error') ||
+        errorMessage.includes('timeout');
+
       // Only create decision queries for actual AI/content issues, not system errors
       if (!isSystemError) {
         // Refactoring failures are usually non-blocking
@@ -241,7 +280,7 @@ export class AITDDIntegration {
           { artifact: artifact.name, error: String(error) },
           'ADVISORY'
         );
-        
+
         // Return original artifact if refactoring fails
         return { artifact, decision };
       }
@@ -254,14 +293,17 @@ export class AITDDIntegration {
   /**
    * Analyze code quality and suggest improvements
    */
-  async analyzeCodeQuality(cycleId: string, artifacts: Artifact[]): Promise<Query[]> {
+  async analyzeCodeQuality(
+    cycleId: string,
+    artifacts: Artifact[]
+  ): Promise<Query[]> {
     const queries: Query[] = [];
 
     for (const artifact of artifacts) {
       if (artifact.type === 'CODE') {
         // Simple code quality checks (in real implementation, use more sophisticated analysis)
         const issues = this.performCodeQualityChecks(artifact.content);
-        
+
         if (issues.length > 0) {
           const query = await this.createDecisionQuery(
             cycleId,
@@ -272,7 +314,7 @@ export class AITDDIntegration {
             { artifact: artifact.name, issues },
             'ADVISORY'
           );
-          
+
           queries.push(query);
         }
       }
@@ -283,7 +325,10 @@ export class AITDDIntegration {
 
   // Helper methods
 
-  private buildTestGenerationPrompt(criterion: string, context: ProjectContext): string {
+  private buildTestGenerationPrompt(
+    criterion: string,
+    context: ProjectContext
+  ): string {
     return `
 Generate a comprehensive test for the following acceptance criterion:
 "${criterion}"
@@ -304,7 +349,10 @@ Output the test code with clear markers for parsing.
     `.trim();
   }
 
-  private buildImplementationPrompt(test: Test, context: ProjectContext): string {
+  private buildImplementationPrompt(
+    test: Test,
+    context: ProjectContext
+  ): string {
     return `
 Generate the MINIMAL implementation code to make this test pass:
 
@@ -325,7 +373,10 @@ Output the implementation code with clear markers for parsing.
     `.trim();
   }
 
-  private buildRefactoringPrompt(artifact: Artifact, context: ProjectContext): string {
+  private buildRefactoringPrompt(
+    artifact: Artifact,
+    context: ProjectContext
+  ): string {
     return `
 Refactor the following code to improve quality while maintaining functionality:
 
@@ -347,11 +398,14 @@ Output the refactored code with explanations of improvements made.
     `.trim();
   }
 
-  private parseGeneratedTest(output: string, criterion: string): { name: string; code: string; filePath: string } {
+  private parseGeneratedTest(
+    output: string,
+    criterion: string
+  ): { name: string; code: string; filePath: string } {
     // Simple parsing - in real implementation, use more sophisticated parsing
     const name = `should ${criterion.toLowerCase().replace(/\s+/g, ' ')}`;
     const fileName = name.replace(/\s+/g, '-').toLowerCase();
-    
+
     return {
       name,
       code: output,
@@ -359,10 +413,13 @@ Output the refactored code with explanations of improvements made.
     };
   }
 
-  private parseGeneratedCode(output: string, testName: string): { name: string; code: string; path: string } {
+  private parseGeneratedCode(
+    output: string,
+    testName: string
+  ): { name: string; code: string; path: string } {
     const name = testName.replace('should ', '').replace(/\s+/g, '');
     const fileName = name.toLowerCase();
-    
+
     return {
       name,
       code: output,
@@ -370,7 +427,10 @@ Output the refactored code with explanations of improvements made.
     };
   }
 
-  private parseRefactoredCode(output: string, originalName: string): { code: string } {
+  private parseRefactoredCode(
+    output: string,
+    originalName: string
+  ): { code: string } {
     return {
       code: output,
     };
@@ -390,14 +450,14 @@ Output the refactored code with explanations of improvements made.
       'trade-off',
     ];
 
-    const needsDecision = decisionIndicators.some(indicator => 
+    const needsDecision = decisionIndicators.some(indicator =>
       aiOutput.toLowerCase().includes(indicator)
     );
 
     if (needsDecision) {
       // Extract decision context from AI output
       const decisionContext = this.extractDecisionContext(aiOutput);
-      
+
       if (decisionContext) {
         return await this.createDecisionQuery(
           cycleId,
@@ -418,14 +478,15 @@ Output the refactored code with explanations of improvements made.
     // Simple extraction - in real implementation, use NLP or structured output
     if (output.includes('architectural decision')) {
       return {
-        type: 'ARCHITECTURE' as QueryType,
+        type: 'ARCHITECTURE' as QueryTypeType,
         title: 'Architectural Decision Required',
-        question: 'The AI identified multiple architectural approaches. Please review and choose.',
+        question:
+          'The AI identified multiple architectural approaches. Please review and choose.',
         context: { aiOutput: output },
-        urgency: 'ADVISORY' as QueryUrgency,
+        urgency: 'ADVISORY' as QueryUrgencyType,
       };
     }
-    
+
     return null;
   }
 
@@ -453,34 +514,34 @@ Output the refactored code with explanations of improvements made.
     });
   }
 
-  private mapToQueryType(type: string): QueryType {
-    const mapping: Record<string, QueryType> = {
-      'TEST_GENERATION_FAILED': 'CLARIFICATION',
-      'IMPLEMENTATION_FAILED': 'BUSINESS_LOGIC',
-      'REFACTORING_SUGGESTION': 'ARCHITECTURE',
-      'CODE_QUALITY_ISSUE': 'ARCHITECTURE',
-      'ARCHITECTURAL_DECISION': 'ARCHITECTURE',
+  private mapToQueryType(type: string): QueryTypeType {
+    const mapping: Record<string, QueryTypeType> = {
+      TEST_GENERATION_FAILED: 'CLARIFICATION',
+      IMPLEMENTATION_FAILED: 'BUSINESS_LOGIC',
+      REFACTORING_SUGGESTION: 'ARCHITECTURE',
+      CODE_QUALITY_ISSUE: 'ARCHITECTURE',
+      ARCHITECTURAL_DECISION: 'ARCHITECTURE',
     };
-    
+
     return mapping[type] || 'CLARIFICATION';
   }
 
   private performCodeQualityChecks(code: string): string[] {
     const issues: string[] = [];
-    
+
     // Simple checks - in real implementation, use proper static analysis
     if (code.length > 1000) {
       issues.push('File is too large, consider splitting into smaller modules');
     }
-    
+
     if (!code.includes('try') && !code.includes('catch')) {
       issues.push('No error handling found');
     }
-    
+
     if (code.split('\n').some(line => line.length > 120)) {
       issues.push('Some lines exceed 120 characters');
     }
-    
+
     return issues;
   }
 }

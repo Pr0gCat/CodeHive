@@ -2,18 +2,26 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { z } from 'zod';
 
-const budgetAllocationSchema = z.array(
-  z.object({
-    projectId: z.string(),
-    allocatedPercentage: z.number().min(0).max(1),
-  })
-).refine((budgets) => {
-  // Ensure total allocation doesn't exceed 100%
-  const totalAllocation = budgets.reduce((sum, b) => sum + b.allocatedPercentage, 0);
-  return totalAllocation <= 1.01; // Allow 1% tolerance for floating point
-}, {
-  message: "Total budget allocation cannot exceed 100%",
-});
+const budgetAllocationSchema = z
+  .array(
+    z.object({
+      projectId: z.string(),
+      allocatedPercentage: z.number().min(0).max(1),
+    })
+  )
+  .refine(
+    budgets => {
+      // Ensure total allocation doesn't exceed 100%
+      const totalAllocation = budgets.reduce(
+        (sum, b) => sum + b.allocatedPercentage,
+        0
+      );
+      return totalAllocation <= 1.01; // Allow 1% tolerance for floating point
+    },
+    {
+      message: 'Total budget allocation cannot exceed 100%',
+    }
+  );
 
 export async function GET() {
   try {
@@ -40,8 +48,8 @@ export async function GET() {
         allocatedPercentage: budget?.allocatedPercentage || 0,
         dailyTokenBudget: budget?.dailyTokenBudget || 0,
         usedTokens: budget?.usedTokens || 0,
-        usagePercentage: budget?.dailyTokenBudget 
-          ? (budget.usedTokens / budget.dailyTokenBudget) * 100 
+        usagePercentage: budget?.dailyTokenBudget
+          ? (budget.usedTokens / budget.dailyTokenBudget) * 100
           : 0,
         lastResetAt: budget?.lastResetAt || new Date(),
         warningNotified: budget?.warningNotified || false,
@@ -54,7 +62,10 @@ export async function GET() {
       data: {
         globalDailyLimit: globalSettings?.dailyTokenLimit || 10000000,
         projects: budgetData,
-        totalAllocated: budgetData.reduce((sum, p) => sum + p.allocatedPercentage, 0),
+        totalAllocated: budgetData.reduce(
+          (sum, p) => sum + p.allocatedPercentage,
+          0
+        ),
       },
     });
   } catch (error) {

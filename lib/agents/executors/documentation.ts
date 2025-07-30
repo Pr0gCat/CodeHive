@@ -96,7 +96,7 @@ export class DocumentationAgent extends BaseAgent {
 
   validateCommand(command: string): { valid: boolean; error?: string } {
     const normalizedCommand = command.toLowerCase().trim();
-    
+
     // Check for supported command patterns
     const supportedPatterns = [
       /^(generate|create|update).*readme/,
@@ -112,8 +112,10 @@ export class DocumentationAgent extends BaseAgent {
       /^example/,
     ];
 
-    const isSupported = supportedPatterns.some(pattern => pattern.test(normalizedCommand));
-    
+    const isSupported = supportedPatterns.some(pattern =>
+      pattern.test(normalizedCommand)
+    );
+
     if (!isSupported) {
       return {
         valid: false,
@@ -128,13 +130,16 @@ export class DocumentationAgent extends BaseAgent {
     const projectInfo = this.getProjectInfo();
     const commonInstructions = this.getCommonInstructions();
     const documentationContext = this.getDocumentationContext();
-    
+
     let specificInstructions = '';
     const normalizedCommand = command.toLowerCase();
 
     if (normalizedCommand.includes('readme')) {
       specificInstructions = this.getReadmeInstructions(command);
-    } else if (normalizedCommand.includes('code') || normalizedCommand.includes('jsdoc')) {
+    } else if (
+      normalizedCommand.includes('code') ||
+      normalizedCommand.includes('jsdoc')
+    ) {
       specificInstructions = this.getCodeDocumentationInstructions(command);
     } else if (normalizedCommand.includes('api')) {
       specificInstructions = this.getApiDocumentationInstructions();
@@ -142,7 +147,10 @@ export class DocumentationAgent extends BaseAgent {
       specificInstructions = this.getComponentDocumentationInstructions();
     } else if (normalizedCommand.includes('changelog')) {
       specificInstructions = this.getChangelogInstructions();
-    } else if (normalizedCommand.includes('guide') || normalizedCommand.includes('dev')) {
+    } else if (
+      normalizedCommand.includes('guide') ||
+      normalizedCommand.includes('dev')
+    ) {
       specificInstructions = this.getDeveloperGuideInstructions(command);
     } else {
       specificInstructions = this.getGeneralDocumentationInstructions(command);
@@ -175,13 +183,15 @@ Remember: Good documentation is as important as good code - it enables adoption 
   }
 
   private getDocumentationContext(): string {
-    const hasReadme = this.context.structure?.files.some(f => 
-      f.path.toLowerCase().includes('readme')
-    ) || false;
+    const hasReadme =
+      this.context.structure?.files.some(f =>
+        f.path.toLowerCase().includes('readme')
+      ) || false;
 
-    const docFiles = this.context.structure?.files.filter(f => 
-      f.path.includes('.md') || f.path.includes('docs/')
-    ).length || 0;
+    const docFiles =
+      this.context.structure?.files.filter(
+        f => f.path.includes('.md') || f.path.includes('docs/')
+      ).length || 0;
 
     return `
 DOCUMENTATION CONTEXT:
@@ -198,12 +208,12 @@ DOCUMENTATION CONTEXT:
     if (this.context.framework === 'React') return 'React Application/Library';
     if (this.context.framework === 'Vue.js') return 'Vue.js Application';
     if (this.context.framework === 'Angular') return 'Angular Application';
-    
-    const hasApi = this.context.structure?.files.some(f => 
-      f.path.includes('api/') || f.path.includes('routes/')
+
+    const hasApi = this.context.structure?.files.some(
+      f => f.path.includes('api/') || f.path.includes('routes/')
     );
     if (hasApi) return 'API/Backend Service';
-    
+
     return 'Software Library/Application';
   }
 
@@ -526,7 +536,10 @@ COMPONENT DOCUMENTATION FORMAT:
     `;
   }
 
-  protected async generateArtifacts(command: string, result: AgentResult): Promise<Record<string, unknown>> {
+  protected async generateArtifacts(
+    command: string,
+    result: AgentResult
+  ): Promise<Record<string, unknown>> {
     return {
       documentationType: this.determineDocumentationType(command),
       targetAudience: this.determineTargetAudience(command),
@@ -539,28 +552,46 @@ COMPONENT DOCUMENTATION FORMAT:
 
   private determineDocumentationType(command: string): string {
     const normalizedCommand = command.toLowerCase();
-    
+
     if (normalizedCommand.includes('readme')) return 'readme';
-    if (normalizedCommand.includes('code') || normalizedCommand.includes('jsdoc')) return 'code-documentation';
+    if (
+      normalizedCommand.includes('code') ||
+      normalizedCommand.includes('jsdoc')
+    )
+      return 'code-documentation';
     if (normalizedCommand.includes('api')) return 'api-documentation';
-    if (normalizedCommand.includes('component')) return 'component-documentation';
+    if (normalizedCommand.includes('component'))
+      return 'component-documentation';
     if (normalizedCommand.includes('changelog')) return 'changelog';
-    if (normalizedCommand.includes('guide') || normalizedCommand.includes('dev')) return 'developer-guide';
+    if (
+      normalizedCommand.includes('guide') ||
+      normalizedCommand.includes('dev')
+    )
+      return 'developer-guide';
     if (normalizedCommand.includes('tutorial')) return 'tutorial';
-    if (normalizedCommand.includes('architecture')) return 'architecture-documentation';
-    
+    if (normalizedCommand.includes('architecture'))
+      return 'architecture-documentation';
+
     return 'general-documentation';
   }
 
   private determineTargetAudience(command: string): string {
     const normalizedCommand = command.toLowerCase();
-    
+
     if (normalizedCommand.includes('api')) return 'api-consumers';
     if (normalizedCommand.includes('component')) return 'component-users';
-    if (normalizedCommand.includes('dev') || normalizedCommand.includes('contributing')) return 'developers';
-    if (normalizedCommand.includes('user') || normalizedCommand.includes('readme')) return 'end-users';
+    if (
+      normalizedCommand.includes('dev') ||
+      normalizedCommand.includes('contributing')
+    )
+      return 'developers';
+    if (
+      normalizedCommand.includes('user') ||
+      normalizedCommand.includes('readme')
+    )
+      return 'end-users';
     if (normalizedCommand.includes('tutorial')) return 'beginners';
-    
+
     return 'general-audience';
   }
 }

@@ -43,13 +43,16 @@ export class BranchManager {
   /**
    * 創建功能分支
    */
-  async createFeatureBranch(cycleId: string, featureName: string): Promise<GitOperationResult> {
+  async createFeatureBranch(
+    cycleId: string,
+    featureName: string
+  ): Promise<GitOperationResult> {
     try {
       const branchName = `feature/cycle-${cycleId}-${featureName.toLowerCase().replace(/\s+/g, '-')}`;
-      
+
       // 確保在主分支上
       await this.checkoutBranch('main');
-      
+
       // 創建並切換到新分支
       const { stdout, stderr } = await execAsync(
         `git checkout -b ${branchName}`,
@@ -75,7 +78,8 @@ export class BranchManager {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to create branch',
+        error:
+          error instanceof Error ? error.message : 'Failed to create branch',
       };
     }
   }
@@ -83,10 +87,13 @@ export class BranchManager {
   /**
    * 創建檢查點分支
    */
-  async createCheckpointBranch(cycleId: string, phase: string): Promise<GitOperationResult> {
+  async createCheckpointBranch(
+    cycleId: string,
+    phase: string
+  ): Promise<GitOperationResult> {
     try {
       const checkpointName = `checkpoint/${phase.toLowerCase()}-phase-start`;
-      
+
       // 創建檢查點分支
       const { stdout, stderr } = await execAsync(
         `git branch ${checkpointName}`,
@@ -100,7 +107,10 @@ export class BranchManager {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to create checkpoint',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to create checkpoint',
       };
     }
   }
@@ -108,7 +118,10 @@ export class BranchManager {
   /**
    * 切換到指定分支並恢復工作空間
    */
-  async switchToBranch(cycleId: string, branchName: string): Promise<GitOperationResult> {
+  async switchToBranch(
+    cycleId: string,
+    branchName: string
+  ): Promise<GitOperationResult> {
     try {
       // 檢查是否有鎖定
       const lock = this.branchLocks.get(branchName);
@@ -126,10 +139,9 @@ export class BranchManager {
       }
 
       // 切換分支
-      const { stdout, stderr } = await execAsync(
-        `git checkout ${branchName}`,
-        { cwd: this.projectPath }
-      );
+      const { stdout, stderr } = await execAsync(`git checkout ${branchName}`, {
+        cwd: this.projectPath,
+      });
 
       // 恢復工作空間狀態
       await this.restoreWorkspaceState(branchName);
@@ -148,7 +160,8 @@ export class BranchManager {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to switch branch',
+        error:
+          error instanceof Error ? error.message : 'Failed to switch branch',
       };
     }
   }
@@ -156,7 +169,10 @@ export class BranchManager {
   /**
    * 提交變更
    */
-  async commitChanges(message: string, phase: string): Promise<GitOperationResult> {
+  async commitChanges(
+    message: string,
+    phase: string
+  ): Promise<GitOperationResult> {
     try {
       // 添加所有變更
       await execAsync('git add .', { cwd: this.projectPath });
@@ -170,9 +186,10 @@ export class BranchManager {
 
       // 更新最後提交
       const currentBranch = await this.getCurrentBranch();
-      const branchState = Array.from(this.activeBranches.values())
-        .find(state => state.branchName === currentBranch);
-      
+      const branchState = Array.from(this.activeBranches.values()).find(
+        state => state.branchName === currentBranch
+      );
+
       if (branchState) {
         branchState.lastCommit = await this.getCurrentCommit();
         branchState.lastActivity = new Date();
@@ -185,7 +202,8 @@ export class BranchManager {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to commit changes',
+        error:
+          error instanceof Error ? error.message : 'Failed to commit changes',
       };
     }
   }
@@ -193,7 +211,9 @@ export class BranchManager {
   /**
    * 回滾到檢查點
    */
-  async rollbackToCheckpoint(checkpointBranch: string): Promise<GitOperationResult> {
+  async rollbackToCheckpoint(
+    checkpointBranch: string
+  ): Promise<GitOperationResult> {
     try {
       // 重置到檢查點
       const { stdout, stderr } = await execAsync(
@@ -216,9 +236,13 @@ export class BranchManager {
   /**
    * 獲取分支鎖定
    */
-  async acquireLock(cycleId: string, branchName: string, agentType: string): Promise<boolean> {
+  async acquireLock(
+    cycleId: string,
+    branchName: string,
+    agentType: string
+  ): Promise<boolean> {
     const existingLock = this.branchLocks.get(branchName);
-    
+
     if (existingLock && existingLock.expiresAt > new Date()) {
       return false;
     }
@@ -246,7 +270,10 @@ export class BranchManager {
   /**
    * 創建合併請求
    */
-  async createMergeRequest(cycleId: string, targetBranch: string = 'main'): Promise<GitOperationResult> {
+  async createMergeRequest(
+    cycleId: string,
+    targetBranch: string = 'main'
+  ): Promise<GitOperationResult> {
     try {
       const branchState = this.activeBranches.get(cycleId);
       if (!branchState) {
@@ -289,7 +316,10 @@ export class BranchManager {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to create merge request',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to create merge request',
       };
     }
   }
@@ -298,10 +328,9 @@ export class BranchManager {
 
   private async getCurrentBranch(): Promise<string> {
     try {
-      const { stdout } = await execAsync(
-        'git rev-parse --abbrev-ref HEAD',
-        { cwd: this.projectPath }
-      );
+      const { stdout } = await execAsync('git rev-parse --abbrev-ref HEAD', {
+        cwd: this.projectPath,
+      });
       return stdout.trim();
     } catch (error) {
       return '';
@@ -310,10 +339,9 @@ export class BranchManager {
 
   private async getCurrentCommit(): Promise<string> {
     try {
-      const { stdout } = await execAsync(
-        'git rev-parse HEAD',
-        { cwd: this.projectPath }
-      );
+      const { stdout } = await execAsync('git rev-parse HEAD', {
+        cwd: this.projectPath,
+      });
       return stdout.trim();
     } catch (error) {
       return '';
@@ -321,19 +349,17 @@ export class BranchManager {
   }
 
   private async checkoutBranch(branchName: string): Promise<void> {
-    await execAsync(
-      `git checkout ${branchName}`,
-      { cwd: this.projectPath }
-    );
+    await execAsync(`git checkout ${branchName}`, { cwd: this.projectPath });
   }
 
   private async saveWorkspaceState(branchName: string): Promise<void> {
     // 實作將在 workspace-manager.ts 中完成
     // 這裡僅保存分支資訊
     const snapshotId = `snapshot-${branchName}-${Date.now()}`;
-    const branchState = Array.from(this.activeBranches.values())
-      .find(state => state.branchName === branchName);
-    
+    const branchState = Array.from(this.activeBranches.values()).find(
+      state => state.branchName === branchName
+    );
+
     if (branchState) {
       branchState.workspaceSnapshot = snapshotId;
     }
@@ -341,9 +367,10 @@ export class BranchManager {
 
   private async restoreWorkspaceState(branchName: string): Promise<void> {
     // 實作將在 workspace-manager.ts 中完成
-    const branchState = Array.from(this.activeBranches.values())
-      .find(state => state.branchName === branchName);
-    
+    const branchState = Array.from(this.activeBranches.values()).find(
+      state => state.branchName === branchName
+    );
+
     if (branchState?.workspaceSnapshot) {
       // 恢復工作空間
     }

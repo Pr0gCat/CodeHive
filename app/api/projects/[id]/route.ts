@@ -131,7 +131,7 @@ export async function DELETE(
     // Get project name before deleting for logging
     const project = await prisma.project.findUnique({
       where: { id: params.id },
-      select: { name: true }
+      select: { name: true },
     });
 
     if (!project) {

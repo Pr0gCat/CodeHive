@@ -72,4 +72,4 @@ describe('Queries API', () => {
     expect(data.data).toHaveLength(1);
     expect(data.data[0].title).toBe('Test Query');
   });
-}); 
+});

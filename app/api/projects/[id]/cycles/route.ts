@@ -36,7 +36,8 @@ export async function GET(
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch cycles',
+        error:
+          error instanceof Error ? error.message : 'Failed to fetch cycles',
       },
       { status: 500 }
     );
@@ -53,7 +54,11 @@ export async function POST(
     const body = await request.json();
 
     // Validate request
-    if (!body.title || !body.acceptanceCriteria || !Array.isArray(body.acceptanceCriteria)) {
+    if (
+      !body.title ||
+      !body.acceptanceCriteria ||
+      !Array.isArray(body.acceptanceCriteria)
+    ) {
       return NextResponse.json(
         {
           success: false,
@@ -100,7 +105,8 @@ export async function POST(
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to create cycle',
+        error:
+          error instanceof Error ? error.message : 'Failed to create cycle',
       },
       { status: 500 }
     );

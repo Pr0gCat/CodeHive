@@ -11,11 +11,11 @@ interface EpicCreateModalProps {
   onEpicCreated?: () => void;
 }
 
-export default function EpicCreateModal({ 
-  isOpen, 
-  onClose, 
+export default function EpicCreateModal({
+  isOpen,
+  onClose,
   projectId,
-  onEpicCreated 
+  onEpicCreated,
 }: EpicCreateModalProps) {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -89,8 +89,18 @@ export default function EpicCreateModal({
             onClick={handleClose}
             className="text-primary-400 hover:text-accent-50"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -104,7 +114,9 @@ export default function EpicCreateModal({
             <input
               type="text"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              onChange={e =>
+                setFormData({ ...formData, title: e.target.value })
+              }
               className="w-full bg-primary-700 border border-primary-600 rounded-lg px-3 py-2 text-accent-50 placeholder-primary-400 focus:outline-none focus:border-accent-500"
               placeholder="例如：電商購物車系統"
               required
@@ -118,7 +130,9 @@ export default function EpicCreateModal({
             </label>
             <textarea
               value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onChange={e =>
+                setFormData({ ...formData, description: e.target.value })
+              }
               className="w-full bg-primary-700 border border-primary-600 rounded-lg px-3 py-2 text-accent-50 placeholder-primary-400 focus:outline-none focus:border-accent-500"
               placeholder="詳細描述這個 Epic 的目標和範圍..."
               rows={3}
@@ -133,7 +147,12 @@ export default function EpicCreateModal({
               </label>
               <select
                 value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value as keyof typeof EpicType })}
+                onChange={e =>
+                  setFormData({
+                    ...formData,
+                    type: e.target.value as keyof typeof EpicType,
+                  })
+                }
                 className="w-full bg-primary-700 border border-primary-600 rounded-lg px-3 py-2 text-accent-50 focus:outline-none focus:border-accent-500"
               >
                 <option value="MVP">MVP 核心功能</option>
@@ -149,7 +168,12 @@ export default function EpicCreateModal({
               </label>
               <select
                 value={formData.mvpPriority}
-                onChange={(e) => setFormData({ ...formData, mvpPriority: e.target.value as keyof typeof MVPPriority })}
+                onChange={e =>
+                  setFormData({
+                    ...formData,
+                    mvpPriority: e.target.value as keyof typeof MVPPriority,
+                  })
+                }
                 className="w-full bg-primary-700 border border-primary-600 rounded-lg px-3 py-2 text-accent-50 focus:outline-none focus:border-accent-500"
               >
                 <option value="CRITICAL">🔴 關鍵</option>
@@ -169,7 +193,9 @@ export default function EpicCreateModal({
             <input
               type="text"
               value={formData.coreValue}
-              onChange={(e) => setFormData({ ...formData, coreValue: e.target.value })}
+              onChange={e =>
+                setFormData({ ...formData, coreValue: e.target.value })
+              }
               className="w-full bg-primary-700 border border-primary-600 rounded-lg px-3 py-2 text-accent-50 placeholder-primary-400 focus:outline-none focus:border-accent-500"
               placeholder="這個 Epic 為用戶帶來什麼價值？"
             />
@@ -184,7 +210,12 @@ export default function EpicCreateModal({
               type="number"
               min="0"
               value={formData.estimatedStoryPoints}
-              onChange={(e) => setFormData({ ...formData, estimatedStoryPoints: parseInt(e.target.value) || 0 })}
+              onChange={e =>
+                setFormData({
+                  ...formData,
+                  estimatedStoryPoints: parseInt(e.target.value) || 0,
+                })
+              }
               className="w-full bg-primary-700 border border-primary-600 rounded-lg px-3 py-2 text-accent-50 placeholder-primary-400 focus:outline-none focus:border-accent-500"
               placeholder="0"
             />
@@ -199,7 +230,9 @@ export default function EpicCreateModal({
               <input
                 type="date"
                 value={formData.startDate}
-                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, startDate: e.target.value })
+                }
                 className="w-full bg-primary-700 border border-primary-600 rounded-lg px-3 py-2 text-accent-50 focus:outline-none focus:border-accent-500"
               />
             </div>
@@ -211,7 +244,9 @@ export default function EpicCreateModal({
               <input
                 type="date"
                 value={formData.dueDate}
-                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                onChange={e =>
+                  setFormData({ ...formData, dueDate: e.target.value })
+                }
                 className="w-full bg-primary-700 border border-primary-600 rounded-lg px-3 py-2 text-accent-50 focus:outline-none focus:border-accent-500"
               />
             </div>
@@ -238,8 +273,18 @@ export default function EpicCreateModal({
                 </>
               ) : (
                 <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
                   </svg>
                   建立 Epic
                 </>

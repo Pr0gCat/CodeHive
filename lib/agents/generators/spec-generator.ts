@@ -23,7 +23,10 @@ export class SpecificationGenerator {
       excludePatterns: ['node_modules/**', 'dist/**', 'build/**'],
     };
 
-    const prompt = this.buildPrompt('code-analyzer', context, `
+    const prompt = this.buildPrompt(
+      'code-analyzer',
+      context,
+      `
 You are a Code Analyzer agent specialized in ${context.language || 'multi-language'} projects.
 Your primary role is to analyze code quality, detect issues, and provide improvement suggestions.
 
@@ -41,7 +44,8 @@ Core Responsibilities:
 
 Always provide specific, actionable feedback with file locations and line numbers.
 Focus on critical issues first, then suggestions for optimization.
-`);
+`
+    );
 
     return {
       name: 'code-analyzer',
@@ -76,7 +80,10 @@ Focus on critical issues first, then suggestions for optimization.
       allowedExtensions: this.getAllowedExtensions(context.language),
     };
 
-    const prompt = this.buildPrompt('file-modifier', context, `
+    const prompt = this.buildPrompt(
+      'file-modifier',
+      context,
+      `
 You are a File Modifier agent for ${context.framework || 'generic'} projects.
 Your role is to safely create, modify, and refactor files while maintaining code quality.
 
@@ -97,7 +104,8 @@ Safety Rules:
 - Validate syntax before saving
 - Maintain existing code style and patterns
 - Test critical paths after modifications
-`);
+`
+    );
 
     return {
       name: 'file-modifier',
@@ -134,7 +142,10 @@ Safety Rules:
       coverageThreshold: 80,
     };
 
-    const prompt = this.buildPrompt('test-runner', context, `
+    const prompt = this.buildPrompt(
+      'test-runner',
+      context,
+      `
 You are a Test Runner agent for ${context.framework || 'generic'} projects.
 Your role is to execute tests, create missing tests, and ensure code quality through testing.
 
@@ -151,12 +162,15 @@ Core Responsibilities:
 5. Suggest testing improvements
 
 Testing Strategy:
-${hasTests ? 
-'- Run existing tests and analyze results\n- Improve test coverage for low-coverage areas' : 
-'- Set up testing framework\n- Create basic test structure\n- Write unit tests for core functionality'}
+${
+  hasTests
+    ? '- Run existing tests and analyze results\n- Improve test coverage for low-coverage areas'
+    : '- Set up testing framework\n- Create basic test structure\n- Write unit tests for core functionality'
+}
 
 Always provide clear test results with pass/fail status and coverage metrics.
-`);
+`
+    );
 
     return {
       name: 'test-runner',
@@ -169,7 +183,9 @@ Always provide clear test results with pass/fail status and coverage metrics.
     };
   }
 
-  async generateGitOperationsAgent(context: ProjectContext): Promise<AgentSpec> {
+  async generateGitOperationsAgent(
+    context: ProjectContext
+  ): Promise<AgentSpec> {
     const capabilities = [
       'Git status and history',
       'Branch management',
@@ -187,7 +203,10 @@ Always provide clear test results with pass/fail status and coverage metrics.
       autoCommitPatterns: ['package-lock.json', 'yarn.lock'],
     };
 
-    const prompt = this.buildPrompt('git-operations', context, `
+    const prompt = this.buildPrompt(
+      'git-operations',
+      context,
+      `
 You are a Git Operations agent for the ${context.name} project.
 Your role is to manage version control operations safely and efficiently.
 
@@ -208,7 +227,8 @@ Git Workflow:
 - Create branches for features
 - Never force push to main/master
 - Keep commit history clean
-`);
+`
+    );
 
     return {
       name: 'git-operations',
@@ -221,7 +241,9 @@ Git Workflow:
     };
   }
 
-  async generateFrameworkSpecialist(context: ProjectContext): Promise<AgentSpec> {
+  async generateFrameworkSpecialist(
+    context: ProjectContext
+  ): Promise<AgentSpec> {
     const framework = context.framework!;
     const capabilities = this.getFrameworkCapabilities(framework);
     const dependencies = this.getFrameworkDependencies(framework);
@@ -232,7 +254,10 @@ Git Workflow:
       bestPractices: true,
     };
 
-    const prompt = this.buildPrompt('framework-specialist', context, `
+    const prompt = this.buildPrompt(
+      'framework-specialist',
+      context,
+      `
 You are a ${framework} Specialist agent with deep expertise in ${framework} development.
 Your role is to provide framework-specific guidance and optimizations.
 
@@ -253,7 +278,8 @@ ${this.getFrameworkSpecialization(framework)}
 
 Always follow ${framework} conventions and latest best practices.
 Provide specific examples and code snippets when making recommendations.
-`);
+`
+    );
 
     return {
       name: `${framework.toLowerCase()}-specialist`,
@@ -266,7 +292,11 @@ Provide specific examples and code snippets when making recommendations.
     };
   }
 
-  private buildPrompt(agentType: string, context: ProjectContext, specificInstructions: string): string {
+  private buildPrompt(
+    agentType: string,
+    context: ProjectContext,
+    specificInstructions: string
+  ): string {
     return `${specificInstructions}
 
 General Guidelines:
@@ -288,7 +318,7 @@ Remember: You are working on the "${context.name}" project. Be helpful, precise,
 
   private getAllowedExtensions(language?: string): string[] {
     const baseExtensions = ['.md', '.txt', '.json', '.yml', '.yaml'];
-    
+
     switch (language) {
       case 'typescript':
         return [...baseExtensions, '.ts', '.tsx', '.js', '.jsx'];
@@ -307,29 +337,57 @@ Remember: You are working on the "${context.name}" project. Be helpful, precise,
 
   private detectTestFramework(context: ProjectContext): string {
     const deps = context.dependencies || [];
-    
+
     if (deps.includes('vitest')) return 'Vitest';
     if (deps.includes('jest')) return 'Jest';
     if (deps.includes('mocha')) return 'Mocha';
     if (deps.includes('jasmine')) return 'Jasmine';
     if (deps.includes('ava')) return 'Ava';
     if (deps.includes('tape')) return 'Tape';
-    
+
     return 'Unknown (will be detected/configured)';
   }
 
   private getFrameworkCapabilities(framework: string): string[] {
-    const baseCapabilities = ['Configuration management', 'Best practices enforcement', 'Performance optimization'];
-    
+    const baseCapabilities = [
+      'Configuration management',
+      'Best practices enforcement',
+      'Performance optimization',
+    ];
+
     switch (framework) {
       case 'Next.js':
-        return [...baseCapabilities, 'SSR/SSG optimization', 'Route management', 'API routes', 'Image optimization'];
+        return [
+          ...baseCapabilities,
+          'SSR/SSG optimization',
+          'Route management',
+          'API routes',
+          'Image optimization',
+        ];
       case 'React':
-        return [...baseCapabilities, 'Component optimization', 'Hook usage', 'State management', 'Performance profiling'];
+        return [
+          ...baseCapabilities,
+          'Component optimization',
+          'Hook usage',
+          'State management',
+          'Performance profiling',
+        ];
       case 'Vue.js':
-        return [...baseCapabilities, 'Composition API', 'Reactive data', 'Component lifecycle', 'Vuex management'];
+        return [
+          ...baseCapabilities,
+          'Composition API',
+          'Reactive data',
+          'Component lifecycle',
+          'Vuex management',
+        ];
       case 'Angular':
-        return [...baseCapabilities, 'Dependency injection', 'Component architecture', 'RxJS patterns', 'CLI optimization'];
+        return [
+          ...baseCapabilities,
+          'Dependency injection',
+          'Component architecture',
+          'RxJS patterns',
+          'CLI optimization',
+        ];
       default:
         return baseCapabilities;
     }
@@ -353,9 +411,9 @@ Remember: You are working on the "${context.name}" project. Be helpful, precise,
   private isFrameworkRelated(dependency: string, framework: string): boolean {
     const frameworkPrefixes: Record<string, string[]> = {
       'Next.js': ['next', 'react'],
-      'React': ['react', '@react'],
+      React: ['react', '@react'],
       'Vue.js': ['vue', '@vue'],
-      'Angular': ['@angular', 'angular'],
+      Angular: ['@angular', 'angular'],
     };
 
     const prefixes = frameworkPrefixes[framework] || [];

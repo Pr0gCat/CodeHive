@@ -45,8 +45,11 @@ export async function GET(request: NextRequest) {
     // Get project context and agent capabilities
     const projectManager = new ProjectManagerAgent();
     const projectContext = await projectManager.analyzeProject(projectId);
-    
-    const capabilities = await AgentFactory.getAgentCapabilities(agentType, projectContext);
+
+    const capabilities = await AgentFactory.getAgentCapabilities(
+      agentType,
+      projectContext
+    );
 
     if (!capabilities) {
       return NextResponse.json(
@@ -95,7 +98,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: 'agentType, projectId, and command are required for validation',
+          error:
+            'agentType, projectId, and command are required for validation',
         },
         { status: 400 }
       );
@@ -106,7 +110,11 @@ export async function POST(request: NextRequest) {
     const projectContext = await projectManager.analyzeProject(projectId);
 
     // Validate command
-    const validation = await AgentFactory.validateCommand(agentType, command, projectContext);
+    const validation = await AgentFactory.validateCommand(
+      agentType,
+      command,
+      projectContext
+    );
 
     if (validation.valid) {
       return NextResponse.json({

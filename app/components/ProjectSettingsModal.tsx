@@ -113,7 +113,7 @@ export default function ProjectSettingsModal({
 
   const handleRemoveProject = async () => {
     if (!projectId) return;
-    
+
     setRemoving(true);
     try {
       const response = await fetch(`/api/projects/${projectId}`, {
@@ -157,8 +157,18 @@ export default function ProjectSettingsModal({
             onClick={onClose}
             className="text-primary-400 hover:text-accent-50"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -173,7 +183,7 @@ export default function ProjectSettingsModal({
             {/* Sidebar */}
             <div className="w-64 bg-primary-950 border-r border-primary-700 p-4">
               <nav className="space-y-2">
-                {tabs.map((tab) => (
+                {tabs.map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
@@ -194,8 +204,10 @@ export default function ProjectSettingsModal({
             <div className="flex-1 p-6 overflow-y-auto">
               {activeTab === 'general' && (
                 <div className="space-y-6">
-                  <h3 className="text-lg font-semibold text-accent-50 mb-4">一般設定</h3>
-                  
+                  <h3 className="text-lg font-semibold text-accent-50 mb-4">
+                    一般設定
+                  </h3>
+
                   {/* Basic Settings */}
                   <div className="grid grid-cols-2 gap-6">
                     <div>
@@ -205,14 +217,21 @@ export default function ProjectSettingsModal({
                       <input
                         type="number"
                         value={settings.maxTokensPerDay}
-                        onChange={(e) => updateSetting('maxTokensPerDay', parseInt(e.target.value) || 0)}
+                        onChange={e =>
+                          updateSetting(
+                            'maxTokensPerDay',
+                            parseInt(e.target.value) || 0
+                          )
+                        }
                         className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500"
                         min="1000"
                         max="1000000"
                       />
-                      <p className="text-xs text-primary-400 mt-1">建議值：10,000 - 100,000</p>
+                      <p className="text-xs text-primary-400 mt-1">
+                        建議值：10,000 - 100,000
+                      </p>
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-primary-300 mb-2">
                         每次請求 Token 限制
@@ -220,24 +239,38 @@ export default function ProjectSettingsModal({
                       <input
                         type="number"
                         value={settings.maxTokensPerRequest}
-                        onChange={(e) => updateSetting('maxTokensPerRequest', parseInt(e.target.value) || 0)}
+                        onChange={e =>
+                          updateSetting(
+                            'maxTokensPerRequest',
+                            parseInt(e.target.value) || 0
+                          )
+                        }
                         className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500"
                         min="100"
                         max="8000"
                       />
-                      <p className="text-xs text-primary-400 mt-1">建議值：1,000 - 4,000</p>
+                      <p className="text-xs text-primary-400 mt-1">
+                        建議值：1,000 - 4,000
+                      </p>
                     </div>
                   </div>
 
                   {/* Auto-execution Settings */}
                   <div>
-                    <h4 className="text-sm font-medium text-primary-300 mb-3">自動執行設定</h4>
+                    <h4 className="text-sm font-medium text-primary-300 mb-3">
+                      自動執行設定
+                    </h4>
                     <div className="space-y-3">
                       <label className="flex items-center text-sm text-primary-300">
                         <input
                           type="checkbox"
                           checked={settings.autoReviewOnImport}
-                          onChange={(e) => updateSetting('autoReviewOnImport', e.target.checked)}
+                          onChange={e =>
+                            updateSetting(
+                              'autoReviewOnImport',
+                              e.target.checked
+                            )
+                          }
                           className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500 mr-3"
                         />
                         匯入專案時自動檢視
@@ -246,7 +279,9 @@ export default function ProjectSettingsModal({
                         <input
                           type="checkbox"
                           checked={settings.autoExecuteTasks}
-                          onChange={(e) => updateSetting('autoExecuteTasks', e.target.checked)}
+                          onChange={e =>
+                            updateSetting('autoExecuteTasks', e.target.checked)
+                          }
                           className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500 mr-3"
                         />
                         自動執行任務
@@ -258,8 +293,10 @@ export default function ProjectSettingsModal({
 
               {activeTab === 'limits' && (
                 <div className="space-y-6">
-                  <h3 className="text-lg font-semibold text-accent-50 mb-4">限制設定</h3>
-                  
+                  <h3 className="text-lg font-semibold text-accent-50 mb-4">
+                    限制設定
+                  </h3>
+
                   <div className="grid grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-primary-300 mb-2">
@@ -268,13 +305,18 @@ export default function ProjectSettingsModal({
                       <input
                         type="number"
                         value={settings.maxRequestsPerMinute}
-                        onChange={(e) => updateSetting('maxRequestsPerMinute', parseInt(e.target.value) || 0)}
+                        onChange={e =>
+                          updateSetting(
+                            'maxRequestsPerMinute',
+                            parseInt(e.target.value) || 0
+                          )
+                        }
                         className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500"
                         min="1"
                         max="100"
                       />
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-primary-300 mb-2">
                         每小時請求限制
@@ -282,7 +324,12 @@ export default function ProjectSettingsModal({
                       <input
                         type="number"
                         value={settings.maxRequestsPerHour}
-                        onChange={(e) => updateSetting('maxRequestsPerHour', parseInt(e.target.value) || 0)}
+                        onChange={e =>
+                          updateSetting(
+                            'maxRequestsPerHour',
+                            parseInt(e.target.value) || 0
+                          )
+                        }
                         className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500"
                         min="10"
                         max="1000"
@@ -297,7 +344,12 @@ export default function ProjectSettingsModal({
                     <input
                       type="number"
                       value={settings.maxQueueSize}
-                      onChange={(e) => updateSetting('maxQueueSize', parseInt(e.target.value) || 0)}
+                      onChange={e =>
+                        updateSetting(
+                          'maxQueueSize',
+                          parseInt(e.target.value) || 0
+                        )
+                      }
                       className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500"
                       min="10"
                       max="200"
@@ -308,8 +360,10 @@ export default function ProjectSettingsModal({
 
               {activeTab === 'agents' && (
                 <div className="space-y-6">
-                  <h3 className="text-lg font-semibold text-accent-50 mb-4">代理設定</h3>
-                  
+                  <h3 className="text-lg font-semibold text-accent-50 mb-4">
+                    代理設定
+                  </h3>
+
                   <div className="grid grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-primary-300 mb-2">
@@ -318,13 +372,18 @@ export default function ProjectSettingsModal({
                       <input
                         type="number"
                         value={Math.round(settings.agentTimeout / 1000)}
-                        onChange={(e) => updateSetting('agentTimeout', (parseInt(e.target.value) || 0) * 1000)}
+                        onChange={e =>
+                          updateSetting(
+                            'agentTimeout',
+                            (parseInt(e.target.value) || 0) * 1000
+                          )
+                        }
                         className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500"
                         min="30"
                         max="1800"
                       />
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-primary-300 mb-2">
                         並行代理限制
@@ -332,7 +391,12 @@ export default function ProjectSettingsModal({
                       <input
                         type="number"
                         value={settings.parallelAgentLimit}
-                        onChange={(e) => updateSetting('parallelAgentLimit', parseInt(e.target.value) || 0)}
+                        onChange={e =>
+                          updateSetting(
+                            'parallelAgentLimit',
+                            parseInt(e.target.value) || 0
+                          )
+                        }
                         className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500"
                         min="1"
                         max="10"
@@ -348,20 +412,27 @@ export default function ProjectSettingsModal({
                       <input
                         type="number"
                         value={settings.maxRetries}
-                        onChange={(e) => updateSetting('maxRetries', parseInt(e.target.value) || 0)}
+                        onChange={e =>
+                          updateSetting(
+                            'maxRetries',
+                            parseInt(e.target.value) || 0
+                          )
+                        }
                         className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500"
                         min="0"
                         max="10"
                       />
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-primary-300 mb-2">
                         任務優先級
                       </label>
                       <select
                         value={settings.taskPriority}
-                        onChange={(e) => updateSetting('taskPriority', e.target.value)}
+                        onChange={e =>
+                          updateSetting('taskPriority', e.target.value)
+                        }
                         className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500"
                       >
                         <option value="LOW">低</option>
@@ -373,7 +444,9 @@ export default function ProjectSettingsModal({
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-medium text-primary-300 mb-3">程式碼分析設定</h4>
+                    <h4 className="text-sm font-medium text-primary-300 mb-3">
+                      程式碼分析設定
+                    </h4>
                     <div className="grid grid-cols-2 gap-6">
                       <div>
                         <label className="block text-sm font-medium text-primary-300 mb-2">
@@ -381,7 +454,9 @@ export default function ProjectSettingsModal({
                         </label>
                         <select
                           value={settings.codeAnalysisDepth}
-                          onChange={(e) => updateSetting('codeAnalysisDepth', e.target.value)}
+                          onChange={e =>
+                            updateSetting('codeAnalysisDepth', e.target.value)
+                          }
                           className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500"
                         >
                           <option value="LIGHT">輕量</option>
@@ -389,7 +464,7 @@ export default function ProjectSettingsModal({
                           <option value="DEEP">深度</option>
                         </select>
                       </div>
-                      
+
                       <div>
                         <label className="block text-sm font-medium text-primary-300 mb-2">
                           測試覆蓋率閾值（%）
@@ -397,7 +472,12 @@ export default function ProjectSettingsModal({
                         <input
                           type="number"
                           value={settings.testCoverageThreshold}
-                          onChange={(e) => updateSetting('testCoverageThreshold', parseFloat(e.target.value) || 0)}
+                          onChange={e =>
+                            updateSetting(
+                              'testCoverageThreshold',
+                              parseFloat(e.target.value) || 0
+                            )
+                          }
                           className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500"
                           min="0"
                           max="100"
@@ -408,13 +488,20 @@ export default function ProjectSettingsModal({
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-medium text-primary-300 mb-3">品質控制</h4>
+                    <h4 className="text-sm font-medium text-primary-300 mb-3">
+                      品質控制
+                    </h4>
                     <div className="space-y-3">
                       <label className="flex items-center text-sm text-primary-300">
                         <input
                           type="checkbox"
                           checked={settings.enforceTypeChecking}
-                          onChange={(e) => updateSetting('enforceTypeChecking', e.target.checked)}
+                          onChange={e =>
+                            updateSetting(
+                              'enforceTypeChecking',
+                              e.target.checked
+                            )
+                          }
                           className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500 mr-3"
                         />
                         強制型別檢查
@@ -423,7 +510,9 @@ export default function ProjectSettingsModal({
                         <input
                           type="checkbox"
                           checked={settings.autoFixLintErrors}
-                          onChange={(e) => updateSetting('autoFixLintErrors', e.target.checked)}
+                          onChange={e =>
+                            updateSetting('autoFixLintErrors', e.target.checked)
+                          }
                           className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500 mr-3"
                         />
                         自動修復 Lint 錯誤
@@ -435,16 +524,25 @@ export default function ProjectSettingsModal({
 
               {activeTab === 'notifications' && (
                 <div className="space-y-6">
-                  <h3 className="text-lg font-semibold text-accent-50 mb-4">通知設定</h3>
-                  
+                  <h3 className="text-lg font-semibold text-accent-50 mb-4">
+                    通知設定
+                  </h3>
+
                   <div>
-                    <h4 className="text-sm font-medium text-primary-300 mb-3">通知事件</h4>
+                    <h4 className="text-sm font-medium text-primary-300 mb-3">
+                      通知事件
+                    </h4>
                     <div className="space-y-3">
                       <label className="flex items-center text-sm text-primary-300">
                         <input
                           type="checkbox"
                           checked={settings.notifyOnTaskComplete}
-                          onChange={(e) => updateSetting('notifyOnTaskComplete', e.target.checked)}
+                          onChange={e =>
+                            updateSetting(
+                              'notifyOnTaskComplete',
+                              e.target.checked
+                            )
+                          }
                           className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500 mr-3"
                         />
                         任務完成時通知
@@ -453,7 +551,9 @@ export default function ProjectSettingsModal({
                         <input
                           type="checkbox"
                           checked={settings.notifyOnTaskFail}
-                          onChange={(e) => updateSetting('notifyOnTaskFail', e.target.checked)}
+                          onChange={e =>
+                            updateSetting('notifyOnTaskFail', e.target.checked)
+                          }
                           className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500 mr-3"
                         />
                         任務失敗時通知
@@ -462,7 +562,12 @@ export default function ProjectSettingsModal({
                         <input
                           type="checkbox"
                           checked={settings.emailNotifications}
-                          onChange={(e) => updateSetting('emailNotifications', e.target.checked)}
+                          onChange={e =>
+                            updateSetting(
+                              'emailNotifications',
+                              e.target.checked
+                            )
+                          }
                           className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500 mr-3"
                         />
                         啟用電子郵件通知
@@ -477,7 +582,9 @@ export default function ProjectSettingsModal({
                     <input
                       type="url"
                       value={settings.slackWebhookUrl || ''}
-                      onChange={(e) => updateSetting('slackWebhookUrl', e.target.value || null)}
+                      onChange={e =>
+                        updateSetting('slackWebhookUrl', e.target.value || null)
+                      }
                       className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500"
                       placeholder="https://hooks.slack.com/services/..."
                     />
@@ -490,7 +597,12 @@ export default function ProjectSettingsModal({
                     <input
                       type="url"
                       value={settings.discordWebhookUrl || ''}
-                      onChange={(e) => updateSetting('discordWebhookUrl', e.target.value || null)}
+                      onChange={e =>
+                        updateSetting(
+                          'discordWebhookUrl',
+                          e.target.value || null
+                        )
+                      }
                       className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500"
                       placeholder="https://discord.com/api/webhooks/..."
                     />
@@ -500,21 +612,33 @@ export default function ProjectSettingsModal({
 
               {activeTab === 'advanced' && (
                 <div className="space-y-6">
-                  <h3 className="text-lg font-semibold text-accent-50 mb-4">進階設定</h3>
-                  
+                  <h3 className="text-lg font-semibold text-accent-50 mb-4">
+                    進階設定
+                  </h3>
+
                   <div>
                     <label className="block text-sm font-medium text-primary-300 mb-2">
                       Claude 模型
                     </label>
                     <select
                       value={settings.claudeModel}
-                      onChange={(e) => updateSetting('claudeModel', e.target.value)}
+                      onChange={e =>
+                        updateSetting('claudeModel', e.target.value)
+                      }
                       className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500"
                     >
-                      <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
-                      <option value="claude-3-opus-20240229">Claude 3 Opus</option>
-                      <option value="claude-3-sonnet-20240229">Claude 3 Sonnet</option>
-                      <option value="claude-3-haiku-20240307">Claude 3 Haiku</option>
+                      <option value="claude-3-5-sonnet-20241022">
+                        Claude 3.5 Sonnet
+                      </option>
+                      <option value="claude-3-opus-20240229">
+                        Claude 3 Opus
+                      </option>
+                      <option value="claude-3-sonnet-20240229">
+                        Claude 3 Sonnet
+                      </option>
+                      <option value="claude-3-haiku-20240307">
+                        Claude 3 Haiku
+                      </option>
                     </select>
                   </div>
 
@@ -524,7 +648,12 @@ export default function ProjectSettingsModal({
                     </label>
                     <textarea
                       value={settings.customInstructions || ''}
-                      onChange={(e) => updateSetting('customInstructions', e.target.value || null)}
+                      onChange={e =>
+                        updateSetting(
+                          'customInstructions',
+                          e.target.value || null
+                        )
+                      }
                       className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500 resize-none"
                       rows={4}
                       placeholder="輸入自訂的 Claude 指令..."
@@ -538,11 +667,15 @@ export default function ProjectSettingsModal({
                     <input
                       type="text"
                       value={settings.excludePatterns || ''}
-                      onChange={(e) => updateSetting('excludePatterns', e.target.value || null)}
+                      onChange={e =>
+                        updateSetting('excludePatterns', e.target.value || null)
+                      }
                       className="w-full px-3 py-2 bg-primary-800 border border-primary-600 rounded text-accent-50 focus:outline-none focus:border-accent-500"
                       placeholder='["node_modules/**", "dist/**", "*.log"]'
                     />
-                    <p className="text-xs text-primary-400 mt-1">JSON 陣列格式的 glob 模式</p>
+                    <p className="text-xs text-primary-400 mt-1">
+                      JSON 陣列格式的 glob 模式
+                    </p>
                   </div>
 
                   <div>
@@ -550,7 +683,9 @@ export default function ProjectSettingsModal({
                       <input
                         type="checkbox"
                         checked={settings.includeDependencies}
-                        onChange={(e) => updateSetting('includeDependencies', e.target.checked)}
+                        onChange={e =>
+                          updateSetting('includeDependencies', e.target.checked)
+                        }
                         className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500 mr-3"
                       />
                       包含依賴項目分析
@@ -571,7 +706,9 @@ export default function ProjectSettingsModal({
           <div className="flex items-center justify-between">
             <div>
               <h4 className="text-sm font-medium text-red-300">移除專案</h4>
-              <p className="text-xs text-red-400">移除資料庫記錄，保留程式碼檔案</p>
+              <p className="text-xs text-red-400">
+                移除資料庫記錄，保留程式碼檔案
+              </p>
             </div>
             <button
               onClick={() => setShowRemoveConfirm(true)}
@@ -592,7 +729,7 @@ export default function ProjectSettingsModal({
           >
             重設為預設值
           </button>
-          
+
           <div className="flex space-x-3">
             <button
               onClick={onClose}

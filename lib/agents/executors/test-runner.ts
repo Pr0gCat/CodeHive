@@ -93,7 +93,7 @@ export class TestRunnerAgent extends BaseAgent {
 
   validateCommand(command: string): { valid: boolean; error?: string } {
     const normalizedCommand = command.toLowerCase().trim();
-    
+
     // Check for supported command patterns
     const supportedPatterns = [
       /^run.*test/,
@@ -109,8 +109,10 @@ export class TestRunnerAgent extends BaseAgent {
       /^coverage/,
     ];
 
-    const isSupported = supportedPatterns.some(pattern => pattern.test(normalizedCommand));
-    
+    const isSupported = supportedPatterns.some(pattern =>
+      pattern.test(normalizedCommand)
+    );
+
     if (!isSupported) {
       return {
         valid: false,
@@ -125,19 +127,34 @@ export class TestRunnerAgent extends BaseAgent {
     const projectInfo = this.getProjectInfo();
     const commonInstructions = this.getCommonInstructions();
     const testingInfo = this.getTestingEnvironmentInfo();
-    
+
     let specificInstructions = '';
     const normalizedCommand = command.toLowerCase();
 
-    if (normalizedCommand.includes('run') || normalizedCommand.includes('execute')) {
+    if (
+      normalizedCommand.includes('run') ||
+      normalizedCommand.includes('execute')
+    ) {
       specificInstructions = this.getRunTestsInstructions(command);
-    } else if (normalizedCommand.includes('create') || normalizedCommand.includes('generate')) {
+    } else if (
+      normalizedCommand.includes('create') ||
+      normalizedCommand.includes('generate')
+    ) {
       specificInstructions = this.getCreateTestsInstructions(command);
-    } else if (normalizedCommand.includes('fix') || normalizedCommand.includes('debug')) {
+    } else if (
+      normalizedCommand.includes('fix') ||
+      normalizedCommand.includes('debug')
+    ) {
       specificInstructions = this.getFixTestsInstructions(command);
-    } else if (normalizedCommand.includes('setup') || normalizedCommand.includes('configure')) {
+    } else if (
+      normalizedCommand.includes('setup') ||
+      normalizedCommand.includes('configure')
+    ) {
       specificInstructions = this.getSetupTestingInstructions(command);
-    } else if (normalizedCommand.includes('performance') || normalizedCommand.includes('benchmark')) {
+    } else if (
+      normalizedCommand.includes('performance') ||
+      normalizedCommand.includes('benchmark')
+    ) {
       specificInstructions = this.getPerformanceTestInstructions(command);
     } else {
       specificInstructions = this.getGeneralTestInstructions(command);
@@ -183,35 +200,40 @@ TESTING ENVIRONMENT:
 
   private detectTestFramework(): string {
     const deps = this.context.dependencies || [];
-    
+
     if (deps.includes('vitest')) return 'Vitest';
     if (deps.includes('jest')) return 'Jest';
-    if (deps.includes('@testing-library/react')) return 'Jest + React Testing Library';
+    if (deps.includes('@testing-library/react'))
+      return 'Jest + React Testing Library';
     if (deps.includes('mocha')) return 'Mocha';
     if (deps.includes('jasmine')) return 'Jasmine';
     if (deps.includes('ava')) return 'Ava';
     if (deps.includes('cypress')) return 'Cypress (E2E)';
     if (deps.includes('playwright')) return 'Playwright (E2E)';
-    
+
     // Infer from framework
-    if (this.context.framework === 'Next.js') return 'Jest + React Testing Library';
-    if (this.context.framework === 'React') return 'Jest + React Testing Library';
-    if (this.context.framework === 'Vue.js') return 'Vitest + Vue Testing Utils';
-    
+    if (this.context.framework === 'Next.js')
+      return 'Jest + React Testing Library';
+    if (this.context.framework === 'React')
+      return 'Jest + React Testing Library';
+    if (this.context.framework === 'Vue.js')
+      return 'Vitest + Vue Testing Utils';
+
     return 'Unknown (will be detected/configured)';
   }
 
   private getTestDirectory(): string {
     // Common test directory patterns
     const testDirs = ['__tests__', 'tests', 'test', 'src/__tests__', 'spec'];
-    
+
     for (const dir of testDirs) {
-      const testFiles = this.context.structure?.testFiles.filter(f => 
-        f.includes(`/${dir}/`) || f.includes(`\\${dir}\\`)
-      ) || [];
+      const testFiles =
+        this.context.structure?.testFiles.filter(
+          f => f.includes(`/${dir}/`) || f.includes(`\\${dir}\\`)
+        ) || [];
       if (testFiles.length > 0) return dir;
     }
-    
+
     return '__tests__'; // Default
   }
 
@@ -394,29 +416,41 @@ Focus on test quality, coverage, and maintainability.
 
   private getTestCommand(framework: string): string {
     switch (framework) {
-      case 'Vitest': return 'vitest run';
-      case 'Jest': return 'jest';
-      case 'Jest + React Testing Library': return 'npm test';
-      case 'Mocha': return 'mocha';
-      case 'Ava': return 'ava';
-      case 'Cypress (E2E)': return 'cypress run';
-      case 'Playwright (E2E)': return 'playwright test';
-      default: return 'npm test';
+      case 'Vitest':
+        return 'vitest run';
+      case 'Jest':
+        return 'jest';
+      case 'Jest + React Testing Library':
+        return 'npm test';
+      case 'Mocha':
+        return 'mocha';
+      case 'Ava':
+        return 'ava';
+      case 'Cypress (E2E)':
+        return 'cypress run';
+      case 'Playwright (E2E)':
+        return 'playwright test';
+      default:
+        return 'npm test';
     }
   }
 
   private getCoverageCommand(framework: string): string {
     switch (framework) {
-      case 'Vitest': return 'vitest run --coverage';
-      case 'Jest': return 'jest --coverage';
-      case 'Jest + React Testing Library': return 'npm test -- --coverage';
-      default: return 'npm test -- --coverage';
+      case 'Vitest':
+        return 'vitest run --coverage';
+      case 'Jest':
+        return 'jest --coverage';
+      case 'Jest + React Testing Library':
+        return 'npm test -- --coverage';
+      default:
+        return 'npm test -- --coverage';
     }
   }
 
   private getTestPatterns(): string {
     const framework = this.detectTestFramework();
-    
+
     if (framework.includes('React')) {
       return `
 REACT COMPONENT TEST PATTERNS:
@@ -427,7 +461,7 @@ REACT COMPONENT TEST PATTERNS:
 - Hook testing: Do custom hooks work as expected?
       `;
     }
-    
+
     if (framework.includes('Vue')) {
       return `
 VUE COMPONENT TEST PATTERNS:
@@ -438,7 +472,7 @@ VUE COMPONENT TEST PATTERNS:
 - Method testing: Do component methods work correctly?
       `;
     }
-    
+
     return `
 GENERAL TEST PATTERNS:
 - Unit tests: Test individual functions and classes
@@ -501,7 +535,10 @@ GENERAL TESTING SETUP:
     }
   }
 
-  protected async generateArtifacts(command: string, result: AgentResult): Promise<Record<string, unknown>> {
+  protected async generateArtifacts(
+    command: string,
+    result: AgentResult
+  ): Promise<Record<string, unknown>> {
     return {
       testingAction: this.determineTestingAction(command),
       testFramework: this.detectTestFramework(),
@@ -515,14 +552,34 @@ GENERAL TESTING SETUP:
 
   private determineTestingAction(command: string): string {
     const normalizedCommand = command.toLowerCase();
-    
-    if (normalizedCommand.includes('run') || normalizedCommand.includes('execute')) return 'test-execution';
-    if (normalizedCommand.includes('create') || normalizedCommand.includes('generate')) return 'test-creation';
-    if (normalizedCommand.includes('fix') || normalizedCommand.includes('debug')) return 'test-fixing';
-    if (normalizedCommand.includes('setup') || normalizedCommand.includes('configure')) return 'test-setup';
-    if (normalizedCommand.includes('performance') || normalizedCommand.includes('benchmark')) return 'performance-testing';
+
+    if (
+      normalizedCommand.includes('run') ||
+      normalizedCommand.includes('execute')
+    )
+      return 'test-execution';
+    if (
+      normalizedCommand.includes('create') ||
+      normalizedCommand.includes('generate')
+    )
+      return 'test-creation';
+    if (
+      normalizedCommand.includes('fix') ||
+      normalizedCommand.includes('debug')
+    )
+      return 'test-fixing';
+    if (
+      normalizedCommand.includes('setup') ||
+      normalizedCommand.includes('configure')
+    )
+      return 'test-setup';
+    if (
+      normalizedCommand.includes('performance') ||
+      normalizedCommand.includes('benchmark')
+    )
+      return 'performance-testing';
     if (normalizedCommand.includes('coverage')) return 'coverage-analysis';
-    
+
     return 'general-testing';
   }
 }

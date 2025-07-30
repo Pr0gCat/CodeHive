@@ -1,5 +1,14 @@
-import { prisma, Cycle, Test, Query, Artifact } from '@/lib/db';
-import { CyclePhase, CycleStatus, TestStatus, QueryUrgency } from '@/lib/db';
+import {
+  Artifact,
+  Cycle,
+  CyclePhase,
+  CycleStatus,
+  prisma,
+  Query,
+  QueryUrgency,
+  Test,
+  TestStatus,
+} from '@/lib/db';
 import { BranchManager } from '@/lib/git/branch-manager';
 import { WorkspaceManager } from '@/lib/workspace/workspace-manager';
 
@@ -58,7 +67,9 @@ export class TDDCycleEngine {
         phase: CyclePhase.RED,
         status: CycleStatus.ACTIVE,
         acceptanceCriteria: JSON.stringify(featureRequest.acceptanceCriteria),
-        constraints: featureRequest.constraints ? JSON.stringify(featureRequest.constraints) : null,
+        constraints: featureRequest.constraints
+          ? JSON.stringify(featureRequest.constraints)
+          : null,
       },
     });
 
@@ -90,9 +101,9 @@ export class TDDCycleEngine {
         tests: true,
         artifacts: true,
         queries: {
-          where: { status: 'PENDING' }
-        }
-      }
+          where: { status: 'PENDING' },
+        },
+      },
     });
 
     if (!cycle) {
@@ -100,7 +111,8 @@ export class TDDCycleEngine {
     }
 
     // Check for blocking queries first
-    const blockingQueries = cycle.queries?.filter(q => q.urgency === QueryUrgency.BLOCKING) || [];
+    const blockingQueries =
+      cycle.queries?.filter(q => q.urgency === QueryUrgency.BLOCKING) || [];
     if (blockingQueries.length > 0) {
       return {
         cycle,
@@ -135,7 +147,11 @@ export class TDDCycleEngine {
     await this.branchManager.createCheckpointBranch(cycle.id, 'red');
 
     // 創建工作空間快照
-    await this.workspaceManager.createSnapshot(cycle.id, `feature/cycle-${cycle.id}`, 'RED');
+    await this.workspaceManager.createSnapshot(
+      cycle.id,
+      `feature/cycle-${cycle.id}`,
+      'RED'
+    );
 
     const criteria = JSON.parse(cycle.acceptanceCriteria) as string[];
     const tests: Test[] = [];
@@ -159,16 +175,16 @@ export class TDDCycleEngine {
     // Update cycle to GREEN phase
     const updatedCycle = await prisma.cycle.update({
       where: { id: cycle.id },
-      data: { 
+      data: {
         phase: CyclePhase.GREEN,
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
 
     return {
       cycle: updatedCycle,
       tests,
-      artifacts: cycle.artifacts,
+      artifacts: [],
       status: 'COMPLETED',
       nextPhase: CyclePhase.GREEN,
     };
@@ -184,9 +200,18 @@ export class TDDCycleEngine {
     await this.branchManager.createCheckpointBranch(cycle.id, 'green');
 
     // 創建工作空間快照
-    await this.workspaceManager.createSnapshot(cycle.id, `feature/cycle-${cycle.id}`, 'GREEN');
+    await this.workspaceManager.createSnapshot(
+      cycle.id,
+      `feature/cycle-${cycle.id}`,
+      'GREEN'
+    );
 
-    const failingTests = cycle.tests.filter(t => t.status === TestStatus.FAILING);
+    // Fetch tests for this cycle
+    const tests = await prisma.test.findMany({
+      where: { cycleId: cycle.id },
+    });
+
+    const failingTests = tests.filter(t => t.status === TestStatus.FAILING);
     const artifacts: Artifact[] = [];
 
     // Generate minimal implementation for each failing test
@@ -196,7 +221,7 @@ export class TDDCycleEngine {
     }
 
     // Update test statuses (simulated - in real implementation, would run tests)
-    await this.updateTestStatuses(cycle.tests, TestStatus.PASSING);
+    await this.updateTestStatuses(tests, TestStatus.PASSING);
 
     // 提交實現代碼
     const commitResult = await this.branchManager.commitChanges(
@@ -211,16 +236,16 @@ export class TDDCycleEngine {
     // Update cycle to REFACTOR phase
     const updatedCycle = await prisma.cycle.update({
       where: { id: cycle.id },
-      data: { 
+      data: {
         phase: CyclePhase.REFACTOR,
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
 
     return {
       cycle: updatedCycle,
-      tests: cycle.tests,
-      artifacts: [...cycle.artifacts, ...artifacts],
+      tests: tests,
+      artifacts: artifacts,
       status: 'COMPLETED',
       nextPhase: CyclePhase.REFACTOR,
     };
@@ -230,18 +255,29 @@ export class TDDCycleEngine {
    * REFACTOR Phase: Improve code quality while keeping tests green
    */
   private async executeRefactorPhase(cycle: Cycle): Promise<CycleResult> {
-    console.log(`🔵 REFACTOR Phase: Improving code quality for "${cycle.title}"`);
+    console.log(
+      `🔵 REFACTOR Phase: Improving code quality for "${cycle.title}"`
+    );
 
     // 創建檢查點分支
     await this.branchManager.createCheckpointBranch(cycle.id, 'refactor');
 
     // 創建工作空間快照
-    await this.workspaceManager.createSnapshot(cycle.id, `feature/cycle-${cycle.id}`, 'REFACTOR');
+    await this.workspaceManager.createSnapshot(
+      cycle.id,
+      `feature/cycle-${cycle.id}`,
+      'REFACTOR'
+    );
+
+    // Fetch artifacts for this cycle
+    const artifacts = await prisma.artifact.findMany({
+      where: { cycleId: cycle.id },
+    });
 
     const refactoredArtifacts: Artifact[] = [];
 
     // Refactor existing code artifacts
-    const codeArtifacts = cycle.artifacts.filter(a => a.type === 'CODE');
+    const codeArtifacts = artifacts.filter(a => a.type === 'CODE');
     for (const artifact of codeArtifacts) {
       const refactored = await this.refactorCode(cycle.id, artifact);
       refactoredArtifacts.push(refactored);
@@ -260,16 +296,16 @@ export class TDDCycleEngine {
     // Update cycle to REVIEW phase
     const updatedCycle = await prisma.cycle.update({
       where: { id: cycle.id },
-      data: { 
+      data: {
         phase: CyclePhase.REVIEW,
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
 
     return {
       cycle: updatedCycle,
-      tests: cycle.tests,
-      artifacts: [...cycle.artifacts, ...refactoredArtifacts],
+      tests: [],
+      artifacts: [...artifacts, ...refactoredArtifacts],
       status: 'COMPLETED',
       nextPhase: CyclePhase.REVIEW,
     };
@@ -285,28 +321,39 @@ export class TDDCycleEngine {
     await this.branchManager.createCheckpointBranch(cycle.id, 'review');
 
     // 創建工作空間快照
-    await this.workspaceManager.createSnapshot(cycle.id, `feature/cycle-${cycle.id}`, 'REVIEW');
+    await this.workspaceManager.createSnapshot(
+      cycle.id,
+      `feature/cycle-${cycle.id}`,
+      'REVIEW'
+    );
+
+    // Fetch tests for this cycle
+    const tests = await prisma.test.findMany({
+      where: { cycleId: cycle.id },
+    });
 
     // Check if all tests are passing
-    const allTestsPassing = cycle.tests.every(t => t.status === TestStatus.PASSING);
-    
+    const allTestsPassing = tests.every(t => t.status === TestStatus.PASSING);
+
     if (!allTestsPassing) {
       // 如果測試失敗，回滾到 GREEN 階段的檢查點
-      await this.branchManager.rollbackToCheckpoint('checkpoint/green-phase-start');
-      
+      await this.branchManager.rollbackToCheckpoint(
+        'checkpoint/green-phase-start'
+      );
+
       // Go back to GREEN phase if tests are failing
       const updatedCycle = await prisma.cycle.update({
         where: { id: cycle.id },
-        data: { 
+        data: {
           phase: CyclePhase.GREEN,
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       });
 
       return {
         cycle: updatedCycle,
-        tests: cycle.tests,
-        artifacts: cycle.artifacts,
+        tests: tests,
+        artifacts: [],
         status: 'FAILED',
         nextPhase: CyclePhase.GREEN,
       };
@@ -324,7 +371,7 @@ export class TDDCycleEngine {
 
     // 創建合併請求
     const mergeResult = await this.branchManager.createMergeRequest(cycle.id);
-    
+
     if (!mergeResult.success) {
       console.error(`Failed to create merge request: ${mergeResult.error}`);
     } else {
@@ -334,17 +381,17 @@ export class TDDCycleEngine {
     // Mark cycle as completed
     const completedCycle = await prisma.cycle.update({
       where: { id: cycle.id },
-      data: { 
+      data: {
         status: CycleStatus.COMPLETED,
         completedAt: new Date(),
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
 
     return {
       cycle: completedCycle,
-      tests: cycle.tests,
-      artifacts: cycle.artifacts,
+      tests: tests,
+      artifacts: [],
       status: 'COMPLETED',
     };
   }
@@ -352,7 +399,10 @@ export class TDDCycleEngine {
   /**
    * Generate a test from an acceptance criterion using AI
    */
-  private async generateTest(cycleId: string, criterion: string): Promise<Test> {
+  private async generateTest(
+    cycleId: string,
+    criterion: string
+  ): Promise<Test> {
     try {
       // Get project context
       const cycle = await prisma.cycle.findUnique({
@@ -369,9 +419,9 @@ export class TDDCycleEngine {
         name: cycle.project.name,
         localPath: cycle.project.localPath,
         techStack: {
-          framework: cycle.project.framework,
-          language: cycle.project.language,
-          testFramework: cycle.project.testFramework,
+          framework: cycle.project.framework || undefined,
+          language: cycle.project.language || undefined,
+          testFramework: cycle.project.testFramework || undefined,
         },
       };
 
@@ -392,8 +442,11 @@ export class TDDCycleEngine {
 
       return result.test;
     } catch (error) {
-      console.error('AI test generation failed, falling back to template:', error);
-      
+      console.error(
+        'AI test generation failed, falling back to template:',
+        error
+      );
+
       // Fallback to template-based generation
       const testName = `should ${criterion.toLowerCase()}`;
       const testCode = this.generateTestCode(criterion);
@@ -406,7 +459,7 @@ export class TDDCycleEngine {
           code: testCode,
           status: TestStatus.FAILING,
           filePath: this.generateTestFilePath(testName),
-        }
+        },
       });
     }
   }
@@ -414,7 +467,10 @@ export class TDDCycleEngine {
   /**
    * Generate implementation code for a test using AI
    */
-  private async generateImplementation(cycleId: string, test: Test): Promise<Artifact> {
+  private async generateImplementation(
+    cycleId: string,
+    test: Test
+  ): Promise<Artifact> {
     try {
       // Get project context
       const cycle = await prisma.cycle.findUnique({
@@ -431,9 +487,9 @@ export class TDDCycleEngine {
         name: cycle.project.name,
         localPath: cycle.project.localPath,
         techStack: {
-          framework: cycle.project.framework,
-          language: cycle.project.language,
-          testFramework: cycle.project.testFramework,
+          framework: cycle.project.framework || undefined,
+          language: cycle.project.language || undefined,
+          testFramework: cycle.project.testFramework || undefined,
         },
       };
 
@@ -454,8 +510,11 @@ export class TDDCycleEngine {
 
       return result.artifact;
     } catch (error) {
-      console.error('AI implementation generation failed, falling back to template:', error);
-      
+      console.error(
+        'AI implementation generation failed, falling back to template:',
+        error
+      );
+
       // Fallback to template-based generation
       const implementationCode = this.generateImplementationCode(test);
 
@@ -468,7 +527,7 @@ export class TDDCycleEngine {
           content: implementationCode,
           purpose: `Implementation for test: ${test.name}`,
           phase: CyclePhase.GREEN,
-        }
+        },
       });
     }
   }
@@ -476,7 +535,10 @@ export class TDDCycleEngine {
   /**
    * Refactor existing code using AI
    */
-  private async refactorCode(cycleId: string, artifact: Artifact): Promise<Artifact> {
+  private async refactorCode(
+    cycleId: string,
+    artifact: Artifact
+  ): Promise<Artifact> {
     try {
       // Get project context
       const cycle = await prisma.cycle.findUnique({
@@ -493,9 +555,9 @@ export class TDDCycleEngine {
         name: cycle.project.name,
         localPath: cycle.project.localPath,
         techStack: {
-          framework: cycle.project.framework,
-          language: cycle.project.language,
-          testFramework: cycle.project.testFramework,
+          framework: cycle.project.framework || undefined,
+          language: cycle.project.language || undefined,
+          testFramework: cycle.project.testFramework || undefined,
         },
       };
 
@@ -517,7 +579,7 @@ export class TDDCycleEngine {
       return result.artifact;
     } catch (error) {
       console.error('AI refactoring failed, falling back to template:', error);
-      
+
       // Fallback to simple refactoring
       const refactoredCode = this.improveCodeQuality(artifact.content);
 
@@ -530,7 +592,7 @@ export class TDDCycleEngine {
           content: refactoredCode,
           purpose: `Refactored version of: ${artifact.name}`,
           phase: CyclePhase.REFACTOR,
-        }
+        },
       });
     }
   }
@@ -538,14 +600,17 @@ export class TDDCycleEngine {
   /**
    * Update test statuses (helper method)
    */
-  private async updateTestStatuses(tests: Test[], status: string): Promise<void> {
+  private async updateTestStatuses(
+    tests: Test[],
+    status: string
+  ): Promise<void> {
     for (const test of tests) {
       await prisma.test.update({
         where: { id: test.id },
-        data: { 
+        data: {
           status,
-          lastRun: new Date()
-        }
+          lastRun: new Date(),
+        },
       });
     }
   }

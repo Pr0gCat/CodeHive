@@ -1,4 +1,4 @@
-import { jest } from '@jest/globals'
+import { jest } from '@jest/globals';
 
 // Mock data generators
 export const mockProject = {
@@ -15,7 +15,7 @@ export const mockProject = {
   buildTool: 'webpack',
   createdAt: new Date('2023-01-01'),
   updatedAt: new Date('2023-01-01'),
-}
+};
 
 export const mockCycle = {
   id: 'test-cycle-id',
@@ -33,7 +33,7 @@ export const mockCycle = {
   tests: [],
   artifacts: [],
   queries: [],
-}
+};
 
 export const mockTest = {
   id: 'test-test-id',
@@ -48,7 +48,7 @@ export const mockTest = {
   errorOutput: null,
   createdAt: new Date('2023-01-01'),
   updatedAt: new Date('2023-01-01'),
-}
+};
 
 export const mockArtifact = {
   id: 'test-artifact-id',
@@ -61,7 +61,7 @@ export const mockArtifact = {
   phase: 'GREEN',
   createdAt: new Date('2023-01-01'),
   updatedAt: new Date('2023-01-01'),
-}
+};
 
 export const mockQuery = {
   id: 'test-query-id',
@@ -79,23 +79,25 @@ export const mockQuery = {
   createdAt: new Date('2023-01-01'),
   updatedAt: new Date('2023-01-01'),
   comments: [],
-}
+};
 
 // Mock exec function
 export const mockExec = (stdout: string = '', stderr: string = '') => {
-  const { exec } = require('child_process')
-  exec.mockImplementation((command: string, options: any, callback?: Function) => {
-    const result = { stdout, stderr }
-    if (callback) {
-      callback(null, result)
+  const { exec } = require('child_process');
+  exec.mockImplementation(
+    (command: string, options: any, callback?: Function) => {
+      const result = { stdout, stderr };
+      if (callback) {
+        callback(null, result);
+      }
+      return Promise.resolve(result);
     }
-    return Promise.resolve(result)
-  })
-}
+  );
+};
 
 // Mock fs functions
 export const mockFs = () => {
-  const fs = require('fs')
+  const fs = require('fs');
   return {
     mkdir: fs.promises.mkdir.mockResolvedValue(undefined),
     writeFile: fs.promises.writeFile.mockResolvedValue(undefined),
@@ -105,12 +107,12 @@ export const mockFs = () => {
     access: fs.promises.access.mockResolvedValue(undefined),
     copyFile: fs.promises.copyFile.mockResolvedValue(undefined),
     rm: fs.promises.rm.mockResolvedValue(undefined),
-  }
-}
+  };
+};
 
 // Mock prisma methods
 export const mockPrisma = () => {
-  const { prisma } = require('@/lib/db')
+  const { prisma } = require('@/lib/db');
   return {
     project: {
       findUnique: prisma.project.findUnique.mockResolvedValue(mockProject),
@@ -158,20 +160,20 @@ export const mockPrisma = () => {
         createdAt: new Date('2023-01-01'),
       }),
     },
-  }
-}
+  };
+};
 
 // Clear all mocks
 export const clearAllMocks = () => {
-  jest.clearAllMocks()
-  const { prisma } = require('@/lib/db')
+  jest.clearAllMocks();
+  const { prisma } = require('@/lib/db');
   Object.values(prisma).forEach((model: any) => {
     if (typeof model === 'object') {
       Object.values(model).forEach((method: any) => {
         if (jest.isMockFunction(method)) {
-          method.mockClear()
+          method.mockClear();
         }
-      })
+      });
     }
-  })
-}
+  });
+};

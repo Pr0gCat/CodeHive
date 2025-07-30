@@ -5,7 +5,9 @@ import { z } from 'zod';
 const createCardSchema = z.object({
   title: z.string().min(1, 'Card title is required'),
   description: z.string().optional(),
-  status: z.enum(['BACKLOG', 'TODO', 'IN_PROGRESS', 'REVIEW', 'DONE']).default('BACKLOG'),
+  status: z
+    .enum(['BACKLOG', 'TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'])
+    .default('BACKLOG'),
   assignedAgent: z.string().optional(),
   position: z.number().optional(), // Frontend sends this but we calculate our own
 });

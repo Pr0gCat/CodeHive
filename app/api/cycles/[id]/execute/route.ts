@@ -40,7 +40,10 @@ export async function PUT(
     }
 
     // Initialize TDD engine
-    const tddEngine = new TDDCycleEngine(cycle.projectId, cycle.project.localPath);
+    const tddEngine = new TDDCycleEngine(
+      cycle.projectId,
+      cycle.project.localPath
+    );
 
     // Execute current phase
     const result = await tddEngine.executePhase(cycleId);
@@ -51,7 +54,8 @@ export async function PUT(
         success: true,
         data: {
           ...result,
-          message: 'Cycle is blocked by pending queries. Please resolve them to continue.',
+          message:
+            'Cycle is blocked by pending queries. Please resolve them to continue.',
         },
       });
     }
@@ -74,7 +78,10 @@ export async function PUT(
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to execute cycle phase',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to execute cycle phase',
       },
       { status: 500 }
     );

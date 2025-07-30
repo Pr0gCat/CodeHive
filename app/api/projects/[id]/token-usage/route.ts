@@ -10,11 +10,11 @@ export async function GET(
 
     // Get usage summary
     const summary = await tokenTracker.getProjectUsageSummary(projectId);
-    
+
     // Get current limits
     const dailyLimit = tokenTracker.getDailyLimit();
     const rateLimit = tokenTracker.getRateLimit();
-    
+
     // Calculate remaining tokens
     const remainingDaily = tokenTracker.getRemainingDailyTokens(summary.daily);
 

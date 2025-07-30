@@ -35,7 +35,9 @@ export default function AIAssistant({ projectId, context }: AIAssistantProps) {
   const [loading, setLoading] = useState(false);
   const [input, setInput] = useState('');
   const [suggestions, setSuggestions] = useState<SuggestionResult | null>(null);
-  const [activeFeature, setActiveFeature] = useState<'breakdown' | 'dependency' | 'estimation'>('breakdown');
+  const [activeFeature, setActiveFeature] = useState<
+    'breakdown' | 'dependency' | 'estimation'
+  >('breakdown');
 
   const handleEpicBreakdown = async () => {
     if (!input.trim()) {
@@ -62,8 +64,8 @@ export default function AIAssistant({ projectId, context }: AIAssistantProps) {
               '用戶可以輸入有效的郵箱地址',
               '密碼必須符合安全要求',
               '註冊成功後自動登入',
-              '發送歡迎郵件'
-            ]
+              '發送歡迎郵件',
+            ],
           },
           {
             id: 'story-2',
@@ -76,8 +78,8 @@ export default function AIAssistant({ projectId, context }: AIAssistantProps) {
               '用戶可以使用郵箱和密碼登入',
               '記住登入狀態選項',
               '錯誤處理和提示',
-              '登入後跳轉到儀表板'
-            ]
+              '登入後跳轉到儀表板',
+            ],
           },
           {
             id: 'story-3',
@@ -90,8 +92,8 @@ export default function AIAssistant({ projectId, context }: AIAssistantProps) {
               '顯示用戶基本資訊',
               '允許編輯個人資料',
               '頭像上傳功能',
-              '密碼修改功能'
-            ]
+              '密碼修改功能',
+            ],
           },
           {
             id: 'story-4',
@@ -103,24 +105,24 @@ export default function AIAssistant({ projectId, context }: AIAssistantProps) {
               '通過郵箱重設密碼',
               '安全的重設連結',
               '連結過期機制',
-              '成功重設後通知'
-            ]
-          }
+              '成功重設後通知',
+            ],
+          },
         ],
         analysis: {
           complexity: 'MEDIUM',
           riskFactors: [
             '用戶認證安全性需要仔細設計',
             '郵件發送功能需要第三方服務',
-            '密碼安全策略需要明確定義'
+            '密碼安全策略需要明確定義',
           ],
           recommendations: [
             '優先實現核心的註冊登入功能',
             '考慮使用成熟的認證庫',
             '設置適當的錯誤處理和日誌記錄',
-            '實施安全最佳實踐（HTTPS、密碼雜湊等）'
-          ]
-        }
+            '實施安全最佳實踐（HTTPS、密碼雜湊等）',
+          ],
+        },
       };
 
       setSuggestions(mockResult);
@@ -145,30 +147,30 @@ export default function AIAssistant({ projectId, context }: AIAssistantProps) {
             title: '循環依賴檢測',
             description: '發現 Epic A 和 Epic B 之間存在循環依賴',
             priority: 'HIGH',
-            estimatedEffort: 0
+            estimatedEffort: 0,
           },
           {
             id: 'dep-2',
             title: '關鍵路徑分析',
             description: '用戶認證系統是關鍵路徑上的瓶頸',
             priority: 'HIGH',
-            estimatedEffort: 0
-          }
+            estimatedEffort: 0,
+          },
         ],
         analysis: {
           complexity: 'HIGH',
           riskFactors: [
             '存在 3 個循環依賴需要解決',
             '關鍵路徑上有 2 個高風險任務',
-            '部分依賴關係缺乏明確定義'
+            '部分依賴關係缺乏明確定義',
           ],
           recommendations: [
             '立即解決循環依賴問題',
             '重新安排關鍵路徑上的任務優先級',
             '增加依賴關係的文檔說明',
-            '考慮將大型 Epic 進一步分解'
-          ]
-        }
+            '考慮將大型 Epic 進一步分解',
+          ],
+        },
       };
 
       setSuggestions(mockResult);
@@ -217,8 +219,18 @@ export default function AIAssistant({ projectId, context }: AIAssistantProps) {
         className="fixed bottom-6 right-6 bg-accent-600 hover:bg-accent-700 text-accent-50 p-4 rounded-full shadow-lg transition-all duration-200 z-50"
         title="AI 助手"
       >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+        <svg
+          className="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+          />
         </svg>
       </button>
     );
@@ -230,8 +242,18 @@ export default function AIAssistant({ projectId, context }: AIAssistantProps) {
       <div className="bg-primary-700 p-4 border-b border-primary-600">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-accent-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            <svg
+              className="w-5 h-5 text-accent-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+              />
             </svg>
             <h3 className="text-accent-50 font-medium">AI 智能助手</h3>
           </div>
@@ -239,8 +261,18 @@ export default function AIAssistant({ projectId, context }: AIAssistantProps) {
             onClick={() => setIsOpen(false)}
             className="text-primary-400 hover:text-accent-50"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -290,7 +322,7 @@ export default function AIAssistant({ projectId, context }: AIAssistantProps) {
               </label>
               <textarea
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={e => setInput(e.target.value)}
                 className="w-full bg-primary-700 border border-primary-600 rounded-lg px-3 py-2 text-accent-50 placeholder-primary-400 focus:outline-none focus:border-accent-500"
                 placeholder="例如：實現一個完整的用戶管理系統，包括註冊、登入、個人資料管理等功能..."
                 rows={4}
@@ -308,8 +340,18 @@ export default function AIAssistant({ projectId, context }: AIAssistantProps) {
                 </>
               ) : (
                 <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 10V3L4 14h7v7l9-11h-7z"
+                    />
                   </svg>
                   開始分解
                 </>
@@ -335,8 +377,18 @@ export default function AIAssistant({ projectId, context }: AIAssistantProps) {
                 </>
               ) : (
                 <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+                    />
                   </svg>
                   開始分析
                 </>
@@ -348,7 +400,9 @@ export default function AIAssistant({ projectId, context }: AIAssistantProps) {
         {activeFeature === 'estimation' && (
           <div className="text-center py-8">
             <div className="text-primary-400 mb-2">工作量估算</div>
-            <p className="text-sm text-primary-500">此功能將根據歷史數據和複雜度分析提供準確的工作量估算</p>
+            <p className="text-sm text-primary-500">
+              此功能將根據歷史數據和複雜度分析提供準確的工作量估算
+            </p>
           </div>
         )}
 
@@ -357,16 +411,20 @@ export default function AIAssistant({ projectId, context }: AIAssistantProps) {
           <div className="mt-6 space-y-4">
             <div className="border-t border-primary-600 pt-4">
               <h4 className="text-accent-50 font-medium mb-3">AI 建議：</h4>
-              
+
               {/* Analysis Summary */}
               <div className="bg-primary-700/50 rounded-lg p-3 mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-sm text-primary-300">複雜度：</span>
-                  <span className={`px-2 py-1 text-xs rounded ${
-                    suggestions.analysis.complexity === 'HIGH' ? 'bg-red-900 text-red-300' :
-                    suggestions.analysis.complexity === 'MEDIUM' ? 'bg-yellow-900 text-yellow-300' :
-                    'bg-green-900 text-green-300'
-                  }`}>
+                  <span
+                    className={`px-2 py-1 text-xs rounded ${
+                      suggestions.analysis.complexity === 'HIGH'
+                        ? 'bg-red-900 text-red-300'
+                        : suggestions.analysis.complexity === 'MEDIUM'
+                          ? 'bg-yellow-900 text-yellow-300'
+                          : 'bg-green-900 text-green-300'
+                    }`}
+                  >
                     {suggestions.analysis.complexity}
                   </span>
                 </div>
@@ -378,12 +436,21 @@ export default function AIAssistant({ projectId, context }: AIAssistantProps) {
               {/* Suggestions List */}
               <div className="space-y-2 mb-4">
                 {suggestions.suggestions.map((suggestion, index) => (
-                  <div key={suggestion.id} className="bg-primary-700 rounded-lg p-3">
+                  <div
+                    key={suggestion.id}
+                    className="bg-primary-700 rounded-lg p-3"
+                  >
                     <div className="flex items-start justify-between mb-2">
-                      <h5 className="text-accent-50 font-medium text-sm">{suggestion.title}</h5>
-                      <span className="text-xs text-primary-400">{suggestion.estimatedEffort}SP</span>
+                      <h5 className="text-accent-50 font-medium text-sm">
+                        {suggestion.title}
+                      </h5>
+                      <span className="text-xs text-primary-400">
+                        {suggestion.estimatedEffort}SP
+                      </span>
                     </div>
-                    <p className="text-sm text-primary-300 mb-2">{suggestion.description}</p>
+                    <p className="text-sm text-primary-300 mb-2">
+                      {suggestion.description}
+                    </p>
                     {suggestion.acceptanceCriteria && (
                       <div className="text-xs text-primary-400">
                         驗收標準：{suggestion.acceptanceCriteria.length} 項

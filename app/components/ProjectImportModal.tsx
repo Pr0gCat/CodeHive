@@ -8,14 +8,14 @@ interface ProjectImportModalProps {
   onClose: () => void;
 }
 
-export default function ProjectImportModal({ 
-  isOpen, 
-  onClose
+export default function ProjectImportModal({
+  isOpen,
+  onClose,
 }: ProjectImportModalProps) {
   const router = useRouter();
   const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [formData, setFormData] = useState({
     gitUrl: '',
     projectName: '',
@@ -39,10 +39,10 @@ export default function ProjectImportModal({
 
   const handleGitUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const url = e.target.value;
-    setFormData(prev => ({ 
-      ...prev, 
+    setFormData(prev => ({
+      ...prev,
       gitUrl: url,
-      projectName: prev.projectName || extractProjectName(url)
+      projectName: prev.projectName || extractProjectName(url),
     }));
     setError(null);
   };
@@ -85,8 +85,18 @@ export default function ProjectImportModal({
             onClick={onClose}
             className="text-primary-400 hover:text-accent-50 transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -100,7 +110,10 @@ export default function ProjectImportModal({
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Git URL */}
           <div>
-            <label htmlFor="gitUrl" className="block text-sm font-medium text-accent-50 mb-2">
+            <label
+              htmlFor="gitUrl"
+              className="block text-sm font-medium text-accent-50 mb-2"
+            >
               Git 儲存庫網址 <span className="text-red-400">*</span>
             </label>
             <input
@@ -120,7 +133,10 @@ export default function ProjectImportModal({
 
           {/* Project Name */}
           <div>
-            <label htmlFor="projectName" className="block text-sm font-medium text-accent-50 mb-2">
+            <label
+              htmlFor="projectName"
+              className="block text-sm font-medium text-accent-50 mb-2"
+            >
               專案名稱 <span className="text-red-400">*</span>
             </label>
             <input
@@ -137,7 +153,10 @@ export default function ProjectImportModal({
 
           {/* Branch (optional) */}
           <div>
-            <label htmlFor="branch" className="block text-sm font-medium text-accent-50 mb-2">
+            <label
+              htmlFor="branch"
+              className="block text-sm font-medium text-accent-50 mb-2"
+            >
               分支（選填）
             </label>
             <input
@@ -149,11 +168,8 @@ export default function ProjectImportModal({
               className="w-full px-3 py-2 bg-primary-900 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
               placeholder="main"
             />
-            <p className="mt-1 text-sm text-primary-400">
-              留空則使用預設分支
-            </p>
+            <p className="mt-1 text-sm text-primary-400">留空則使用預設分支</p>
           </div>
-
 
           {/* Submit Button */}
           <div className="flex justify-end space-x-3 pt-4">

@@ -3,7 +3,9 @@ import { prisma, ProjectSettings } from '@/lib/db';
 /**
  * Get project settings with defaults
  */
-export async function getProjectSettings(projectId: string): Promise<ProjectSettings> {
+export async function getProjectSettings(
+  projectId: string
+): Promise<ProjectSettings> {
   let settings = await prisma.projectSettings.findUnique({
     where: { projectId },
   });
@@ -25,7 +27,9 @@ export async function getProjectSettings(projectId: string): Promise<ProjectSett
  */
 export async function updateProjectSettings(
   projectId: string,
-  updates: Partial<Omit<ProjectSettings, 'id' | 'projectId' | 'createdAt' | 'updatedAt'>>
+  updates: Partial<
+    Omit<ProjectSettings, 'id' | 'projectId' | 'createdAt' | 'updatedAt'>
+  >
 ): Promise<ProjectSettings> {
   return await prisma.projectSettings.upsert({
     where: { projectId },
@@ -65,7 +69,9 @@ export async function checkRateLimit(projectId: string): Promise<{
     },
   });
 
-  const totalDailyTokens = (dailyTokenUsage._sum.inputTokens || 0) + (dailyTokenUsage._sum.outputTokens || 0);
+  const totalDailyTokens =
+    (dailyTokenUsage._sum.inputTokens || 0) +
+    (dailyTokenUsage._sum.outputTokens || 0);
   if (totalDailyTokens >= settings.maxTokensPerDay) {
     return {
       allowed: false,
@@ -116,7 +122,10 @@ export async function checkRateLimit(projectId: string): Promise<{
 /**
  * Check if tokens for a request would exceed limits
  */
-export async function checkTokenLimit(projectId: string, estimatedTokens: number): Promise<{
+export async function checkTokenLimit(
+  projectId: string,
+  estimatedTokens: number
+): Promise<{
   allowed: boolean;
   reason?: string;
 }> {
@@ -147,7 +156,9 @@ export async function checkTokenLimit(projectId: string, estimatedTokens: number
     },
   });
 
-  const totalDailyTokens = (dailyTokenUsage._sum.inputTokens || 0) + (dailyTokenUsage._sum.outputTokens || 0);
+  const totalDailyTokens =
+    (dailyTokenUsage._sum.inputTokens || 0) +
+    (dailyTokenUsage._sum.outputTokens || 0);
   if (totalDailyTokens + estimatedTokens > settings.maxTokensPerDay) {
     return {
       allowed: false,
@@ -224,7 +235,9 @@ export async function canQueueTask(projectId: string): Promise<{
 /**
  * Get running agents count for a project
  */
-export async function getRunningAgentsCount(projectId: string): Promise<number> {
+export async function getRunningAgentsCount(
+  projectId: string
+): Promise<number> {
   return await prisma.queuedTask.count({
     where: {
       projectId,

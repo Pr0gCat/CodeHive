@@ -124,6 +124,7 @@ export async function POST(request: NextRequest) {
    ```
 
 2. **Implement agent executor**
+
    ```typescript
    // lib/agents/executors/tdd-developer.ts
    export async function executeTDDDeveloper(task: AgentTask) {

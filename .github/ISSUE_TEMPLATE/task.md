@@ -36,9 +36,7 @@ A clear description of what needs to be done.
 **Dependencies**
 List any tasks that must be completed before this one:
 
--
-
-**Subtasks**
+- **Subtasks**
 
 - [ ]
 - [ ]

@@ -17,8 +17,8 @@ interface ImportRequest {
 export async function POST(request: NextRequest) {
   try {
     const body: ImportRequest = await request.json();
-    const { 
-      gitUrl, 
+    const {
+      gitUrl,
       projectName,
       branch,
       framework,
@@ -40,10 +40,7 @@ export async function POST(request: NextRequest) {
     // Validate Git URL
     const urlValidation = await gitClient.validateGitUrl(gitUrl);
     if (!urlValidation.valid) {
-      return NextResponse.json(
-        { error: urlValidation.error },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: urlValidation.error }, { status: 400 });
     }
 
     // Check if project name already exists
@@ -81,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     if (!cloneResult.success) {
       return NextResponse.json(
-        { 
+        {
           error: 'Failed to clone repository',
           details: cloneResult.error,
         },
@@ -150,27 +147,40 @@ export async function POST(request: NextRequest) {
 
     // Trigger automatic project review
     try {
-      console.log(`🔍 Starting automatic project review for ${project.name}...`);
-      
-      const reviewResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/agents/project-manager`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          projectId: project.id,
-          action: 'review',
-        }),
-      });
+      console.log(
+        `🔍 Starting automatic project review for ${project.name}...`
+      );
+
+      const reviewResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/agents/project-manager`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            projectId: project.id,
+            action: 'review',
+          }),
+        }
+      );
 
       const reviewData = await reviewResponse.json();
       if (reviewData.success) {
-        console.log(`✅ Project review completed successfully for ${project.name}`);
+        console.log(
+          `✅ Project review completed successfully for ${project.name}`
+        );
       } else {
-        console.log(`⚠️ Project review failed for ${project.name}:`, reviewData.error);
+        console.log(
+          `⚠️ Project review failed for ${project.name}:`,
+          reviewData.error
+        );
       }
     } catch (reviewError) {
-      console.error(`❌ Error during automatic project review for ${project.name}:`, reviewError);
+      console.error(
+        `❌ Error during automatic project review for ${project.name}:`,
+        reviewError
+      );
       // Continue with import even if review fails
     }
 
@@ -185,7 +195,6 @@ export async function POST(request: NextRequest) {
       },
       message: 'Repository imported successfully and project review initiated',
     });
-
   } catch (error) {
     console.error('Project import error:', error);
     return NextResponse.json(

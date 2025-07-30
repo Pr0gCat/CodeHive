@@ -15,10 +15,16 @@ interface ToastManagerProps {
 }
 
 interface ToastContextType {
-  showToast: (message: string, type: 'success' | 'error' | 'warning' | 'info', duration?: number) => void;
+  showToast: (
+    message: string,
+    type: 'success' | 'error' | 'warning' | 'info',
+    duration?: number
+  ) => void;
 }
 
-export const ToastContext = React.createContext<ToastContextType | undefined>(undefined);
+export const ToastContext = React.createContext<ToastContextType | undefined>(
+  undefined
+);
 
 export function useToast() {
   const context = React.useContext(ToastContext);
@@ -31,12 +37,19 @@ export function useToast() {
 export default function ToastManager({ children }: ToastManagerProps) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  const showToast = useCallback((message: string, type: 'success' | 'error' | 'warning' | 'info', duration = 5000) => {
-    const id = Math.random().toString(36).substr(2, 9);
-    const newToast: ToastItem = { id, message, type, duration };
-    
-    setToasts(prev => [...prev, newToast]);
-  }, []);
+  const showToast = useCallback(
+    (
+      message: string,
+      type: 'success' | 'error' | 'warning' | 'info',
+      duration = 5000
+    ) => {
+      const id = Math.random().toString(36).substr(2, 9);
+      const newToast: ToastItem = { id, message, type, duration };
+
+      setToasts(prev => [...prev, newToast]);
+    },
+    []
+  );
 
   const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(toast => toast.id !== id));
@@ -47,7 +60,10 @@ export default function ToastManager({ children }: ToastManagerProps) {
       {children}
       <div className="fixed top-4 right-4 z-50 space-y-2">
         {toasts.map((toast, index) => (
-          <div key={toast.id} style={{ transform: `translateY(${index * 80}px)` }}>
+          <div
+            key={toast.id}
+            style={{ transform: `translateY(${index * 80}px)` }}
+          >
             <Toast
               message={toast.message}
               type={toast.type}
@@ -59,4 +75,4 @@ export default function ToastManager({ children }: ToastManagerProps) {
       </div>
     </ToastContext.Provider>
   );
-} 
+}

@@ -109,7 +109,7 @@ export class GitOperationsAgent extends BaseAgent {
 
   validateCommand(command: string): { valid: boolean; error?: string } {
     const normalizedCommand = command.toLowerCase().trim();
-    
+
     // Check for supported command patterns
     const supportedPatterns = [
       /^(git\s+)?status/,
@@ -131,8 +131,10 @@ export class GitOperationsAgent extends BaseAgent {
       /^delete.*branch/,
     ];
 
-    const isSupported = supportedPatterns.some(pattern => pattern.test(normalizedCommand));
-    
+    const isSupported = supportedPatterns.some(pattern =>
+      pattern.test(normalizedCommand)
+    );
+
     if (!isSupported) {
       return {
         valid: false,
@@ -148,11 +150,14 @@ export class GitOperationsAgent extends BaseAgent {
       /rebase.*-i/,
     ];
 
-    const isDangerous = dangerousPatterns.some(pattern => pattern.test(normalizedCommand));
+    const isDangerous = dangerousPatterns.some(pattern =>
+      pattern.test(normalizedCommand)
+    );
     if (isDangerous) {
       return {
         valid: false,
-        error: 'Potentially destructive Git operations are not supported for safety. Use Git directly for advanced operations.',
+        error:
+          'Potentially destructive Git operations are not supported for safety. Use Git directly for advanced operations.',
       };
     }
 
@@ -163,7 +168,7 @@ export class GitOperationsAgent extends BaseAgent {
     const projectInfo = this.getProjectInfo();
     const commonInstructions = this.getCommonInstructions();
     const gitInfo = this.getGitRepositoryInfo();
-    
+
     let specificInstructions = '';
     const normalizedCommand = command.toLowerCase();
 
@@ -171,11 +176,22 @@ export class GitOperationsAgent extends BaseAgent {
       specificInstructions = this.getStatusInstructions();
     } else if (normalizedCommand.includes('commit')) {
       specificInstructions = this.getCommitInstructions(command);
-    } else if (normalizedCommand.includes('branch') || normalizedCommand.includes('checkout') || normalizedCommand.includes('switch')) {
+    } else if (
+      normalizedCommand.includes('branch') ||
+      normalizedCommand.includes('checkout') ||
+      normalizedCommand.includes('switch')
+    ) {
       specificInstructions = this.getBranchInstructions(command);
-    } else if (normalizedCommand.includes('sync') || normalizedCommand.includes('pull') || normalizedCommand.includes('push')) {
+    } else if (
+      normalizedCommand.includes('sync') ||
+      normalizedCommand.includes('pull') ||
+      normalizedCommand.includes('push')
+    ) {
       specificInstructions = this.getSyncInstructions(command);
-    } else if (normalizedCommand.includes('history') || normalizedCommand.includes('log')) {
+    } else if (
+      normalizedCommand.includes('history') ||
+      normalizedCommand.includes('log')
+    ) {
       specificInstructions = this.getHistoryInstructions(command);
     } else if (normalizedCommand.includes('cleanup')) {
       specificInstructions = this.getCleanupInstructions();
@@ -439,7 +455,10 @@ MESSAGE STRUCTURE:
     `;
   }
 
-  protected async generateArtifacts(command: string, result: AgentResult): Promise<Record<string, unknown>> {
+  protected async generateArtifacts(
+    command: string,
+    result: AgentResult
+  ): Promise<Record<string, unknown>> {
     return {
       gitOperation: this.determineGitOperation(command),
       repositoryUrl: this.context.gitUrl,
@@ -451,16 +470,30 @@ MESSAGE STRUCTURE:
 
   private determineGitOperation(command: string): string {
     const normalizedCommand = command.toLowerCase();
-    
+
     if (normalizedCommand.includes('status')) return 'status-check';
     if (normalizedCommand.includes('commit')) return 'commit-operation';
-    if (normalizedCommand.includes('branch') || normalizedCommand.includes('checkout') || normalizedCommand.includes('switch')) return 'branch-management';
-    if (normalizedCommand.includes('sync') || normalizedCommand.includes('pull') || normalizedCommand.includes('push')) return 'synchronization';
-    if (normalizedCommand.includes('history') || normalizedCommand.includes('log')) return 'history-analysis';
+    if (
+      normalizedCommand.includes('branch') ||
+      normalizedCommand.includes('checkout') ||
+      normalizedCommand.includes('switch')
+    )
+      return 'branch-management';
+    if (
+      normalizedCommand.includes('sync') ||
+      normalizedCommand.includes('pull') ||
+      normalizedCommand.includes('push')
+    )
+      return 'synchronization';
+    if (
+      normalizedCommand.includes('history') ||
+      normalizedCommand.includes('log')
+    )
+      return 'history-analysis';
     if (normalizedCommand.includes('cleanup')) return 'repository-cleanup';
     if (normalizedCommand.includes('merge')) return 'merge-operation';
     if (normalizedCommand.includes('stash')) return 'stash-operation';
-    
+
     return 'general-git-operation';
   }
 }

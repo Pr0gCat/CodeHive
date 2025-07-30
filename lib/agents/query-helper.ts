@@ -11,7 +11,12 @@ export interface QueryContext {
 
 export interface CreateQueryOptions {
   projectId: string;
-  type: 'ARCHITECTURE' | 'BUSINESS_LOGIC' | 'UI_UX' | 'INTEGRATION' | 'CLARIFICATION';
+  type:
+    | 'ARCHITECTURE'
+    | 'BUSINESS_LOGIC'
+    | 'UI_UX'
+    | 'INTEGRATION'
+    | 'CLARIFICATION';
   title: string;
   question: string;
   context: QueryContext;
@@ -101,7 +106,10 @@ export async function createAdvisoryQuery(
 /**
  * Check if a card has pending blocking queries
  */
-export async function hasBlockingQueries(projectId: string, cardId: string): Promise<boolean> {
+export async function hasBlockingQueries(
+  projectId: string,
+  cardId: string
+): Promise<boolean> {
   try {
     const queries = await prisma.query.findMany({
       where: {
@@ -161,9 +169,12 @@ export async function getCardQueries(projectId: string, cardId: string) {
 /**
  * Wait for user response to a query
  */
-export async function waitForQueryResponse(queryId: string, timeoutMs: number = 300000): Promise<boolean> {
+export async function waitForQueryResponse(
+  queryId: string,
+  timeoutMs: number = 300000
+): Promise<boolean> {
   const startTime = Date.now();
-  
+
   while (Date.now() - startTime < timeoutMs) {
     try {
       const query = await prisma.query.findUnique({
@@ -203,4 +214,4 @@ export async function getQueryAnswer(queryId: string): Promise<string | null> {
     console.error('Failed to get query answer:', error);
     return null;
   }
-} 
+}

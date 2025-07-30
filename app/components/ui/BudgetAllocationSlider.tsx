@@ -15,7 +15,9 @@ interface ProjectBudget {
 interface BudgetAllocationSliderProps {
   projects: ProjectBudget[];
   globalDailyLimit: number;
-  onChange: (allocations: Array<{ projectId: string; allocatedPercentage: number }>) => void;
+  onChange: (
+    allocations: Array<{ projectId: string; allocatedPercentage: number }>
+  ) => void;
   disabled?: boolean;
   className?: string;
 }
@@ -53,13 +55,13 @@ export default function BudgetAllocationSlider({
 
     // If new total would exceed 100%, adjust proportionally
     const newAllocations = { ...allocations };
-    
+
     if (newTotalAllocated > 1.0) {
       // Calculate how much we need to reduce from other projects
       const excess = newTotalAllocated - 1.0;
       const otherProjects = projects.filter(p => p.projectId !== projectId);
       const totalOtherAllocation = otherProjects.reduce(
-        (sum, p) => sum + (allocations[p.projectId] || 0), 
+        (sum, p) => sum + (allocations[p.projectId] || 0),
         0
       );
 
@@ -69,15 +71,21 @@ export default function BudgetAllocationSlider({
           const currentAllocation = allocations[project.projectId] || 0;
           const proportion = currentAllocation / totalOtherAllocation;
           const reduction = excess * proportion;
-          newAllocations[project.projectId] = Math.max(0, currentAllocation - reduction);
+          newAllocations[project.projectId] = Math.max(
+            0,
+            currentAllocation - reduction
+          );
         });
       }
     }
 
     newAllocations[projectId] = newPercentage;
-    
-    const finalTotal = Object.values(newAllocations).reduce((sum, val) => sum + val, 0);
-    
+
+    const finalTotal = Object.values(newAllocations).reduce(
+      (sum, val) => sum + val,
+      0
+    );
+
     setAllocations(newAllocations);
     setTotalAllocated(finalTotal);
 
@@ -142,7 +150,9 @@ export default function BudgetAllocationSlider({
     }
 
     setAllocations(newAllocations);
-    setTotalAllocated(Object.values(newAllocations).reduce((sum, val) => sum + val, 0));
+    setTotalAllocated(
+      Object.values(newAllocations).reduce((sum, val) => sum + val, 0)
+    );
 
     const allocationArray = projects.map(project => ({
       projectId: project.projectId,
@@ -187,17 +197,21 @@ export default function BudgetAllocationSlider({
         </div>
 
         {/* Total allocation summary */}
-        <div className={`p-4 rounded-lg border ${
-          isOverAllocated 
-            ? 'bg-red-900/20 border-red-700' 
-            : 'bg-primary-800 border-primary-700'
-        }`}>
+        <div
+          className={`p-4 rounded-lg border ${
+            isOverAllocated
+              ? 'bg-red-900/20 border-red-700'
+              : 'bg-primary-800 border-primary-700'
+          }`}
+        >
           <div className="flex items-center justify-between">
             <div>
               <div className="text-sm text-primary-300">總分配</div>
-              <div className={`text-xl font-bold ${
-                isOverAllocated ? 'text-red-400' : 'text-accent-50'
-              }`}>
+              <div
+                className={`text-xl font-bold ${
+                  isOverAllocated ? 'text-red-400' : 'text-accent-50'
+                }`}
+              >
                 {formatPercentage(totalAllocated)}
               </div>
               {unallocatedPercentage > 0 && (
@@ -214,7 +228,7 @@ export default function BudgetAllocationSlider({
               <div className="text-xs text-primary-400">Tokens</div>
             </div>
           </div>
-          
+
           {isOverAllocated && (
             <div className="mt-2 text-xs text-red-400">
               ⚠️ 總分配超過 100%，請調整分配比例
@@ -228,21 +242,34 @@ export default function BudgetAllocationSlider({
         {projects.map(project => {
           const allocation = allocations[project.projectId] || 0;
           const calculatedBudget = Math.floor(globalDailyLimit * allocation);
-          const usageColor = project.usagePercentage > 90 ? 'red' : 
-                            project.usagePercentage > 75 ? 'yellow' : 'green';
+          const usageColor =
+            project.usagePercentage > 90
+              ? 'red'
+              : project.usagePercentage > 75
+                ? 'yellow'
+                : 'green';
 
           return (
-            <div key={project.projectId} className="bg-primary-800 rounded-lg p-4 border border-primary-700">
+            <div
+              key={project.projectId}
+              className="bg-primary-800 rounded-lg p-4 border border-primary-700"
+            >
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <h4 className="font-medium text-accent-50">{project.projectName}</h4>
+                  <h4 className="font-medium text-accent-50">
+                    {project.projectName}
+                  </h4>
                   <div className="flex items-center space-x-4 text-xs text-primary-400">
                     <span>今日使用：{formatTokens(project.usedTokens)}</span>
-                    <span className={`px-2 py-1 rounded ${
-                      usageColor === 'red' ? 'bg-red-900 text-red-300' :
-                      usageColor === 'yellow' ? 'bg-yellow-900 text-yellow-300' :
-                      'bg-green-900 text-green-300'
-                    }`}>
+                    <span
+                      className={`px-2 py-1 rounded ${
+                        usageColor === 'red'
+                          ? 'bg-red-900 text-red-300'
+                          : usageColor === 'yellow'
+                            ? 'bg-yellow-900 text-yellow-300'
+                            : 'bg-green-900 text-green-300'
+                      }`}
+                    >
                       {project.usagePercentage.toFixed(1)}% 使用
                     </span>
                   </div>
@@ -259,7 +286,9 @@ export default function BudgetAllocationSlider({
                 min={0}
                 max={1}
                 value={allocation}
-                onChange={(value) => handleAllocationChange(project.projectId, value)}
+                onChange={value =>
+                  handleAllocationChange(project.projectId, value)
+                }
                 step={0.01}
                 disabled={disabled}
                 color="accent"

@@ -59,12 +59,12 @@ export async function PUT(
     const { answer, status } = body;
 
     const updateData: any = {};
-    
+
     if (answer !== undefined) {
       updateData.answer = answer;
       updateData.answeredAt = new Date();
     }
-    
+
     if (status !== undefined) {
       updateData.status = status;
     }
@@ -121,4 +121,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-} 
+}

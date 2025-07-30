@@ -34,11 +34,14 @@ export default function PercentageSlider({
     return `${Math.round(decimal * 100)}%`;
   };
 
-  const defaultMarkers = markers.length > 0 ? markers : [
-    { value: 0.25, label: '25%' },
-    { value: 0.5, label: '50%' },
-    { value: 0.75, label: '75%' },
-  ];
+  const defaultMarkers =
+    markers.length > 0
+      ? markers
+      : [
+          { value: 0.25, label: '25%' },
+          { value: 0.5, label: '50%' },
+          { value: 0.75, label: '75%' },
+        ];
 
   return (
     <div className={className}>
@@ -51,11 +54,7 @@ export default function PercentageSlider({
             {formatPercentage(min)} - {formatPercentage(max)}
           </div>
         </div>
-        {help && (
-          <p className="text-xs text-primary-500 mb-4">
-            {help}
-          </p>
-        )}
+        {help && <p className="text-xs text-primary-500 mb-4">{help}</p>}
       </div>
 
       <Slider

@@ -92,7 +92,8 @@ export async function DELETE(
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to delete cycle',
+        error:
+          error instanceof Error ? error.message : 'Failed to delete cycle',
       },
       { status: 500 }
     );

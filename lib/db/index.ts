@@ -180,21 +180,27 @@ export const DependencyType = {
   SIMILAR_TO: 'SIMILAR_TO',
 } as const;
 
-export type ProjectStatusType = (typeof ProjectStatus)[keyof typeof ProjectStatus];
+export type ProjectStatusType =
+  (typeof ProjectStatus)[keyof typeof ProjectStatus];
 export type CardStatusType = (typeof CardStatus)[keyof typeof CardStatus];
 export type TaskStatusType = (typeof TaskStatus)[keyof typeof TaskStatus];
-export type MilestoneStatusType = (typeof MilestoneStatus)[keyof typeof MilestoneStatus];
+export type MilestoneStatusType =
+  (typeof MilestoneStatus)[keyof typeof MilestoneStatus];
 export type TaskPriorityType = (typeof TaskPriority)[keyof typeof TaskPriority];
-export type CodeAnalysisDepthType = (typeof CodeAnalysisDepth)[keyof typeof CodeAnalysisDepth];
+export type CodeAnalysisDepthType =
+  (typeof CodeAnalysisDepth)[keyof typeof CodeAnalysisDepth];
 
 // Epic-Kanban-TDD Integration Type definitions
 export type EpicTypeType = (typeof EpicType)[keyof typeof EpicType];
 export type EpicPhaseType = (typeof EpicPhase)[keyof typeof EpicPhase];
 export type EpicStatusType = (typeof EpicStatus)[keyof typeof EpicStatus];
 export type MVPPriorityType = (typeof MVPPriority)[keyof typeof MVPPriority];
-export type MVPPhaseStatusType = (typeof MVPPhaseStatus)[keyof typeof MVPPhaseStatus];
-export type StoryPriorityType = (typeof StoryPriority)[keyof typeof StoryPriority];
-export type DependencyTypeType = (typeof DependencyType)[keyof typeof DependencyType];
+export type MVPPhaseStatusType =
+  (typeof MVPPhaseStatus)[keyof typeof MVPPhaseStatus];
+export type StoryPriorityType =
+  (typeof StoryPriority)[keyof typeof StoryPriority];
+export type DependencyTypeType =
+  (typeof DependencyType)[keyof typeof DependencyType];
 
 // AI-Native TDD Type definitions
 export type CyclePhaseType = (typeof CyclePhase)[keyof typeof CyclePhase];

@@ -55,7 +55,10 @@ export async function DELETE(
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to delete dependency',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to delete dependency',
       },
       { status: 500 }
     );

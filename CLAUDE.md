@@ -4,36 +4,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CodeHive is a multi-agent software development platform that orchestrates Claude Code agents to manage multiple projects simultaneously using Test-Driven Development principles. The system dynamically creates specialized agents based on project requirements.
+CodeHive is a multi-agent software development platform where users provide feature requests and feedback, while the Project Manager agent autonomously manages project backlogs through Epic and Story organization. The system uses AI-driven Test-Driven Development with minimal human interruption.
 
 **Current Status**: AI-Native TDD Development System - Foundation Complete ✅
+
 - Next.js 14 + TypeScript + Tailwind CSS with complete UI
 - SQLite database with Prisma ORM and tech stack configuration
 - 4 specialized agents with command validation
 - User-controlled tech stack preferences system
 - ESLint, Prettier, and code quality tools configured
 
-**New AI-Native TDD System**: Query-Driven Development with Test-First Cycles
-- 🎯 **Goal**: AI-driven Test-Driven Development with minimal human interruption
+**User Experience Philosophy**: Just Feature Requests & Feedback
+
+- 🎯 **User Role**: Provide feature requests and feedback only - no manual project management
+- 🤖 **Project Manager Agent**: Autonomously breaks down features into Epics and Stories
 - 🔄 **TDD Phases**: RED (generate tests) → GREEN (implement) → REFACTOR (improve) → REVIEW
-- 🤖 **Smart Decision Points**: AI only blocks for truly important architectural decisions
-- 📊 **Cycle Tracking**: Complete visibility into test generation, implementation, and artifacts
+- 📋 **Backlog Management**: AI manages Epic/Story hierarchy, priorities, and dependencies
 - 🎨 **Simple UI**: Focus on development progress, not ceremony
 
 **Foundation Complete**:
+
 - ✅ Database models for Cycles, Tests, Queries, and Artifacts
 - ✅ TDD Cycle Engine with RED-GREEN-REFACTOR-REVIEW phases
 - ✅ Type-safe status constants and database client
 - ✅ Project Manager with Claude Code integration for intelligent descriptions
 - ✅ Real-time project logs with Server-Sent Events
 - ✅ Improved UI layout with better information organization
-- 🔄 Decision Point system (in progress)
-- 🔄 AI test generation (pending)
-- 🔄 Development Dashboard UI (pending)
+- 🔄 Epic/Story management system (needed)
+- 🔄 Autonomous backlog management (needed)
+- 🔄 Feature request processing pipeline (needed)
 
 ## Core Development Commands
 
 **CodeHive Platform Commands:**
+
 ```bash
 # Install dependencies
 bun install
@@ -72,7 +76,7 @@ npm install / yarn install / pnpm install / bun install
 npm run dev / yarn dev
 npm test / yarn test
 
-# Python projects  
+# Python projects
 pip install -r requirements.txt
 python -m pytest
 python manage.py runserver
@@ -122,7 +126,7 @@ mvn test
    - **Test Runner**: Multi-framework testing, coverage analysis, CI/CD integration
    - **Git Operations**: Version control, branching, repository health monitoring
    - **Documentation**: README generation, code docs, API documentation
-   - **Project Manager**: Orchestrates agents and generates intelligent project descriptions using Claude Code
+   - **Project Manager**: Full project control including: (1) Maintains project CLAUDE.md for unified agent context, (2) Autonomously manages backlogs and Epic/Story breakdown, (3) Ensures development aligns with project goals, (4) Orchestrates all downstream agents with consistent direction
    - Each agent has command validation, prompt templates, and execution tracking
 
 2. **Language-Agnostic Tech Stack**: Flexible preference system supporting any technology:
@@ -138,7 +142,8 @@ mvn test
    - No auto-detection - user specifies exactly what tools to use
 
 3. **Database Design**: SQLite with Prisma ORM storing:
-   - Projects with tech stack preferences and Kanban cards
+   - Projects with tech stack preferences and Epic/Story hierarchy
+   - Epics and Stories with AI-managed priorities and dependencies
    - Global settings for default tech stack preferences
    - Agent specifications and performance metrics
    - Token usage tracking and rate limiting
@@ -159,16 +164,23 @@ GET /api/projects/:id - Get project details
 PUT /api/projects/:id - Update project
 DELETE /api/projects/:id - Delete project
 
-// Kanban operations
-GET /api/projects/:id/cards - Get project cards
-POST /api/projects/:id/cards - Create new card
-PUT /api/cards/:id - Update card
-DELETE /api/cards/:id - Delete card
+// Epic/Story management
+GET /api/projects/:id/epics - Get project epics
+POST /api/projects/:id/epics - Create new epic from feature request
+GET /api/epics/:id - Get epic details with stories
+PUT /api/epics/:id - Update epic
+DELETE /api/epics/:id - Delete epic
+
+GET /api/epics/:id/stories - Get stories for an epic
+POST /api/epics/:id/stories - Create new story
+GET /api/stories/:id - Get story details
+PUT /api/stories/:id - Update story
+DELETE /api/stories/:id - Delete story
 
 // Agent operations
 GET/POST /api/agents/capabilities - Get agent capabilities and validate commands
 POST /api/agents/execute - Execute agent task
-POST /api/agents/project-manager - Execute project manager actions
+POST /api/agents/project-manager - Execute project manager actions (includes CLAUDE.md updates)
 GET /api/agents/status/:taskId - Get task status
 GET /api/agents/queue - Get task queue status
 
@@ -192,7 +204,7 @@ GET /api/queries/:id - Get query details with context
 PUT /api/queries/:id/answer - Answer query and resume development
 PUT /api/queries/:id/dismiss - Dismiss advisory query
 
-// Artifact Management  
+// Artifact Management
 GET /api/cycles/:id/artifacts - Get generated code/docs for cycle
 POST /api/artifacts - Create new artifact (generated code)
 GET /api/artifacts/:id/content - Get artifact content
@@ -297,6 +309,7 @@ const claudePath = fallbackConfig.claudeCodePath;
 ### Available Settings
 
 All settings can be configured via the web interface:
+
 - **Token Management**: Daily limits, warning/critical thresholds
 - **Claude API**: Command path, rate limiting
 - **Application URLs**: Main app URL, WebSocket URL
@@ -306,23 +319,30 @@ All settings can be configured via the web interface:
 ### Environment Variables
 
 Only `NODE_ENV` is still needed (automatically set by Next.js in development):
+
 - `development` (default for `bun run dev`)
 - `production` (set manually in production deployments)
 
 ## Recent Improvements
 
 ### Project Manager Intelligence
-- **AI-Generated Descriptions**: Project Manager now uses Claude Code to analyze project structure and generate intelligent, brief functional descriptions (e.g., "E-commerce platform", "API service", "Chat application")
-- **Automated Analysis**: When projects are reviewed, Claude Code examines file structure, directories, and key files to understand project functionality
-- **Fallback Protection**: Robust error handling ensures system remains stable if Claude Code analysis fails
+
+- **CLAUDE.md Maintenance**: Project Manager maintains and updates project CLAUDE.md to ensure all downstream agents have unified, current context about project goals, architecture, and development standards
+- **Full Project Control**: Takes complete ownership of project direction, ensuring all development activities align with defined goals and user requirements
+- **Autonomous Backlog Management**: Breaks down feature requests into proper Epic/Story hierarchies without user intervention
+- **Agent Coordination**: Orchestrates all downstream agents with consistent direction and ensures they work towards unified objectives
+- **Smart Prioritization**: Automatically determines Story priorities and dependencies based on project context and user feedback patterns
+- **Context Synchronization**: Keeps all agents informed of project changes, architectural decisions, and evolving requirements through CLAUDE.md updates
 
 ### UI/UX Enhancements
+
 - **ProjectLogsModal**: Fixed array handling bug preventing log display errors
 - **Project View Layout**: Improved information organization with "Last updated" timestamp positioned next to action buttons
 - **Real-time Logs**: Server-Sent Events integration for live project log streaming
 - **Type Safety**: Enhanced type checking throughout the application to prevent runtime errors
 
 ### Bug Fixes
+
 - Fixed `filteredLogs.map is not a function` error with proper array validation
 - Improved error handling for API responses in log components
 - Enhanced project analysis stability with Claude Code integration
@@ -331,44 +351,54 @@ Only `NODE_ENV` is still needed (automatically set by Next.js in development):
 
 ### AI-Native TDD Development Process
 
-**Phase 1: Feature Definition**
-- User defines feature with clear acceptance criteria
-- System creates new TDD Cycle in database
-- AI analyzes requirements and constraints
+**Phase 1: Feature Request Processing**
+
+- User provides feature request or feedback (natural language)
+- Project Manager agent analyzes request against current project goals
+- Updates project CLAUDE.md with new requirements and context changes
+- Creates Epic/Story breakdown and TDD Cycles for each Story
+- Ensures all downstream agents have updated context before proceeding
 
 **Phase 2: RED Phase (Test Generation)**
+
 - AI generates failing tests from acceptance criteria
 - Tests are stored in database with expected behavior
 - System validates tests are properly failing
 
-**Phase 3: GREEN Phase (Implementation)** 
+**Phase 3: GREEN Phase (Implementation)**
+
 - AI writes minimal code to make tests pass
 - Generated code stored as artifacts
 - Tests updated to passing status
 
 **Phase 4: REFACTOR Phase (Code Improvement)**
+
 - AI improves code quality while keeping tests green
 - Refactored versions stored as new artifacts
 - Performance and maintainability optimized
 
 **Phase 5: REVIEW Phase (Validation)**
+
 - Final check that all requirements are met
 - User can review generated code and tests
 - Cycle marked as completed or returns to earlier phase
 
 **Query-Driven Decision Points**:
+
 - AI creates queries only when truly blocked
 - BLOCKING queries pause development until answered
 - ADVISORY queries continue with reasonable defaults
 - User answers via simple inbox interface
 
 ### Code Quality Standards
+
 - All code must pass TypeScript compilation
 - ESLint and Prettier rules are enforced
 - Use the provided utility functions in `/lib/utils`
 - Follow existing patterns for error handling and validation
 
 ## Memories
+
 - Update TASKS.md after finished tasks
 - Update PROJECT_STATUS.md after finished tasks
 - Do not launch dev server

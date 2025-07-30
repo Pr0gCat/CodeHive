@@ -6,7 +6,9 @@ import { z } from 'zod';
 const updateCardSchema = z.object({
   title: z.string().min(1, 'Card title is required').optional(),
   description: z.string().optional(),
-  status: z.enum(['BACKLOG', 'TODO', 'IN_PROGRESS', 'REVIEW', 'DONE']).optional(),
+  status: z
+    .enum(['BACKLOG', 'TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'])
+    .optional(),
   position: z.number().int().min(0).optional(),
   assignedAgent: z.string().optional(),
 });

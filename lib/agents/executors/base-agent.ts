@@ -28,7 +28,10 @@ export abstract class BaseAgent {
   abstract getSupportedCommands(): AgentCommand[];
   abstract validateCommand(command: string): { valid: boolean; error?: string };
 
-  async execute(command: string, options: AgentExecutionOptions = {}): Promise<AgentResult> {
+  async execute(
+    command: string,
+    options: AgentExecutionOptions = {}
+  ): Promise<AgentResult> {
     const startTime = Date.now();
 
     try {
@@ -84,11 +87,17 @@ export abstract class BaseAgent {
     // Override in subclasses for pre-execution setup
   }
 
-  protected async postExecution(command: string, result: AgentResult): Promise<void> {
+  protected async postExecution(
+    command: string,
+    result: AgentResult
+  ): Promise<void> {
     // Override in subclasses for post-execution cleanup
   }
 
-  protected async generateArtifacts(command: string, result: AgentResult): Promise<Record<string, unknown>> {
+  protected async generateArtifacts(
+    command: string,
+    result: AgentResult
+  ): Promise<Record<string, unknown>> {
     // Override in subclasses to generate specific artifacts
     return {};
   }
@@ -142,9 +151,15 @@ OUTPUT FORMAT:
 }
 
 export class AgentRegistry {
-  private static agents: Map<string, new (context: ProjectContext) => BaseAgent> = new Map();
+  private static agents: Map<
+    string,
+    new (context: ProjectContext) => BaseAgent
+  > = new Map();
 
-  static register(agentType: string, agentClass: new (context: ProjectContext) => BaseAgent): void {
+  static register(
+    agentType: string,
+    agentClass: new (context: ProjectContext) => BaseAgent
+  ): void {
     this.agents.set(agentType, agentClass);
   }
 

@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma, ProjectSettings, TaskPriority, CodeAnalysisDepth } from '@/lib/db';
+import {
+  prisma,
+  ProjectSettings,
+  TaskPriority,
+  CodeAnalysisDepth,
+} from '@/lib/db';
 import { z } from 'zod';
 
 const projectSettingsSchema = z.object({
@@ -8,31 +13,31 @@ const projectSettingsSchema = z.object({
   maxTokensPerRequest: z.number().min(100).max(10000).optional(),
   maxRequestsPerMinute: z.number().min(1).max(100).optional(),
   maxRequestsPerHour: z.number().min(10).max(1000).optional(),
-  
+
   // Agent Execution Settings
   agentTimeout: z.number().min(30000).max(1800000).optional(), // 30s to 30min
   maxRetries: z.number().min(0).max(10).optional(),
   parallelAgentLimit: z.number().min(1).max(10).optional(),
   autoReviewOnImport: z.boolean().optional(),
-  
+
   // Task Queue Settings
   maxQueueSize: z.number().min(5).max(500).optional(),
   taskPriority: z.enum(['LOW', 'NORMAL', 'HIGH', 'CRITICAL']).optional(),
   autoExecuteTasks: z.boolean().optional(),
-  
+
   // Notification Settings
   emailNotifications: z.boolean().optional(),
   slackWebhookUrl: z.string().url().nullable().optional(),
   discordWebhookUrl: z.string().url().nullable().optional(),
   notifyOnTaskComplete: z.boolean().optional(),
   notifyOnTaskFail: z.boolean().optional(),
-  
+
   // Agent Behavior Settings
   codeAnalysisDepth: z.enum(['LIGHT', 'STANDARD', 'DEEP']).optional(),
   testCoverageThreshold: z.number().min(0).max(100).optional(),
   enforceTypeChecking: z.boolean().optional(),
   autoFixLintErrors: z.boolean().optional(),
-  
+
   // Advanced Settings
   claudeModel: z.string().optional(),
   customInstructions: z.string().nullable().optional(),
@@ -106,7 +111,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
           customInstructions: null,
           excludePatterns: null,
           includeDependencies: true,
-        }
+        },
       });
     }
 
@@ -149,7 +154,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             customInstructions: null,
             excludePatterns: null,
             includeDependencies: true,
-          }
+          },
         });
       }
     }
@@ -163,7 +168,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error:
+          error instanceof Error ? error.message : 'Unknown error occurred',
       },
       { status: 500 }
     );
@@ -204,11 +210,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       });
     } catch (upsertError) {
       // If ProjectSettings table doesn't exist, just return success with the data
-      console.log('ProjectSettings table not found during update, returning data');
+      console.log(
+        'ProjectSettings table not found during update, returning data'
+      );
       return NextResponse.json({
         success: true,
         data: { projectId, ...validatedData },
-        message: 'Project settings updated (in memory only - database table not available)',
+        message:
+          'Project settings updated (in memory only - database table not available)',
       });
     }
 
@@ -233,7 +242,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error:
+          error instanceof Error ? error.message : 'Unknown error occurred',
       },
       { status: 500 }
     );
@@ -272,7 +282,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       });
     } catch (deleteError) {
       // If ProjectSettings table doesn't exist, return default values
-      console.log('ProjectSettings table not found during delete, returning defaults');
+      console.log(
+        'ProjectSettings table not found during delete, returning defaults'
+      );
       return NextResponse.json({
         success: true,
         data: {
@@ -316,7 +328,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        error:
+          error instanceof Error ? error.message : 'Unknown error occurred',
       },
       { status: 500 }
     );

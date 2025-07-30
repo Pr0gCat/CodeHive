@@ -27,7 +27,9 @@ export class EvolutionEngine {
     this.performanceTracker = new PerformanceTracker();
   }
 
-  async analyzeAgentForEvolution(agentId: string): Promise<EvolutionSuggestion[]> {
+  async analyzeAgentForEvolution(
+    agentId: string
+  ): Promise<EvolutionSuggestion[]> {
     try {
       const [agent, metrics] = await Promise.all([
         prisma.agentSpecification.findUnique({
@@ -47,7 +49,9 @@ export class EvolutionEngine {
       ]);
 
       if (!agent || !metrics) {
-        throw new Error(`Agent ${agentId} not found or has no performance data`);
+        throw new Error(
+          `Agent ${agentId} not found or has no performance data`
+        );
       }
 
       const suggestions: EvolutionSuggestion[] = [];
@@ -60,18 +64,28 @@ export class EvolutionEngine {
 
       // Analyze capabilities gaps
       if (metrics.commonErrors.length > 0) {
-        const capabilitySuggestions = await this.analyzeCapabilities(agent, metrics);
+        const capabilitySuggestions = await this.analyzeCapabilities(
+          agent,
+          metrics
+        );
         suggestions.push(...capabilitySuggestions);
       }
 
       // Analyze constraints effectiveness
-      if (metrics.averageExecutionTime > 300000) { // 5 minutes
-        const constraintSuggestion = await this.analyzeConstraints(agent, metrics);
+      if (metrics.averageExecutionTime > 300000) {
+        // 5 minutes
+        const constraintSuggestion = await this.analyzeConstraints(
+          agent,
+          metrics
+        );
         if (constraintSuggestion) suggestions.push(constraintSuggestion);
       }
 
       // Analyze dependency needs
-      const dependencySuggestion = await this.analyzeDependencies(agent, metrics);
+      const dependencySuggestion = await this.analyzeDependencies(
+        agent,
+        metrics
+      );
       if (dependencySuggestion) suggestions.push(dependencySuggestion);
 
       return suggestions.sort((a, b) => b.confidence - a.confidence);
@@ -81,7 +95,10 @@ export class EvolutionEngine {
     }
   }
 
-  async evolveAgent(agentId: string, selectedSuggestions: EvolutionSuggestion[]): Promise<EvolutionResult> {
+  async evolveAgent(
+    agentId: string,
+    selectedSuggestions: EvolutionSuggestion[]
+  ): Promise<EvolutionResult> {
     try {
       const agent = await prisma.agentSpecification.findUnique({
         where: { id: agentId },
@@ -97,7 +114,8 @@ export class EvolutionEngine {
         throw new Error(`Agent ${agentId} not found`);
       }
 
-      const currentMetrics = await this.performanceTracker.getAgentMetrics(agentId);
+      const currentMetrics =
+        await this.performanceTracker.getAgentMetrics(agentId);
       if (!currentMetrics) {
         throw new Error(`No performance metrics found for agent ${agentId}`);
       }
@@ -126,7 +144,9 @@ export class EvolutionEngine {
             const constraints = JSON.parse(updatedAgent.constraints);
             const [key, value] = suggestion.suggested.split(':');
             if (key && value) {
-              constraints[key.trim()] = isNaN(Number(value.trim())) ? value.trim() : Number(value.trim());
+              constraints[key.trim()] = isNaN(Number(value.trim()))
+                ? value.trim()
+                : Number(value.trim());
               updatedAgent.constraints = JSON.stringify(constraints);
               implementedChanges.push(suggestion);
             }
@@ -157,7 +177,9 @@ export class EvolutionEngine {
       // Record evolution
       const changes = {
         implemented: implementedChanges,
-        rejected: selectedSuggestions.filter(s => !implementedChanges.includes(s)),
+        rejected: selectedSuggestions.filter(
+          s => !implementedChanges.includes(s)
+        ),
       };
 
       await prisma.agentEvolution.create({
@@ -264,8 +286,13 @@ export class EvolutionEngine {
       for (const agent of agents) {
         const suggestions = await this.analyzeAgentForEvolution(agent.id);
         if (suggestions.length > 0) {
-          const metrics = await this.performanceTracker.getAgentMetrics(agent.id);
-          const priority = this.calculateEvolutionPriority(metrics, suggestions);
+          const metrics = await this.performanceTracker.getAgentMetrics(
+            agent.id
+          );
+          const priority = this.calculateEvolutionPriority(
+            metrics,
+            suggestions
+          );
 
           evolutionOpportunities.push({
             agentId: agent.id,
@@ -278,23 +305,37 @@ export class EvolutionEngine {
       }
 
       // System-wide recommendations
-      const lowPerformingAgents = evolutionOpportunities.filter(op => op.priority > 7).length;
+      const lowPerformingAgents = evolutionOpportunities.filter(
+        op => op.priority > 7
+      ).length;
       if (lowPerformingAgents > agents.length * 0.3) {
-        systemRecommendations.push('Consider reviewing overall agent architecture - multiple agents showing performance issues');
+        systemRecommendations.push(
+          'Consider reviewing overall agent architecture - multiple agents showing performance issues'
+        );
       }
 
-      const avgSuggestions = evolutionOpportunities.reduce((sum, op) => sum + op.suggestedChanges, 0) / evolutionOpportunities.length;
+      const avgSuggestions =
+        evolutionOpportunities.reduce(
+          (sum, op) => sum + op.suggestedChanges,
+          0
+        ) / evolutionOpportunities.length;
       if (avgSuggestions > 3) {
-        systemRecommendations.push('Agents may be over-complex or under-specified - consider simplifying agent roles');
+        systemRecommendations.push(
+          'Agents may be over-complex or under-specified - consider simplifying agent roles'
+        );
       }
 
       if (agents.length < 3) {
-        systemRecommendations.push('Consider adding more specialized agents to improve task distribution');
+        systemRecommendations.push(
+          'Consider adding more specialized agents to improve task distribution'
+        );
       }
 
       return {
         agentCount: agents.length,
-        evolutionOpportunities: evolutionOpportunities.sort((a, b) => b.priority - a.priority),
+        evolutionOpportunities: evolutionOpportunities.sort(
+          (a, b) => b.priority - a.priority
+        ),
         systemRecommendations,
       };
     } catch (error) {
@@ -302,20 +343,27 @@ export class EvolutionEngine {
       return {
         agentCount: 0,
         evolutionOpportunities: [],
-        systemRecommendations: ['Error analyzing system - check logs for details'],
+        systemRecommendations: [
+          'Error analyzing system - check logs for details',
+        ],
       };
     }
   }
 
-  private async analyzePrompt(agent: any, metrics: PerformanceMetrics): Promise<EvolutionSuggestion | null> {
+  private async analyzePrompt(
+    agent: any,
+    metrics: PerformanceMetrics
+  ): Promise<EvolutionSuggestion | null> {
     // Analyze common errors to suggest prompt improvements
     const errorPatterns = metrics.commonErrors;
-    
+
     if (errorPatterns.some(error => error.includes('timeout'))) {
       return {
         type: 'prompt',
         current: agent.prompt.substring(0, 100) + '...',
-        suggested: agent.prompt + '\n\nIMPORTANT: Keep responses concise and focus on essential information only. Avoid lengthy explanations.',
+        suggested:
+          agent.prompt +
+          '\n\nIMPORTANT: Keep responses concise and focus on essential information only. Avoid lengthy explanations.',
         reason: 'Frequent timeout errors suggest overly verbose responses',
         confidence: 0.8,
         expectedImprovement: 'Reduce execution time by 20-30%',
@@ -326,7 +374,9 @@ export class EvolutionEngine {
       return {
         type: 'prompt',
         current: agent.prompt.substring(0, 100) + '...',
-        suggested: agent.prompt + '\n\nBefore executing commands, always validate inputs and check file existence.',
+        suggested:
+          agent.prompt +
+          '\n\nBefore executing commands, always validate inputs and check file existence.',
         reason: 'Validation errors indicate need for better input checking',
         confidence: 0.9,
         expectedImprovement: 'Improve success rate by 15-25%',
@@ -336,7 +386,10 @@ export class EvolutionEngine {
     return null;
   }
 
-  private async analyzeCapabilities(agent: any, metrics: PerformanceMetrics): Promise<EvolutionSuggestion[]> {
+  private async analyzeCapabilities(
+    agent: any,
+    metrics: PerformanceMetrics
+  ): Promise<EvolutionSuggestion[]> {
     const suggestions: EvolutionSuggestion[] = [];
     const capabilities = JSON.parse(agent.capabilities);
 
@@ -346,7 +399,8 @@ export class EvolutionEngine {
         type: 'capabilities',
         current: capabilities.join(', '),
         suggested: 'Permission handling and access validation',
-        reason: 'Frequent permission errors suggest need for better access control',
+        reason:
+          'Frequent permission errors suggest need for better access control',
         confidence: 0.85,
         expectedImprovement: 'Reduce permission-related failures by 80%',
       });
@@ -366,10 +420,14 @@ export class EvolutionEngine {
     return suggestions;
   }
 
-  private async analyzeConstraints(agent: any, metrics: PerformanceMetrics): Promise<EvolutionSuggestion | null> {
+  private async analyzeConstraints(
+    agent: any,
+    metrics: PerformanceMetrics
+  ): Promise<EvolutionSuggestion | null> {
     const constraints = JSON.parse(agent.constraints);
-    
-    if (metrics.averageExecutionTime > 300000) { // 5 minutes
+
+    if (metrics.averageExecutionTime > 300000) {
+      // 5 minutes
       return {
         type: 'constraints',
         current: `timeout: ${constraints.timeout || 'unlimited'}`,
@@ -383,11 +441,16 @@ export class EvolutionEngine {
     return null;
   }
 
-  private async analyzeDependencies(agent: any, metrics: PerformanceMetrics): Promise<EvolutionSuggestion | null> {
+  private async analyzeDependencies(
+    agent: any,
+    metrics: PerformanceMetrics
+  ): Promise<EvolutionSuggestion | null> {
     const dependencies = JSON.parse(agent.dependencies);
-    
+
     // This is a simplified analysis - in practice, you'd analyze error logs for missing dependencies
-    if (metrics.commonErrors.some(error => error.includes('command not found'))) {
+    if (
+      metrics.commonErrors.some(error => error.includes('command not found'))
+    ) {
       return {
         type: 'dependencies',
         current: dependencies.join(', '),
@@ -401,11 +464,14 @@ export class EvolutionEngine {
     return null;
   }
 
-  private calculateEvolutionPriority(metrics: PerformanceMetrics | null, suggestions: EvolutionSuggestion[]): number {
+  private calculateEvolutionPriority(
+    metrics: PerformanceMetrics | null,
+    suggestions: EvolutionSuggestion[]
+  ): number {
     if (!metrics) return 0;
 
     let priority = 0;
-    
+
     // Success rate impact
     if (metrics.successRate < 50) priority += 10;
     else if (metrics.successRate < 70) priority += 7;
@@ -421,11 +487,16 @@ export class EvolutionEngine {
     return Math.min(priority, 10);
   }
 
-  private estimateImpact(metrics: PerformanceMetrics | null, suggestions: EvolutionSuggestion[]): string {
+  private estimateImpact(
+    metrics: PerformanceMetrics | null,
+    suggestions: EvolutionSuggestion[]
+  ): string {
     if (!metrics) return 'Unknown impact';
 
-    const highConfidenceSuggestions = suggestions.filter(s => s.confidence > 0.8).length;
-    
+    const highConfidenceSuggestions = suggestions.filter(
+      s => s.confidence > 0.8
+    ).length;
+
     if (highConfidenceSuggestions >= 3) {
       return 'High impact - significant performance improvement expected';
     } else if (highConfidenceSuggestions >= 1) {

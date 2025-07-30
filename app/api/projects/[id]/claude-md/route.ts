@@ -1,0 +1,168 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { ProjectManagerAgent } from '@/lib/agents/project-manager';
+import { prisma } from '@/lib/db';
+import { promises as fs } from 'fs';
+
+// GET /api/projects/[id]/claude-md - Get current project CLAUDE.md content
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const projectId = params.id;
+
+    // Get project details
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Project not found',
+        },
+        { status: 404 }
+      );
+    }
+
+    const claudeMdPath = `${project.localPath}/CLAUDE.md`;
+
+    try {
+      // Read current CLAUDE.md content
+      const content = await fs.readFile(claudeMdPath, 'utf8');
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          path: claudeMdPath,
+          content,
+          lastModified: (await fs.stat(claudeMdPath)).mtime,
+        },
+      });
+    } catch (readError) {
+      // File doesn't exist yet
+      return NextResponse.json({
+        success: true,
+        data: {
+          path: claudeMdPath,
+          content: null,
+          message: 'CLAUDE.md does not exist yet',
+        },
+      });
+    }
+  } catch (error) {
+    console.error('Error getting CLAUDE.md:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          error instanceof Error ? error.message : 'Failed to get CLAUDE.md',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT /api/projects/[id]/claude-md - Update/maintain project CLAUDE.md
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const projectId = params.id;
+
+    console.log(`📝 Updating CLAUDE.md for project: ${projectId}`);
+
+    const projectManager = new ProjectManagerAgent();
+    await projectManager.maintainProjectClaudeMd(projectId);
+
+    // Get the updated content to return
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Project not found',
+        },
+        { status: 404 }
+      );
+    }
+
+    const claudeMdPath = `${project.localPath}/CLAUDE.md`;
+    const updatedContent = await fs.readFile(claudeMdPath, 'utf8');
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        message: 'CLAUDE.md updated successfully',
+        path: claudeMdPath,
+        contentLength: updatedContent.length,
+        updatedAt: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error updating CLAUDE.md:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          error instanceof Error ? error.message : 'Failed to update CLAUDE.md',
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/projects/[id]/claude-md - Force regenerate CLAUDE.md from scratch
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const projectId = params.id;
+
+    console.log(
+      `🔄 Regenerating CLAUDE.md from scratch for project: ${projectId}`
+    );
+
+    // Use the project manager's review function which generates CLAUDE.md
+    const projectManager = new ProjectManagerAgent();
+    const result = await projectManager.reviewProject(projectId);
+
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: result.error,
+        },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        message: 'CLAUDE.md regenerated successfully',
+        path: result.artifacts?.claudeMdPath,
+        tokensUsed: result.tokensUsed,
+        executionTime: result.executionTime,
+      },
+    });
+  } catch (error) {
+    console.error('Error regenerating CLAUDE.md:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to regenerate CLAUDE.md',
+      },
+      { status: 500 }
+    );
+  }
+}

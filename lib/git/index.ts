@@ -29,7 +29,7 @@ export class GitClient {
 
   async clone(options: GitCloneOptions): Promise<GitCommandResult> {
     const { url, targetPath, branch, depth } = options;
-    
+
     // Validate inputs
     if (!url || !targetPath) {
       return {
@@ -40,15 +40,15 @@ export class GitClient {
 
     // Build git clone command
     const args = ['clone'];
-    
+
     if (depth && depth > 0) {
       args.push('--depth', depth.toString());
     }
-    
+
     if (branch) {
       args.push('--branch', branch);
     }
-    
+
     args.push(url, targetPath);
 
     return this.executeGitCommand(args);
@@ -77,12 +77,18 @@ export class GitClient {
   }
 
   async getCurrentBranch(repoPath: string): Promise<string | null> {
-    const result = await this.executeGitCommand(['branch', '--show-current'], repoPath);
+    const result = await this.executeGitCommand(
+      ['branch', '--show-current'],
+      repoPath
+    );
     return result.success ? result.output?.trim() || null : null;
   }
 
   async getRemoteUrl(repoPath: string): Promise<string | null> {
-    const result = await this.executeGitCommand(['remote', 'get-url', 'origin'], repoPath);
+    const result = await this.executeGitCommand(
+      ['remote', 'get-url', 'origin'],
+      repoPath
+    );
     return result.success ? result.output?.trim() || null : null;
   }
 
@@ -95,20 +101,27 @@ export class GitClient {
     return existsSync(gitDir);
   }
 
-  async validateGitUrl(url: string): Promise<{ valid: boolean; error?: string }> {
+  async validateGitUrl(
+    url: string
+  ): Promise<{ valid: boolean; error?: string }> {
     // Basic URL validation
     const gitUrlPattern = /^(https?:\/\/|git@|ssh:\/\/|git:\/\/).+\.git$/i;
     const githubPattern = /^https:\/\/github\.com\/[\w-]+\/[\w-]+(\.git)?$/i;
     const gitlabPattern = /^https:\/\/gitlab\.com\/[\w-]+\/[\w-]+(\.git)?$/i;
-    
+
     if (!url) {
       return { valid: false, error: 'URL is required' };
     }
 
-    if (!gitUrlPattern.test(url) && !githubPattern.test(url) && !gitlabPattern.test(url)) {
-      return { 
-        valid: false, 
-        error: 'Invalid Git URL format. Expected format: https://github.com/user/repo.git' 
+    if (
+      !gitUrlPattern.test(url) &&
+      !githubPattern.test(url) &&
+      !gitlabPattern.test(url)
+    ) {
+      return {
+        valid: false,
+        error:
+          'Invalid Git URL format. Expected format: https://github.com/user/repo.git',
       };
     }
 
@@ -116,10 +129,10 @@ export class GitClient {
   }
 
   private executeGitCommand(
-    args: string[], 
+    args: string[],
     cwd: string = process.cwd()
   ): Promise<GitCommandResult> {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const child = spawn('git', args, {
         cwd,
         shell: false,
@@ -129,15 +142,15 @@ export class GitClient {
       let output = '';
       let errorOutput = '';
 
-      child.stdout?.on('data', (data) => {
+      child.stdout?.on('data', data => {
         output += data.toString();
       });
 
-      child.stderr?.on('data', (data) => {
+      child.stderr?.on('data', data => {
         errorOutput += data.toString();
       });
 
-      child.on('exit', (code) => {
+      child.on('exit', code => {
         if (code === 0) {
           resolve({
             success: true,
@@ -154,7 +167,7 @@ export class GitClient {
         }
       });
 
-      child.on('error', (error) => {
+      child.on('error', error => {
         resolve({
           success: false,
           error: error.message,
@@ -174,7 +187,7 @@ export class GitClient {
       .replace(/[^a-z0-9-_]/g, '-')
       .replace(/--+/g, '-')
       .replace(/^-|-$/g, '');
-    
+
     return join(this.reposDir, sanitized);
   }
 }

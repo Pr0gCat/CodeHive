@@ -64,18 +64,27 @@ export class PerformanceTracker {
       const successfulExecutions = performances.filter(p => p.success).length;
       const successRate = (successfulExecutions / totalExecutions) * 100;
 
-      const averageExecutionTime = performances.reduce((sum, p) => sum + p.executionTime, 0) / totalExecutions;
-      const totalTokens = performances.reduce((sum, p) => sum + p.tokensUsed, 0);
-      const tokenEfficiency = totalTokens > 0 ? (successfulExecutions / totalTokens) * 1000 : 0; // Success per 1000 tokens
+      const averageExecutionTime =
+        performances.reduce((sum, p) => sum + p.executionTime, 0) /
+        totalExecutions;
+      const totalTokens = performances.reduce(
+        (sum, p) => sum + p.tokensUsed,
+        0
+      );
+      const tokenEfficiency =
+        totalTokens > 0 ? (successfulExecutions / totalTokens) * 1000 : 0; // Success per 1000 tokens
 
       // Get common errors
       const errorCounts = performances
         .filter(p => !p.success && p.errorMessage)
-        .reduce((acc, p) => {
-          const error = p.errorMessage!;
-          acc[error] = (acc[error] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>);
+        .reduce(
+          (acc, p) => {
+            const error = p.errorMessage!;
+            acc[error] = (acc[error] || 0) + 1;
+            return acc;
+          },
+          {} as Record<string, number>
+        );
 
       const commonErrors = Object.entries(errorCounts)
         .sort(([, a], [, b]) => b - a)
@@ -102,7 +111,9 @@ export class PerformanceTracker {
     }
   }
 
-  async getProjectAgentMetrics(projectId: string): Promise<PerformanceMetrics[]> {
+  async getProjectAgentMetrics(
+    projectId: string
+  ): Promise<PerformanceMetrics[]> {
     try {
       const agents = await prisma.agentSpecification.findMany({
         where: { projectId },
@@ -130,12 +141,14 @@ export class PerformanceTracker {
     }
   }
 
-  async identifyUnderperformingAgents(projectId: string): Promise<{
-    agentId: string;
-    agentType: string;
-    issues: string[];
-    suggestions: string[];
-  }[]> {
+  async identifyUnderperformingAgents(projectId: string): Promise<
+    {
+      agentId: string;
+      agentType: string;
+      issues: string[];
+      suggestions: string[];
+    }[]
+  > {
     try {
       const metrics = await this.getProjectAgentMetrics(projectId);
       const underperforming: {
@@ -152,24 +165,38 @@ export class PerformanceTracker {
         // Check success rate
         if (metric.successRate < 70) {
           issues.push(`Low success rate: ${metric.successRate.toFixed(1)}%`);
-          suggestions.push('Review common error patterns and improve error handling');
+          suggestions.push(
+            'Review common error patterns and improve error handling'
+          );
         }
 
         // Check execution time
-        if (metric.averageExecutionTime > 300000) { // 5 minutes
-          issues.push(`High execution time: ${(metric.averageExecutionTime / 1000).toFixed(1)}s average`);
-          suggestions.push('Optimize command complexity and add timeout handling');
+        if (metric.averageExecutionTime > 300000) {
+          // 5 minutes
+          issues.push(
+            `High execution time: ${(metric.averageExecutionTime / 1000).toFixed(1)}s average`
+          );
+          suggestions.push(
+            'Optimize command complexity and add timeout handling'
+          );
         }
 
         // Check token efficiency
-        if (metric.tokenEfficiency < 1) { // Less than 1 success per 1000 tokens
-          issues.push(`Poor token efficiency: ${metric.tokenEfficiency.toFixed(2)} successes per 1000 tokens`);
-          suggestions.push('Optimize prompts and reduce unnecessary token usage');
+        if (metric.tokenEfficiency < 1) {
+          // Less than 1 success per 1000 tokens
+          issues.push(
+            `Poor token efficiency: ${metric.tokenEfficiency.toFixed(2)} successes per 1000 tokens`
+          );
+          suggestions.push(
+            'Optimize prompts and reduce unnecessary token usage'
+          );
         }
 
         // Check for common errors
         if (metric.commonErrors.length > 2) {
-          issues.push(`Multiple recurring errors: ${metric.commonErrors.length} types`);
+          issues.push(
+            `Multiple recurring errors: ${metric.commonErrors.length} types`
+          );
           suggestions.push('Address root causes of common failures');
         }
 
@@ -220,7 +247,8 @@ export class PerformanceTracker {
         });
       }
 
-      if (metrics.averageExecutionTime > 180000) { // 3 minutes
+      if (metrics.averageExecutionTime > 180000) {
+        // 3 minutes
         improvements.push({
           type: 'Performance',
           description: 'Optimize command execution and reduce complexity',
@@ -239,11 +267,13 @@ export class PerformanceTracker {
       }
 
       // Check trends
-      const recentTrend = metrics.improvementTrends[metrics.improvementTrends.length - 1];
+      const recentTrend =
+        metrics.improvementTrends[metrics.improvementTrends.length - 1];
       if (recentTrend && recentTrend.successRate < metrics.successRate - 10) {
         improvements.push({
           type: 'Trend Analysis',
-          description: 'Recent performance decline detected - investigate recent changes',
+          description:
+            'Recent performance decline detected - investigate recent changes',
           expectedImpact: 'Prevent further performance degradation',
           priority: 8,
         });
@@ -259,7 +289,10 @@ export class PerformanceTracker {
     }
   }
 
-  private async updateAgentMetrics(agentId: string, agentType: string): Promise<void> {
+  private async updateAgentMetrics(
+    agentId: string,
+    agentType: string
+  ): Promise<void> {
     // This could update a cached metrics table for faster queries
     // For now, we'll rely on real-time calculations
   }
@@ -278,17 +311,22 @@ export class PerformanceTracker {
     // Group by week for the last 4 weeks
     const now = new Date();
     for (let i = 3; i >= 0; i--) {
-      const weekStart = new Date(now.getTime() - (i * 7 * 24 * 60 * 60 * 1000));
-      const weekEnd = new Date(weekStart.getTime() + (7 * 24 * 60 * 60 * 1000));
-      
+      const weekStart = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000);
+      const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+
       const weekPerformances = performances.filter(p => {
         const timestamp = new Date(p.timestamp);
         return timestamp >= weekStart && timestamp < weekEnd;
       });
 
       if (weekPerformances.length > 0) {
-        const avgExecutionTime = weekPerformances.reduce((sum, p) => sum + p.executionTime, 0) / weekPerformances.length;
-        const successRate = (weekPerformances.filter(p => p.success).length / weekPerformances.length) * 100;
+        const avgExecutionTime =
+          weekPerformances.reduce((sum, p) => sum + p.executionTime, 0) /
+          weekPerformances.length;
+        const successRate =
+          (weekPerformances.filter(p => p.success).length /
+            weekPerformances.length) *
+          100;
 
         trends.push({
           period: `Week of ${weekStart.toLocaleDateString()}`,
@@ -323,19 +361,27 @@ export class PerformanceTracker {
       ]);
 
       const totalExecutions = allPerformances.length;
-      const successfulExecutions = allPerformances.filter(p => p.success).length;
-      const averageSuccessRate = totalExecutions > 0 ? (successfulExecutions / totalExecutions) * 100 : 0;
+      const successfulExecutions = allPerformances.filter(
+        p => p.success
+      ).length;
+      const averageSuccessRate =
+        totalExecutions > 0
+          ? (successfulExecutions / totalExecutions) * 100
+          : 0;
 
       // Group by agent type
-      const agentTypePerformance = allPerformances.reduce((acc, p) => {
-        const type = p.agent?.type || 'unknown';
-        if (!acc[type]) {
-          acc[type] = { total: 0, successful: 0 };
-        }
-        acc[type].total++;
-        if (p.success) acc[type].successful++;
-        return acc;
-      }, {} as Record<string, { total: number; successful: number }>);
+      const agentTypePerformance = allPerformances.reduce(
+        (acc, p) => {
+          const type = p.agent?.type || 'unknown';
+          if (!acc[type]) {
+            acc[type] = { total: 0, successful: 0 };
+          }
+          acc[type].total++;
+          if (p.success) acc[type].successful++;
+          return acc;
+        },
+        {} as Record<string, { total: number; successful: number }>
+      );
 
       const topPerformingAgents = Object.entries(agentTypePerformance)
         .map(([type, stats]) => ({

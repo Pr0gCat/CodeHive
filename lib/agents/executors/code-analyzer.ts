@@ -40,10 +40,7 @@ export class CodeAnalyzerAgent extends BaseAgent {
             description: 'Attempt to fix type errors automatically',
           },
         ],
-        examples: [
-          'Run TypeScript type checking',
-          'Type check and fix errors',
-        ],
+        examples: ['Run TypeScript type checking', 'Type check and fix errors'],
       },
       {
         name: 'lint-check',
@@ -56,10 +53,7 @@ export class CodeAnalyzerAgent extends BaseAgent {
             description: 'Attempt to fix lint errors automatically',
           },
         ],
-        examples: [
-          'Run ESLint on the project',
-          'Lint check and fix issues',
-        ],
+        examples: ['Run ESLint on the project', 'Lint check and fix issues'],
       },
       {
         name: 'security-scan',
@@ -90,7 +84,7 @@ export class CodeAnalyzerAgent extends BaseAgent {
 
   validateCommand(command: string): { valid: boolean; error?: string } {
     const normalizedCommand = command.toLowerCase().trim();
-    
+
     // Check for supported command patterns
     const supportedPatterns = [
       /^analyze/,
@@ -105,8 +99,10 @@ export class CodeAnalyzerAgent extends BaseAgent {
       /^run.*eslint/,
     ];
 
-    const isSupported = supportedPatterns.some(pattern => pattern.test(normalizedCommand));
-    
+    const isSupported = supportedPatterns.some(pattern =>
+      pattern.test(normalizedCommand)
+    );
+
     if (!isSupported) {
       return {
         valid: false,
@@ -120,16 +116,23 @@ export class CodeAnalyzerAgent extends BaseAgent {
   protected buildPrompt(command: string): string {
     const projectInfo = this.getProjectInfo();
     const commonInstructions = this.getCommonInstructions();
-    
+
     let specificInstructions = '';
     const normalizedCommand = command.toLowerCase();
 
-    if (normalizedCommand.includes('analyze') || normalizedCommand.includes('full')) {
+    if (
+      normalizedCommand.includes('analyze') ||
+      normalizedCommand.includes('full')
+    ) {
       specificInstructions = this.getFullAnalysisInstructions();
     } else if (normalizedCommand.includes('type')) {
-      specificInstructions = this.getTypeCheckInstructions(normalizedCommand.includes('fix'));
+      specificInstructions = this.getTypeCheckInstructions(
+        normalizedCommand.includes('fix')
+      );
     } else if (normalizedCommand.includes('lint')) {
-      specificInstructions = this.getLintInstructions(normalizedCommand.includes('fix'));
+      specificInstructions = this.getLintInstructions(
+        normalizedCommand.includes('fix')
+      );
     } else if (normalizedCommand.includes('security')) {
       specificInstructions = this.getSecurityScanInstructions();
     } else if (normalizedCommand.includes('performance')) {
@@ -205,8 +208,11 @@ FOCUS AREAS:
   }
 
   private getLintInstructions(shouldFix: boolean): string {
-    const lintCommand = this.context.dependencies?.includes('eslint') ? 'eslint' : 
-                      this.context.framework === 'Next.js' ? 'next lint' : 'eslint';
+    const lintCommand = this.context.dependencies?.includes('eslint')
+      ? 'eslint'
+      : this.context.framework === 'Next.js'
+        ? 'next lint'
+        : 'eslint';
 
     return `
 LINTING AND CODE STYLE:
@@ -301,15 +307,18 @@ Provide specific, actionable feedback with file references.
 
   private getAnalysisSteps(): string {
     const steps = ['1. Run type checking (if applicable)'];
-    
-    if (this.context.dependencies?.includes('eslint') || this.context.framework === 'Next.js') {
+
+    if (
+      this.context.dependencies?.includes('eslint') ||
+      this.context.framework === 'Next.js'
+    ) {
       steps.push('2. Run ESLint analysis');
     }
-    
+
     if (this.context.dependencies?.includes('prettier')) {
       steps.push('3. Check code formatting');
     }
-    
+
     steps.push(
       '4. Analyze project structure and organization',
       '5. Review code complexity and maintainability',
@@ -354,7 +363,10 @@ VUE.JS SPECIFIC CHECKS:
     }
   }
 
-  protected async generateArtifacts(command: string, result: AgentResult): Promise<Record<string, unknown>> {
+  protected async generateArtifacts(
+    command: string,
+    result: AgentResult
+  ): Promise<Record<string, unknown>> {
     return {
       analysisType: this.determineAnalysisType(command),
       projectLanguage: this.context.language,
@@ -366,14 +378,18 @@ VUE.JS SPECIFIC CHECKS:
 
   private determineAnalysisType(command: string): string {
     const normalizedCommand = command.toLowerCase();
-    
+
     if (normalizedCommand.includes('type')) return 'type-checking';
     if (normalizedCommand.includes('lint')) return 'linting';
     if (normalizedCommand.includes('security')) return 'security-scan';
     if (normalizedCommand.includes('performance')) return 'performance-audit';
     if (normalizedCommand.includes('dependency')) return 'dependency-audit';
-    if (normalizedCommand.includes('analyze') || normalizedCommand.includes('full')) return 'full-analysis';
-    
+    if (
+      normalizedCommand.includes('analyze') ||
+      normalizedCommand.includes('full')
+    )
+      return 'full-analysis';
+
     return 'general-analysis';
   }
 }

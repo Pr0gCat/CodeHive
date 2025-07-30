@@ -15,10 +15,7 @@ export async function POST(
     });
 
     if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
     if (!project.gitUrl) {
@@ -39,7 +36,10 @@ export async function POST(
 
     // Get current status
     const statusResult = await gitClient.status(project.localPath);
-    const hasChanges = statusResult.success && statusResult.output && statusResult.output.trim().length > 0;
+    const hasChanges =
+      statusResult.success &&
+      statusResult.output &&
+      statusResult.output.trim().length > 0;
 
     if (hasChanges) {
       return NextResponse.json(
@@ -81,7 +81,6 @@ export async function POST(
       branch: currentBranch,
       output: pullResult.output,
     });
-
   } catch (error) {
     console.error('Project sync error:', error);
     return NextResponse.json(

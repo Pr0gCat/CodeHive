@@ -22,7 +22,10 @@ export interface AgentValidationResult {
 }
 
 export class AgentFactory {
-  static async createAgent(agentType: string, projectContext: ProjectContext): Promise<BaseAgent | null> {
+  static async createAgent(
+    agentType: string,
+    projectContext: ProjectContext
+  ): Promise<BaseAgent | null> {
     return AgentRegistry.create(agentType, projectContext);
   }
 
@@ -34,7 +37,9 @@ export class AgentFactory {
     return AgentRegistry.isSupported(agentType);
   }
 
-  static async executeAgent(request: AgentExecutionRequest): Promise<AgentResult> {
+  static async executeAgent(
+    request: AgentExecutionRequest
+  ): Promise<AgentResult> {
     const { agentType, command, projectContext, options = {} } = request;
 
     try {
@@ -55,14 +60,21 @@ export class AgentFactory {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error during agent execution',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Unknown error during agent execution',
         executionTime: 0,
         tokensUsed: 50, // Minimal token usage for factory errors
       };
     }
   }
 
-  static async validateCommand(agentType: string, command: string, projectContext: ProjectContext): Promise<AgentValidationResult> {
+  static async validateCommand(
+    agentType: string,
+    command: string,
+    projectContext: ProjectContext
+  ): Promise<AgentValidationResult> {
     try {
       const agent = await this.createAgent(agentType, projectContext);
       if (!agent) {
@@ -74,7 +86,7 @@ export class AgentFactory {
       }
 
       const validation = agent.validateCommand(command);
-      
+
       if (!validation.valid) {
         return {
           valid: false,
@@ -87,12 +99,16 @@ export class AgentFactory {
     } catch (error) {
       return {
         valid: false,
-        error: error instanceof Error ? error.message : 'Unknown validation error',
+        error:
+          error instanceof Error ? error.message : 'Unknown validation error',
       };
     }
   }
 
-  static async getAgentCapabilities(agentType: string, projectContext: ProjectContext): Promise<{
+  static async getAgentCapabilities(
+    agentType: string,
+    projectContext: ProjectContext
+  ): Promise<{
     capabilities: string[];
     commands: any[];
   } | null> {
@@ -127,25 +143,32 @@ export class AgentFactory {
     }
   }
 
-  private static getCommandSuggestions(agent: BaseAgent, command: string): string[] {
+  private static getCommandSuggestions(
+    agent: BaseAgent,
+    command: string
+  ): string[] {
     const supportedCommands = agent.getSupportedCommands();
     const suggestions: string[] = [];
 
     // Simple fuzzy matching for suggestions
     const normalizedCommand = command.toLowerCase();
-    
+
     for (const cmd of supportedCommands) {
       // Check if command name or description contains similar words
-      if (cmd.name.toLowerCase().includes(normalizedCommand) || 
-          normalizedCommand.includes(cmd.name.toLowerCase()) ||
-          cmd.description.toLowerCase().includes(normalizedCommand)) {
+      if (
+        cmd.name.toLowerCase().includes(normalizedCommand) ||
+        normalizedCommand.includes(cmd.name.toLowerCase()) ||
+        cmd.description.toLowerCase().includes(normalizedCommand)
+      ) {
         suggestions.push(`${cmd.name}: ${cmd.description}`);
       }
-      
+
       // Check examples
       for (const example of cmd.examples) {
-        if (example.toLowerCase().includes(normalizedCommand) || 
-            normalizedCommand.includes(example.toLowerCase().split(' ')[0])) {
+        if (
+          example.toLowerCase().includes(normalizedCommand) ||
+          normalizedCommand.includes(example.toLowerCase().split(' ')[0])
+        ) {
           suggestions.push(`Try: "${example}"`);
         }
       }
@@ -153,9 +176,9 @@ export class AgentFactory {
 
     // If no specific suggestions found, return general command examples
     if (suggestions.length === 0) {
-      return supportedCommands.slice(0, 3).map(cmd => 
-        `Try: "${cmd.examples[0]}" (${cmd.description})`
-      );
+      return supportedCommands
+        .slice(0, 3)
+        .map(cmd => `Try: "${cmd.examples[0]}" (${cmd.description})`);
     }
 
     return suggestions.slice(0, 5); // Limit to 5 suggestions
@@ -165,46 +188,58 @@ export class AgentFactory {
     const normalizedCommand = command.toLowerCase();
 
     // Command pattern matching to suggest appropriate agent type
-    if (normalizedCommand.includes('analyze') || 
-        normalizedCommand.includes('lint') || 
-        normalizedCommand.includes('type check') ||
-        normalizedCommand.includes('security')) {
+    if (
+      normalizedCommand.includes('analyze') ||
+      normalizedCommand.includes('lint') ||
+      normalizedCommand.includes('type check') ||
+      normalizedCommand.includes('security')
+    ) {
       return 'code-analyzer';
     }
 
-    if (normalizedCommand.includes('create') || 
-        normalizedCommand.includes('modify') || 
-        normalizedCommand.includes('refactor') ||
-        normalizedCommand.includes('update') ||
-        normalizedCommand.includes('format')) {
+    if (
+      normalizedCommand.includes('create') ||
+      normalizedCommand.includes('modify') ||
+      normalizedCommand.includes('refactor') ||
+      normalizedCommand.includes('update') ||
+      normalizedCommand.includes('format')
+    ) {
       return 'code-analyzer'; // Claude Code handles file operations directly
     }
 
-    if (normalizedCommand.includes('test') || 
-        normalizedCommand.includes('coverage') ||
-        normalizedCommand.includes('spec')) {
+    if (
+      normalizedCommand.includes('test') ||
+      normalizedCommand.includes('coverage') ||
+      normalizedCommand.includes('spec')
+    ) {
       return 'test-runner';
     }
 
-    if (normalizedCommand.includes('git') || 
-        normalizedCommand.includes('commit') || 
-        normalizedCommand.includes('branch') ||
-        normalizedCommand.includes('merge') ||
-        normalizedCommand.includes('push') ||
-        normalizedCommand.includes('pull')) {
+    if (
+      normalizedCommand.includes('git') ||
+      normalizedCommand.includes('commit') ||
+      normalizedCommand.includes('branch') ||
+      normalizedCommand.includes('merge') ||
+      normalizedCommand.includes('push') ||
+      normalizedCommand.includes('pull')
+    ) {
       return 'git-operations';
     }
 
-    if (normalizedCommand.includes('document') || 
-        normalizedCommand.includes('readme') || 
-        normalizedCommand.includes('changelog') ||
-        normalizedCommand.includes('guide')) {
+    if (
+      normalizedCommand.includes('document') ||
+      normalizedCommand.includes('readme') ||
+      normalizedCommand.includes('changelog') ||
+      normalizedCommand.includes('guide')
+    ) {
       return 'documentation';
     }
 
-    if (normalizedCommand.includes('orchestrate') || 
-        normalizedCommand.includes('manage') || 
-        normalizedCommand.includes('coordinate')) {
+    if (
+      normalizedCommand.includes('orchestrate') ||
+      normalizedCommand.includes('manage') ||
+      normalizedCommand.includes('coordinate')
+    ) {
       return 'project-manager';
     }
 
@@ -215,11 +250,20 @@ export class AgentFactory {
   static async batchValidateCommands(
     requests: Array<{ agentType: string; command: string }>,
     projectContext: ProjectContext
-  ): Promise<Array<{ request: { agentType: string; command: string }; result: AgentValidationResult }>> {
+  ): Promise<
+    Array<{
+      request: { agentType: string; command: string };
+      result: AgentValidationResult;
+    }>
+  > {
     const results = [];
 
     for (const request of requests) {
-      const result = await this.validateCommand(request.agentType, request.command, projectContext);
+      const result = await this.validateCommand(
+        request.agentType,
+        request.command,
+        projectContext
+      );
       results.push({ request, result });
     }
 
@@ -234,9 +278,10 @@ export class AgentFactory {
   }> {
     const recommendations = [];
     const hasTests = (projectContext.structure?.testFiles.length || 0) > 0;
-    const hasReadme = projectContext.structure?.files.some(f => 
-      f.path.toLowerCase().includes('readme')
-    ) || false;
+    const hasReadme =
+      projectContext.structure?.files.some(f =>
+        f.path.toLowerCase().includes('readme')
+      ) || false;
 
     // Code analysis should usually come first
     recommendations.push({

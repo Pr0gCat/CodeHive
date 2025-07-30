@@ -17,23 +17,49 @@ class ProjectLogger extends EventEmitter {
   private maxLogsPerProject = 1000;
 
   // Log methods for different levels
-  info(projectId: string, source: string, message: string, metadata?: Record<string, any>) {
+  info(
+    projectId: string,
+    source: string,
+    message: string,
+    metadata?: Record<string, any>
+  ) {
     this.log('info', projectId, source, message, metadata);
   }
 
-  warn(projectId: string, source: string, message: string, metadata?: Record<string, any>) {
+  warn(
+    projectId: string,
+    source: string,
+    message: string,
+    metadata?: Record<string, any>
+  ) {
     this.log('warn', projectId, source, message, metadata);
   }
 
-  error(projectId: string, source: string, message: string, metadata?: Record<string, any>) {
+  error(
+    projectId: string,
+    source: string,
+    message: string,
+    metadata?: Record<string, any>
+  ) {
     this.log('error', projectId, source, message, metadata);
   }
 
-  debug(projectId: string, source: string, message: string, metadata?: Record<string, any>) {
+  debug(
+    projectId: string,
+    source: string,
+    message: string,
+    metadata?: Record<string, any>
+  ) {
     this.log('debug', projectId, source, message, metadata);
   }
 
-  private log(level: LogLevel, projectId: string, source: string, message: string, metadata?: Record<string, any>) {
+  private log(
+    level: LogLevel,
+    projectId: string,
+    source: string,
+    message: string,
+    metadata?: Record<string, any>
+  ) {
     const logEntry: LogEntry = {
       id: `${projectId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date(),
@@ -41,7 +67,7 @@ class ProjectLogger extends EventEmitter {
       message,
       source,
       projectId,
-      metadata
+      metadata,
     };
 
     // Store log in memory (in production, this would go to a proper logging system)
@@ -64,7 +90,7 @@ class ProjectLogger extends EventEmitter {
     // Also log to console for development
     const timestamp = logEntry.timestamp.toISOString();
     const logMessage = `[${timestamp}] ${level.toUpperCase()} [${source}] ${message}`;
-    
+
     switch (level) {
       case 'error':
         console.error(logMessage, metadata || '');
@@ -108,121 +134,213 @@ export const projectLogger = new ProjectLogger();
 export const logProjectEvent = {
   // Project lifecycle
   projectCreated: (projectId: string, projectName: string) => {
-    projectLogger.info(projectId, 'project-manager', `Project "${projectName}" created successfully`, {
-      action: 'create',
-      projectName
-    });
+    projectLogger.info(
+      projectId,
+      'project-manager',
+      `Project "${projectName}" created successfully`,
+      {
+        action: 'create',
+        projectName,
+      }
+    );
   },
 
   projectImported: (projectId: string, gitUrl: string) => {
-    projectLogger.info(projectId, 'project-manager', `Project imported from ${gitUrl}`, {
-      action: 'import',
-      gitUrl
-    });
+    projectLogger.info(
+      projectId,
+      'project-manager',
+      `Project imported from ${gitUrl}`,
+      {
+        action: 'import',
+        gitUrl,
+      }
+    );
   },
 
   projectDeleted: (projectId: string, projectName: string) => {
-    projectLogger.warn(projectId, 'project-manager', `Project "${projectName}" removed from database`, {
-      action: 'delete',
-      projectName
-    });
+    projectLogger.warn(
+      projectId,
+      'project-manager',
+      `Project "${projectName}" removed from database`,
+      {
+        action: 'delete',
+        projectName,
+      }
+    );
   },
 
   // Agent operations
-  agentTaskStarted: (projectId: string, agentType: string, taskId: string, description: string) => {
-    projectLogger.info(projectId, 'agent-executor', `${agentType} agent started: ${description}`, {
-      action: 'agent_start',
-      agentType,
-      taskId,
-      description
-    });
+  agentTaskStarted: (
+    projectId: string,
+    agentType: string,
+    taskId: string,
+    description: string
+  ) => {
+    projectLogger.info(
+      projectId,
+      'agent-executor',
+      `${agentType} agent started: ${description}`,
+      {
+        action: 'agent_start',
+        agentType,
+        taskId,
+        description,
+      }
+    );
   },
 
-  agentTaskCompleted: (projectId: string, agentType: string, taskId: string, duration: number) => {
-    projectLogger.info(projectId, 'agent-executor', `${agentType} agent completed task in ${duration}ms`, {
-      action: 'agent_complete',
-      agentType,
-      taskId,
-      duration
-    });
+  agentTaskCompleted: (
+    projectId: string,
+    agentType: string,
+    taskId: string,
+    duration: number
+  ) => {
+    projectLogger.info(
+      projectId,
+      'agent-executor',
+      `${agentType} agent completed task in ${duration}ms`,
+      {
+        action: 'agent_complete',
+        agentType,
+        taskId,
+        duration,
+      }
+    );
   },
 
-  agentTaskFailed: (projectId: string, agentType: string, taskId: string, error: string) => {
-    projectLogger.error(projectId, 'agent-executor', `${agentType} agent failed: ${error}`, {
-      action: 'agent_error',
-      agentType,
-      taskId,
-      error
-    });
+  agentTaskFailed: (
+    projectId: string,
+    agentType: string,
+    taskId: string,
+    error: string
+  ) => {
+    projectLogger.error(
+      projectId,
+      'agent-executor',
+      `${agentType} agent failed: ${error}`,
+      {
+        action: 'agent_error',
+        agentType,
+        taskId,
+        error,
+      }
+    );
   },
 
   // API operations
-  apiRequest: (projectId: string, method: string, endpoint: string, statusCode: number) => {
-    const level = statusCode >= 400 ? 'error' : statusCode >= 300 ? 'warn' : 'info';
-    projectLogger[level](projectId, 'api', `${method} ${endpoint} - ${statusCode}`, {
-      method,
-      endpoint,
-      statusCode
-    });
+  apiRequest: (
+    projectId: string,
+    method: string,
+    endpoint: string,
+    statusCode: number
+  ) => {
+    const level =
+      statusCode >= 400 ? 'error' : statusCode >= 300 ? 'warn' : 'info';
+    projectLogger[level](
+      projectId,
+      'api',
+      `${method} ${endpoint} - ${statusCode}`,
+      {
+        method,
+        endpoint,
+        statusCode,
+      }
+    );
   },
 
   // Database operations
-  dbOperation: (projectId: string, operation: string, table: string, recordId?: string) => {
-    projectLogger.debug(projectId, 'database', `${operation} operation on ${table}${recordId ? ` (${recordId})` : ''}`, {
-      operation,
-      table,
-      recordId
-    });
+  dbOperation: (
+    projectId: string,
+    operation: string,
+    table: string,
+    recordId?: string
+  ) => {
+    projectLogger.debug(
+      projectId,
+      'database',
+      `${operation} operation on ${table}${recordId ? ` (${recordId})` : ''}`,
+      {
+        operation,
+        table,
+        recordId,
+      }
+    );
   },
 
   // File operations
   fileOperation: (projectId: string, operation: string, filepath: string) => {
     projectLogger.debug(projectId, 'file-system', `${operation}: ${filepath}`, {
       operation,
-      filepath
+      filepath,
     });
   },
 
   // Git operations
   gitOperation: (projectId: string, operation: string, details: string) => {
-    projectLogger.info(projectId, 'git-operations', `Git ${operation}: ${details}`, {
-      operation,
-      details
-    });
+    projectLogger.info(
+      projectId,
+      'git-operations',
+      `Git ${operation}: ${details}`,
+      {
+        operation,
+        details,
+      }
+    );
   },
 
   // Build & test operations
   buildStarted: (projectId: string, buildTool: string) => {
-    projectLogger.info(projectId, 'build-system', `Build started using ${buildTool}`, {
-      buildTool,
-      action: 'build_start'
-    });
+    projectLogger.info(
+      projectId,
+      'build-system',
+      `Build started using ${buildTool}`,
+      {
+        buildTool,
+        action: 'build_start',
+      }
+    );
   },
 
   buildCompleted: (projectId: string, buildTool: string, duration: number) => {
-    projectLogger.info(projectId, 'build-system', `Build completed successfully in ${duration}ms`, {
-      buildTool,
-      duration,
-      action: 'build_complete'
-    });
+    projectLogger.info(
+      projectId,
+      'build-system',
+      `Build completed successfully in ${duration}ms`,
+      {
+        buildTool,
+        duration,
+        action: 'build_complete',
+      }
+    );
   },
 
   buildFailed: (projectId: string, buildTool: string, error: string) => {
     projectLogger.error(projectId, 'build-system', `Build failed: ${error}`, {
       buildTool,
       error,
-      action: 'build_error'
+      action: 'build_error',
     });
   },
 
-  testRun: (projectId: string, testFramework: string, passed: number, failed: number, duration: number) => {
+  testRun: (
+    projectId: string,
+    testFramework: string,
+    passed: number,
+    failed: number,
+    duration: number
+  ) => {
     const level = failed > 0 ? 'warn' : 'info';
-    projectLogger[level](projectId, 'test-runner', `Tests completed: ${passed} passed, ${failed} failed (${duration}ms)`, {
-      testFramework,
-      passed,
-      failed,
-      duration,
-      action: 'test_complete'
-    });
-  }
+    projectLogger[level](
+      projectId,
+      'test-runner',
+      `Tests completed: ${passed} passed, ${failed} failed (${duration}ms)`,
+      {
+        testFramework,
+        passed,
+        failed,
+        duration,
+        action: 'test_complete',
+      }
+    );
+  },
 };

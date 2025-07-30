@@ -1,14 +1,14 @@
 import { prisma, Query, QueryComment, Cycle } from '@/lib/db';
-import { QueryType, QueryUrgency, QueryStatus } from '@/lib/db';
+import { QueryTypeType, QueryUrgencyType, QueryStatusType } from '@/lib/db';
 
 export interface QueryCreationData {
   projectId: string;
   cycleId?: string;
-  type: QueryType;
+  type: QueryTypeType;
   title: string;
   question: string;
   context: any;
-  urgency: QueryUrgency;
+  urgency: QueryUrgencyType;
   priority?: 'LOW' | 'MEDIUM' | 'HIGH';
 }
 
@@ -21,9 +21,9 @@ export interface QueryAnswer {
 export interface QueryFilters {
   projectId?: string;
   cycleId?: string;
-  status?: QueryStatus;
-  urgency?: QueryUrgency;
-  type?: QueryType;
+  status?: QueryStatusType;
+  urgency?: QueryUrgencyType;
+  type?: QueryTypeType;
 }
 
 export interface DecisionResult {
@@ -49,7 +49,8 @@ export class QueryManager {
         question: data.question,
         context: JSON.stringify(data.context),
         urgency: data.urgency,
-        priority: data.priority || (data.urgency === 'BLOCKING' ? 'HIGH' : 'MEDIUM'),
+        priority:
+          data.priority || (data.urgency === 'BLOCKING' ? 'HIGH' : 'MEDIUM'),
         status: 'PENDING',
       },
       include: {
@@ -136,7 +137,9 @@ export class QueryManager {
     return {
       query,
       shouldContinue,
-      alternativeAction: shouldContinue ? undefined : 'retry_with_different_approach',
+      alternativeAction: shouldContinue
+        ? undefined
+        : 'retry_with_different_approach',
     };
   }
 
@@ -239,13 +242,15 @@ export class QueryManager {
     };
 
     // Calculate average response time for answered queries
-    const answeredQueries = queries.filter(q => q.status === 'ANSWERED' && q.answeredAt);
+    const answeredQueries = queries.filter(
+      q => q.status === 'ANSWERED' && q.answeredAt
+    );
     if (answeredQueries.length > 0) {
       const totalTime = answeredQueries.reduce((sum, q) => {
         const responseTime = q.answeredAt!.getTime() - q.createdAt.getTime();
         return sum + responseTime;
       }, 0);
-      
+
       stats.avgResponseTime = totalTime / answeredQueries.length / 1000 / 60; // in minutes
     }
 
@@ -254,7 +259,10 @@ export class QueryManager {
 
   // Private helper methods
 
-  private async pauseCycleForQuery(cycleId: string, queryId: string): Promise<void> {
+  private async pauseCycleForQuery(
+    cycleId: string,
+    queryId: string
+  ): Promise<void> {
     await prisma.cycle.update({
       where: { id: cycleId },
       data: {
@@ -267,7 +275,10 @@ export class QueryManager {
     console.log(`⏸️ Cycle ${cycleId} paused for blocking query ${queryId}`);
   }
 
-  private async resumeCycleAfterQuery(cycleId: string, queryId: string): Promise<void> {
+  private async resumeCycleAfterQuery(
+    cycleId: string,
+    queryId: string
+  ): Promise<void> {
     await prisma.cycle.update({
       where: { id: cycleId },
       data: {
@@ -277,15 +288,19 @@ export class QueryManager {
     });
 
     // Log the resume event
-    console.log(`▶️ Cycle ${cycleId} resumed after query ${queryId} was answered`);
+    console.log(
+      `▶️ Cycle ${cycleId} resumed after query ${queryId} was answered`
+    );
   }
 
   private evaluateAnswer(answer: string, query: Query): boolean {
     // Simple evaluation - in real implementation, use more sophisticated logic
     const negativeIndicators = ['no', 'stop', 'cancel', 'abort', 'different'];
     const answerLower = answer.toLowerCase();
-    
-    return !negativeIndicators.some(indicator => answerLower.includes(indicator));
+
+    return !negativeIndicators.some(indicator =>
+      answerLower.includes(indicator)
+    );
   }
 
   /**

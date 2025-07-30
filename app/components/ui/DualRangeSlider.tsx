@@ -43,57 +43,81 @@ export default function DualRangeSlider({
     }
   }, [minValue, maxValue, isDraggingMin, isDraggingMax]);
 
-  const calculateValue = useCallback((clientX: number) => {
-    if (!railRef.current) return min;
+  const calculateValue = useCallback(
+    (clientX: number) => {
+      if (!railRef.current) return min;
 
-    const rect = railRef.current.getBoundingClientRect();
-    const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    const rawValue = min + percentage * (max - min);
-    
-    // Snap to step
-    const steppedValue = Math.round(rawValue / step) * step;
-    return Math.max(min, Math.min(max, steppedValue));
-  }, [min, max, step]);
+      const rect = railRef.current.getBoundingClientRect();
+      const percentage = Math.max(
+        0,
+        Math.min(1, (clientX - rect.left) / rect.width)
+      );
+      const rawValue = min + percentage * (max - min);
 
-  const handleMinMouseDown = useCallback((event: React.MouseEvent) => {
-    if (disabled) return;
-    
-    event.preventDefault();
-    setIsDraggingMin(true);
-    
-    const newValue = calculateValue(event.clientX);
-    const constrainedValue = Math.min(newValue, tempMaxValue - step);
-    setTempMinValue(constrainedValue);
-    onChange(constrainedValue, tempMaxValue);
-  }, [disabled, calculateValue, tempMaxValue, step, onChange]);
+      // Snap to step
+      const steppedValue = Math.round(rawValue / step) * step;
+      return Math.max(min, Math.min(max, steppedValue));
+    },
+    [min, max, step]
+  );
 
-  const handleMaxMouseDown = useCallback((event: React.MouseEvent) => {
-    if (disabled) return;
-    
-    event.preventDefault();
-    setIsDraggingMax(true);
-    
-    const newValue = calculateValue(event.clientX);
-    const constrainedValue = Math.max(newValue, tempMinValue + step);
-    setTempMaxValue(constrainedValue);
-    onChange(tempMinValue, constrainedValue);
-  }, [disabled, calculateValue, tempMinValue, step, onChange]);
+  const handleMinMouseDown = useCallback(
+    (event: React.MouseEvent) => {
+      if (disabled) return;
 
-  const handleMouseMove = useCallback((event: MouseEvent) => {
-    if (disabled) return;
-    
-    const newValue = calculateValue(event.clientX);
-    
-    if (isDraggingMin) {
+      event.preventDefault();
+      setIsDraggingMin(true);
+
+      const newValue = calculateValue(event.clientX);
       const constrainedValue = Math.min(newValue, tempMaxValue - step);
       setTempMinValue(constrainedValue);
       onChange(constrainedValue, tempMaxValue);
-    } else if (isDraggingMax) {
+    },
+    [disabled, calculateValue, tempMaxValue, step, onChange]
+  );
+
+  const handleMaxMouseDown = useCallback(
+    (event: React.MouseEvent) => {
+      if (disabled) return;
+
+      event.preventDefault();
+      setIsDraggingMax(true);
+
+      const newValue = calculateValue(event.clientX);
       const constrainedValue = Math.max(newValue, tempMinValue + step);
       setTempMaxValue(constrainedValue);
       onChange(tempMinValue, constrainedValue);
-    }
-  }, [disabled, calculateValue, isDraggingMin, isDraggingMax, tempMinValue, tempMaxValue, step, onChange]);
+    },
+    [disabled, calculateValue, tempMinValue, step, onChange]
+  );
+
+  const handleMouseMove = useCallback(
+    (event: MouseEvent) => {
+      if (disabled) return;
+
+      const newValue = calculateValue(event.clientX);
+
+      if (isDraggingMin) {
+        const constrainedValue = Math.min(newValue, tempMaxValue - step);
+        setTempMinValue(constrainedValue);
+        onChange(constrainedValue, tempMaxValue);
+      } else if (isDraggingMax) {
+        const constrainedValue = Math.max(newValue, tempMinValue + step);
+        setTempMaxValue(constrainedValue);
+        onChange(tempMinValue, constrainedValue);
+      }
+    },
+    [
+      disabled,
+      calculateValue,
+      isDraggingMin,
+      isDraggingMax,
+      tempMinValue,
+      tempMaxValue,
+      step,
+      onChange,
+    ]
+  );
 
   const handleMouseUp = useCallback(() => {
     setIsDraggingMin(false);
@@ -105,7 +129,7 @@ export default function DualRangeSlider({
     if (isDraggingMin || isDraggingMax) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
-      
+
       return () => {
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
@@ -132,11 +156,7 @@ export default function DualRangeSlider({
             </span>
           </div>
         </div>
-        {help && (
-          <p className="text-xs text-primary-500 mb-4">
-            {help}
-          </p>
-        )}
+        {help && <p className="text-xs text-primary-500 mb-4">{help}</p>}
       </div>
 
       {/* Slider container */}
@@ -149,9 +169,9 @@ export default function DualRangeSlider({
           {/* Active track between thumbs */}
           <div
             className="absolute top-0 h-2 bg-gradient-to-r from-yellow-600 to-red-600 rounded-full"
-            style={{ 
-              left: `${minPercentage}%`, 
-              right: `${100 - maxPercentage}%` 
+            style={{
+              left: `${minPercentage}%`,
+              right: `${100 - maxPercentage}%`,
             }}
           />
 
@@ -206,11 +226,15 @@ export default function DualRangeSlider({
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-            <span className="text-primary-300">警告閾值: {formatLabel(tempMinValue)}</span>
+            <span className="text-primary-300">
+              警告閾值: {formatLabel(tempMinValue)}
+            </span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-            <span className="text-primary-300">危險閾值: {formatLabel(tempMaxValue)}</span>
+            <span className="text-primary-300">
+              危險閾值: {formatLabel(tempMaxValue)}
+            </span>
           </div>
         </div>
       </div>

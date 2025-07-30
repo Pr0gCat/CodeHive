@@ -20,7 +20,7 @@ export interface DatabaseConfig {
 export async function getDatabaseConfig(): Promise<DatabaseConfig> {
   try {
     let settings = await prisma.globalSettings.findUnique({
-      where: { id: 'global' }
+      where: { id: 'global' },
     });
 
     // 如果沒有設定記錄，創建預設設定
@@ -30,7 +30,7 @@ export async function getDatabaseConfig(): Promise<DatabaseConfig> {
           id: 'global',
           dailyTokenLimit: 100000000,
           warningThreshold: 0.75,
-          criticalThreshold: 0.90,
+          criticalThreshold: 0.9,
           allocationStrategy: 0.5,
           autoResumeEnabled: true,
           pauseOnWarning: false,
@@ -39,7 +39,7 @@ export async function getDatabaseConfig(): Promise<DatabaseConfig> {
           appUrl: 'http://localhost:3000',
           wsUrl: 'ws://localhost:3000',
           databaseUrl: 'file:./prisma/codehive.db',
-        }
+        },
       });
     }
 
@@ -58,12 +58,12 @@ export async function getDatabaseConfig(): Promise<DatabaseConfig> {
     };
   } catch (error) {
     console.error('Failed to load database config:', error);
-    
+
     // 如果資料庫讀取失敗，返回預設配置（與 fallbackConfig 一致）
     return {
       dailyTokenLimit: 100000000,
       warningThreshold: 0.75,
-      criticalThreshold: 0.90,
+      criticalThreshold: 0.9,
       allocationStrategy: 0.5,
       autoResumeEnabled: true,
       pauseOnWarning: false,
@@ -79,14 +79,16 @@ export async function getDatabaseConfig(): Promise<DatabaseConfig> {
 /**
  * 更新資料庫中的全域配置
  */
-export async function updateDatabaseConfig(config: Partial<DatabaseConfig>): Promise<DatabaseConfig> {
+export async function updateDatabaseConfig(
+  config: Partial<DatabaseConfig>
+): Promise<DatabaseConfig> {
   const settings = await prisma.globalSettings.upsert({
     where: { id: 'global' },
     create: {
       id: 'global',
       dailyTokenLimit: config.dailyTokenLimit ?? 100000000,
       warningThreshold: config.warningThreshold ?? 0.75,
-      criticalThreshold: config.criticalThreshold ?? 0.90,
+      criticalThreshold: config.criticalThreshold ?? 0.9,
       allocationStrategy: config.allocationStrategy ?? 0.5,
       autoResumeEnabled: config.autoResumeEnabled ?? true,
       pauseOnWarning: config.pauseOnWarning ?? false,
@@ -124,12 +126,12 @@ class ConfigCache {
 
   async getConfig(): Promise<DatabaseConfig> {
     const now = Date.now();
-    
-    if (!this.config || (now - this.lastUpdated) > this.CACHE_TTL) {
+
+    if (!this.config || now - this.lastUpdated > this.CACHE_TTL) {
       this.config = await getDatabaseConfig();
       this.lastUpdated = now;
     }
-    
+
     return this.config;
   }
 
@@ -138,7 +140,9 @@ class ConfigCache {
     this.lastUpdated = 0;
   }
 
-  async updateConfig(updates: Partial<DatabaseConfig>): Promise<DatabaseConfig> {
+  async updateConfig(
+    updates: Partial<DatabaseConfig>
+  ): Promise<DatabaseConfig> {
     this.config = await updateDatabaseConfig(updates);
     this.lastUpdated = Date.now();
     return this.config;

@@ -12,7 +12,10 @@ export function cn(...inputs: ClassValue[]) {
  * Generate a unique ID
  */
 export function generateId(): string {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  return (
+    Math.random().toString(36).substring(2, 15) +
+    Math.random().toString(36).substring(2, 15)
+  );
 }
 
 /**
@@ -139,23 +142,23 @@ export async function retry<T>(
   } = {}
 ): Promise<T> {
   const { maxAttempts = 3, delay = 1000, backoff = 2 } = options;
-  
+
   let lastError: Error;
-  
+
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       return await fn();
     } catch (error) {
       lastError = error as Error;
-      
+
       if (attempt === maxAttempts) {
         throw lastError;
       }
-      
+
       const waitTime = delay * Math.pow(backoff, attempt - 1);
       await sleep(waitTime);
     }
   }
-  
+
   throw lastError!;
 }
