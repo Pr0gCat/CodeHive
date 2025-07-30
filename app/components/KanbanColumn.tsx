@@ -31,6 +31,7 @@ export default function KanbanColumn({
   const [isAddingCard, setIsAddingCard] = useState(false);
   const [newCardTitle, setNewCardTitle] = useState('');
   const [newCardDescription, setNewCardDescription] = useState('');
+  const [newCardTargetBranch, setNewCardTargetBranch] = useState('');
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -52,10 +53,12 @@ export default function KanbanColumn({
         status,
         position: cards.length,
         assignedAgent: null,
+        targetBranch: newCardTargetBranch.trim() || null,
       });
       
       setNewCardTitle('');
       setNewCardDescription('');
+      setNewCardTargetBranch('');
       setIsAddingCard(false);
     } catch (error) {
       console.error('Failed to create card:', error);
@@ -66,6 +69,7 @@ export default function KanbanColumn({
     setIsAddingCard(false);
     setNewCardTitle('');
     setNewCardDescription('');
+    setNewCardTargetBranch('');
   };
 
   return (
@@ -111,8 +115,15 @@ export default function KanbanColumn({
               placeholder="Description (optional)..."
               value={newCardDescription}
               onChange={(e) => setNewCardDescription(e.target.value)}
-              className="w-full p-2 text-sm bg-primary-900 border border-primary-700 text-accent-50 rounded mb-3 resize-none focus:outline-none focus:ring-2 focus:ring-accent-500 placeholder-primary-400"
+              className="w-full p-2 text-sm bg-primary-900 border border-primary-700 text-accent-50 rounded mb-2 resize-none focus:outline-none focus:ring-2 focus:ring-accent-500 placeholder-primary-400"
               rows={3}
+            />
+            <input
+              type="text"
+              placeholder="Target branch (optional)..."
+              value={newCardTargetBranch}
+              onChange={(e) => setNewCardTargetBranch(e.target.value)}
+              className="w-full p-2 text-sm bg-primary-900 border border-primary-700 text-accent-50 rounded mb-3 focus:outline-none focus:ring-2 focus:ring-accent-500 placeholder-primary-400"
             />
             <div className="flex gap-2">
               <button

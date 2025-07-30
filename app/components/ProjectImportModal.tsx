@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 interface ProjectImportModalProps {
   isOpen: boolean;
@@ -65,10 +65,10 @@ export default function ProjectImportModal({
         router.push(`/projects/${data.project.id}`);
         onClose();
       } else {
-        setError(data.error || 'Failed to import project');
+        setError(data.error || '無法匯入專案');
       }
     } catch (err) {
-      setError('Network error: Unable to import project');
+      setError('網路錯誤：無法匯入專案');
     } finally {
       setIsImporting(false);
     }
@@ -80,7 +80,7 @@ export default function ProjectImportModal({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-primary-800 border border-primary-700 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-accent-50">Import Project from Git</h2>
+          <h2 className="text-2xl font-bold text-accent-50">從 Git 匯入專案</h2>
           <button
             onClick={onClose}
             className="text-primary-400 hover:text-accent-50 transition-colors"
@@ -101,7 +101,7 @@ export default function ProjectImportModal({
           {/* Git URL */}
           <div>
             <label htmlFor="gitUrl" className="block text-sm font-medium text-accent-50 mb-2">
-              Git Repository URL <span className="text-red-400">*</span>
+              Git 儲存庫網址 <span className="text-red-400">*</span>
             </label>
             <input
               type="url"
@@ -114,14 +114,14 @@ export default function ProjectImportModal({
               required
             />
             <p className="mt-1 text-sm text-primary-400">
-              Supports GitHub, GitLab, and other Git hosting services
+              支援 GitHub、GitLab 和其他 Git 託管服務
             </p>
           </div>
 
           {/* Project Name */}
           <div>
             <label htmlFor="projectName" className="block text-sm font-medium text-accent-50 mb-2">
-              Project Name <span className="text-red-400">*</span>
+              專案名稱 <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
@@ -138,7 +138,7 @@ export default function ProjectImportModal({
           {/* Branch (optional) */}
           <div>
             <label htmlFor="branch" className="block text-sm font-medium text-accent-50 mb-2">
-              Branch (optional)
+              分支（選填）
             </label>
             <input
               type="text"
@@ -150,7 +150,7 @@ export default function ProjectImportModal({
               placeholder="main"
             />
             <p className="mt-1 text-sm text-primary-400">
-              Leave empty to use the default branch
+              留空則使用預設分支
             </p>
           </div>
 
@@ -163,14 +163,14 @@ export default function ProjectImportModal({
               className="px-4 py-2 text-primary-300 hover:text-accent-50 transition-colors"
               disabled={isImporting}
             >
-              Cancel
+              取消
             </button>
             <button
               type="submit"
               disabled={isImporting}
               className="px-4 py-2 bg-accent-600 text-white rounded-md hover:bg-accent-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isImporting ? 'Importing...' : 'Import Project'}
+              {isImporting ? '匯入中...' : '匯入專案'}
             </button>
           </div>
         </form>

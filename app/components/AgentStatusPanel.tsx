@@ -2,6 +2,7 @@
 
 import { formatShortNumber } from '@/lib/utils';
 import { useEffect, useState } from 'react';
+import { useToast } from './ui/ToastManager';
 
 interface AgentStatusPanelProps {
   projectId: string;
@@ -28,6 +29,7 @@ interface QueueStatus {
 }
 
 export default function AgentStatusPanel({ projectId }: AgentStatusPanelProps) {
+  const { showToast } = useToast();
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,11 +73,12 @@ export default function AgentStatusPanel({ projectId }: AgentStatusPanelProps) {
       
       if (data.success) {
         setQueueStatus(data.data);
+        showToast('佇列狀態已切換', 'success');
       } else {
-        alert(`切換佇列失敗：${data.error}`);
+        showToast(`切換佇列失敗：${data.error}`, 'error');
       }
     } catch (err) {
-      alert('切換佇列失敗');
+      showToast('切換佇列失敗', 'error');
     }
   };
 
@@ -115,24 +118,25 @@ export default function AgentStatusPanel({ projectId }: AgentStatusPanelProps) {
   if (!queueStatus) return null;
 
   return (
-    <div className="bg-primary-800 rounded-lg shadow-sm border border-primary-700 p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-accent-50">Agent 狀態</h3>
-        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(queueStatus.status)}`}>
-          {queueStatus.status}
-        </span>
-      </div>
+    <div className="h-full flex flex-col">
+      <div className="bg-primary-800 rounded-lg shadow-sm border border-primary-700 p-4 space-y-4 w-full">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-accent-50">Agent 狀態</h3>
+          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(queueStatus.status)}`}>
+            {queueStatus.status}
+          </span>
+        </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="text-center">
-          <div className="text-2xl font-bold text-accent-50">{queueStatus.pendingTasks}</div>
-          <div className="text-xs text-primary-400">等待中任務</div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="text-center p-3 bg-primary-700 rounded-lg">
+            <div className="text-2xl font-bold text-accent-50">{queueStatus.pendingTasks}</div>
+            <div className="text-xs text-primary-400">等待中任務</div>
+          </div>
+          <div className="text-center p-3 bg-primary-700 rounded-lg">
+            <div className="text-2xl font-bold text-accent-50">{queueStatus.activeTasks}</div>
+            <div className="text-xs text-primary-400">執行中任務</div>
+          </div>
         </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-accent-50">{queueStatus.activeTasks}</div>
-          <div className="text-xs text-primary-400">執行中任務</div>
-        </div>
-      </div>
 
       <div className="space-y-3">
         <div>
@@ -185,5 +189,9 @@ export default function AgentStatusPanel({ projectId }: AgentStatusPanelProps) {
         </button>
       </div>
     </div>
+    
+    {/* Additional space for full width layout */}
+    <div className="flex-1"></div>
+  </div>
   );
 }

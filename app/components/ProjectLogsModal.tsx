@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface LogEntry {
   id: string;
@@ -42,11 +42,11 @@ export default function ProjectLogsModal({
         if (data.success && Array.isArray(data.data)) {
           setLogs(data.data);
         } else {
-          console.warn('Invalid logs data received:', data);
+          console.warn('收到無效的記錄資料：', data);
           setLogs([]);
         }
       } catch (error) {
-        console.error('Failed to fetch initial logs:', error);
+        console.error('無法載入初始記錄：', error);
         setLogs([]);
       }
     };
@@ -57,7 +57,7 @@ export default function ProjectLogsModal({
       
       eventSource.onopen = () => {
         setIsConnected(true);
-        console.log('Connected to project logs stream');
+        console.log('已連接到專案記錄串流');
       };
 
       eventSource.onmessage = (event) => {
@@ -68,13 +68,13 @@ export default function ProjectLogsModal({
             setLogs(prev => [...prev, logEntry]);
           }
         } catch (error) {
-          console.error('Failed to parse log entry:', error);
+          console.error('無法解析記錄項目：', error);
         }
       };
 
       eventSource.onerror = () => {
         setIsConnected(false);
-        console.log('Disconnected from project logs stream');
+        console.log('已從專案記錄串流斷線');
         eventSource.close();
         
         // Attempt to reconnect after 3 seconds
@@ -150,11 +150,11 @@ export default function ProjectLogsModal({
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-primary-700">
           <div className="flex items-center space-x-4">
-            <h2 className="text-xl font-bold text-accent-50">Project Logs</h2>
+            <h2 className="text-xl font-bold text-accent-50">專案記錄</h2>
             <div className="flex items-center space-x-2">
               <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
               <span className="text-sm text-primary-400">
-                {isConnected ? 'Connected' : 'Disconnected'}
+                {isConnected ? '已連接' : '已斷線'}
               </span>
             </div>
           </div>
@@ -166,11 +166,11 @@ export default function ProjectLogsModal({
               onChange={(e) => setFilter(e.target.value as any)}
               className="px-3 py-1 bg-primary-800 border border-primary-600 rounded text-accent-50 text-sm focus:outline-none focus:border-accent-500"
             >
-              <option value="all">All Levels</option>
-              <option value="error">Errors</option>
-              <option value="warn">Warnings</option>
-              <option value="info">Info</option>
-              <option value="debug">Debug</option>
+              <option value="all">全部</option>
+              <option value="error">錯誤</option>
+              <option value="warn">警告</option>
+              <option value="info">資訊</option>
+              <option value="debug">除錯</option>
             </select>
             
             {/* Auto-scroll toggle */}
@@ -181,7 +181,7 @@ export default function ProjectLogsModal({
                 onChange={(e) => setAutoScroll(e.target.checked)}
                 className="w-4 h-4 text-accent-600 bg-primary-800 border-primary-600 rounded focus:ring-accent-500 mr-2"
               />
-              Auto-scroll
+              自動捲動
             </label>
             
             {/* Clear logs */}
@@ -189,7 +189,7 @@ export default function ProjectLogsModal({
               onClick={clearLogs}
               className="px-3 py-1 text-sm text-primary-300 border border-primary-600 rounded hover:bg-primary-800 hover:text-accent-50"
             >
-              Clear
+              清除記錄
             </button>
             
             {/* Close button */}
@@ -212,7 +212,7 @@ export default function ProjectLogsModal({
         >
           {filteredLogs.length === 0 ? (
             <div className="text-center py-8 text-primary-400">
-              {logs.length === 0 ? 'No logs available' : `No ${filter} logs found`}
+              {logs.length === 0 ? '無可用記錄' : `沒有符合目前篩選條件的記錄`}
             </div>
           ) : (
             <div className="space-y-1">
@@ -228,11 +228,11 @@ export default function ProjectLogsModal({
                     {log.source || 'system'}
                   </span>
                   <span className={`flex-1 ${getLevelColor(log.level || 'info')} break-words`}>
-                    {log.message || 'No message'}
+                    {log.message || '無訊息'}
                   </span>
                   {log.metadata && Object.keys(log.metadata).length > 0 && (
                     <details className="text-xs text-primary-500">
-                      <summary className="cursor-pointer">metadata</summary>
+                      <summary className="cursor-pointer">中繼資料</summary>
                       <pre className="mt-1 text-primary-600">
                         {JSON.stringify(log.metadata, null, 2)}
                       </pre>
@@ -248,10 +248,10 @@ export default function ProjectLogsModal({
         {/* Footer */}
         <div className="flex items-center justify-between p-4 border-t border-primary-700 bg-primary-900">
           <div className="text-sm text-primary-400">
-            {filteredLogs.length} entries {filter !== 'all' && `(${logs.length} total)`}
+            {filteredLogs.length} 項目 {filter !== 'all' && `(${logs.length} 總計)`}
           </div>
           <div className="text-xs text-primary-500">
-            Logs update in real-time via Server-Sent Events
+            記錄更新透過 Server-Sent Events 即時傳送
           </div>
         </div>
       </div>

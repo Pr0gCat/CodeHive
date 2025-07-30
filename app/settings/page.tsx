@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
 import BudgetAllocationSlider from '../components/ui/BudgetAllocationSlider';
@@ -212,12 +211,6 @@ export default function SettingsPage() {
                   管理全域 Token 限制、預警閾值和專案預算分配
                 </p>
               </div>
-              <Link
-                href="/"
-                className="px-4 py-2 bg-primary-800 text-primary-200 rounded-md hover:bg-primary-700 border border-primary-700"
-              >
-                返回主頁
-              </Link>
             </div>
           </div>
 

@@ -145,6 +145,7 @@ model KanbanCard {
   status      String @default("BACKLOG")
   position    Int
   assignedAgent String?
+  targetBranch String?   // Target Git branch for this card
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 

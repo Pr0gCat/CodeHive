@@ -2,19 +2,21 @@
 
 import { KanbanCard, Project, ProjectSettings } from '@/lib/db';
 import { addInitialProjectLogs } from '@/lib/logging/init-logs';
-import { logProjectEvent } from '@/lib/logging/project-logger';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import AgentStatusPanel from '../../components/AgentStatusPanel';
 import KanbanBoard from '../../components/KanbanBoard';
 import ProjectLogsModal from '../../components/ProjectLogsModal';
 import ProjectSettingsModal from '../../components/ProjectSettingsModal';
+import UserQueriesPanel from '../../components/UserQueriesPanel';
+import { useToast } from '../../components/ui/ToastManager';
 
 interface ProjectPageProps {
   params: { id: string };
 }
 
 export default function ProjectPage({ params }: ProjectPageProps) {
+  const { showToast } = useToast();
   const [project, setProject] = useState<Project & { kanbanCards: KanbanCard[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +25,16 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const [logsModalOpen, setLogsModalOpen] = useState(false);
   const [projectSettings, setProjectSettings] = useState<ProjectSettings | null>(null);
   const [agentStatus, setAgentStatus] = useState<string>('unknown');
+  const [activeTab, setActiveTab] = useState<'kanban' | 'queries'>('kanban');
+
+  // Check URL parameters for tab selection
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get('tab');
+    if (tab === 'queries') {
+      setActiveTab('queries');
+    }
+  }, []);
 
   const fetchProject = useCallback(async () => {
     try {
@@ -116,43 +128,21 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   };
 
   const handleProjectReview = async () => {
-    if (!project) return;
-    
     setReviewLoading(true);
-    
-    // Log the start of project review
-    logProjectEvent.agentTaskStarted(project.id, 'project-manager', 'review-task', 'Comprehensive project analysis and CLAUDE.md generation');
-    
     try {
-      const response = await fetch('/api/agents/project-manager', {
+      const response = await fetch(`/api/projects/${params.id}/review`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          projectId: project.id,
-          action: 'review',
-        }),
       });
 
       const data = await response.json();
       if (data.success) {
-        // Log successful completion
-        logProjectEvent.agentTaskCompleted(project.id, 'project-manager', 'review-task', 2500);
-        
-        // Show success message and optionally refresh project data
-        alert(`專案檢視完成！\n\nCLAUDE.md 已${data.data.result.artifacts?.claudeMdPath ? '建立' : '產生'}。`);
-        await fetchProject();
+        showToast(`專案檢視完成！\n\nCLAUDE.md 已${data.data.result.artifacts?.claudeMdPath ? '建立' : '產生'}。`, 'success');
       } else {
-        // Log failure
-        logProjectEvent.agentTaskFailed(project.id, 'project-manager', 'review-task', data.error || 'Unknown error');
-        alert(`專案檢視失敗：${data.error}`);
+        showToast(`專案檢視失敗：${data.error}`, 'error');
       }
     } catch (error) {
-      // Log error
-      logProjectEvent.agentTaskFailed(project.id, 'project-manager', 'review-task', error instanceof Error ? error.message : 'Network error');
       console.error('Project review error:', error);
-      alert('無法完成專案檢視，請重試。');
+      showToast('無法完成專案檢視，請重試。', 'error');
     } finally {
       setReviewLoading(false);
     }
@@ -306,21 +296,60 @@ export default function ProjectPage({ params }: ProjectPageProps) {
         </div>
       </div>
 
-      <div className="flex h-[calc(100vh-120px)]">
-        {/* Agent Status Panel */}
-        <div className="w-80 p-4 bg-primary-950 border-r border-primary-800 h-full">
+      <div className="h-[calc(100vh-120px)] flex">
+        {/* Agent Status Panel - Always Visible */}
+        <div className="w-64 lg:w-72 xl:w-80 2xl:w-96 p-4 bg-primary-950 border-r border-primary-800 h-full overflow-y-auto flex-shrink-0">
           <AgentStatusPanel projectId={project.id} />
         </div>
 
-        {/* Kanban Board */}
-        <div className="flex-1 overflow-hidden">
-          <KanbanBoard
-            projectId={project.id}
-            cards={project.kanbanCards}
-            onCardUpdate={handleCardUpdate}
-            onCardCreate={handleCardCreate}
-            onCardDelete={handleCardDelete}
-          />
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col">
+          {/* Tabs */}
+          <div className="border-b border-primary-800 bg-primary-950 overflow-x-auto">
+            <div className="flex min-w-max">
+              <button
+                onClick={() => setActiveTab('kanban')}
+                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  activeTab === 'kanban'
+                    ? 'text-accent-50 border-accent-500'
+                    : 'text-primary-400 hover:text-accent-50 border-transparent hover:border-primary-600'
+                }`}
+              >
+                Kanban 看板
+              </button>
+              <button
+                onClick={() => setActiveTab('queries')}
+                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  activeTab === 'queries'
+                    ? 'text-accent-50 border-accent-500'
+                    : 'text-primary-400 hover:text-accent-50 border-transparent hover:border-primary-600'
+                }`}
+              >
+                代理查詢
+              </button>
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          <div className="flex-1 overflow-hidden">
+            {/* Kanban Board */}
+            <div className={`h-full ${activeTab === 'kanban' ? 'block' : 'hidden'}`}>
+              <KanbanBoard
+                projectId={project.id}
+                cards={project.kanbanCards}
+                onCardUpdate={handleCardUpdate}
+                onCardCreate={handleCardCreate}
+                onCardDelete={handleCardDelete}
+              />
+            </div>
+
+            {/* User Queries Panel */}
+            <div className={`h-full ${activeTab === 'queries' ? 'block' : 'hidden'}`}>
+              <div className="p-6 h-full overflow-y-auto">
+                <UserQueriesPanel projectId={project.id} />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

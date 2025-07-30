@@ -1,11 +1,10 @@
-import { AgentSpec, AgentResult, AgentExecutionOptions } from './types';
-import { AgentExecutor } from './executor';
 import { prisma } from '@/lib/db';
-import { ProjectAnalyzer } from './analyzers/project-analyzer';
-import { SpecificationGenerator } from './generators/spec-generator';
 import { promises as fs } from 'fs';
-import path from 'path';
-import { logTokenUsage, checkRateLimit, checkTokenLimit } from './project-settings';
+import { ProjectAnalyzer } from './analyzers/project-analyzer';
+import { AgentExecutor } from './executor';
+import { SpecificationGenerator } from './generators/spec-generator';
+import { checkRateLimit, checkTokenLimit, logTokenUsage } from './project-settings';
+import { AgentResult, AgentSpec } from './types';
 
 export interface ProjectContext {
   id: string;
@@ -126,7 +125,7 @@ export class ProjectManagerAgent {
         });
 
         // Calculate actual tokens used (based on content size)
-        const inputTokens = Math.ceil((context.name.length + (context.description || '').length) / 4);
+        const inputTokens = Math.ceil((context.name.length) / 4);
         const outputTokens = Math.ceil((claudeMdContent.length + projectSummary.length) / 4);
         const totalTokens = inputTokens + outputTokens;
 
@@ -156,7 +155,7 @@ export class ProjectManagerAgent {
         console.error('Failed to write CLAUDE.md:', writeError);
         
         // Log minimal token usage for failed operation
-        const inputTokens = Math.ceil((context.name.length + (context.description || '').length) / 4);
+        const inputTokens = Math.ceil((context.name.length) / 4);
         await logTokenUsage(
           projectId,
           'project-manager-review',
@@ -249,18 +248,9 @@ Respond with only a brief description (3-6 words maximum) of what this project d
 
 Description:`;
 
-      const result = await this.executor.execute({
-        type: 'project-analysis',
-        name: 'project-description-generator',
-        purpose: 'Generate brief project description',
-        capabilities: ['analyze', 'describe'],
-        dependencies: [],
-        constraints: ['brief-output'],
-        prompt,
-      }, {
-        projectPath: localPath,
+      const result = await this.executor.execute(prompt, {
+        workingDirectory: localPath,
         timeout: 30000, // 30 second timeout
-        maxTokens: 100, // Short response
       });
 
       if (result.success && result.output) {

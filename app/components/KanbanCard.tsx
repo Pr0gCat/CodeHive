@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
 import { KanbanCard } from '@/lib/db';
 import { cn } from '@/lib/utils';
+import { useEffect, useState } from 'react';
 import AgentInvoker from './AgentInvoker';
+import ConfirmDialog from './ui/ConfirmDialog';
 
 interface KanbanCardProps {
   card: KanbanCard;
@@ -12,14 +13,57 @@ interface KanbanCardProps {
   projectId?: string;
 }
 
+interface PendingQuery {
+  id: string;
+  title: string;
+  urgency: string;
+  type: string;
+}
+
 export default function KanbanCardComponent({ card, onUpdate, onDelete, projectId }: KanbanCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(card.title);
   const [editDescription, setEditDescription] = useState(card.description || '');
   const [isDragging, setIsDragging] = useState(false);
   const [showAgentInvoker, setShowAgentInvoker] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [pendingQueries, setPendingQueries] = useState<PendingQuery[]>([]);
+  const [isWaitingForQuery, setIsWaitingForQuery] = useState(false);
+
+  // Check for pending queries for this card
+  useEffect(() => {
+    const checkPendingQueries = async () => {
+      if (!projectId) return;
+      
+      try {
+        const response = await fetch(`/api/projects/${projectId}/queries?status=PENDING&cardId=${card.id}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          const queries = data.data.filter((query: any) => 
+            query.context && JSON.parse(query.context).cardId === card.id
+          );
+          setPendingQueries(queries);
+          setIsWaitingForQuery(queries.some((q: PendingQuery) => q.urgency === 'BLOCKING'));
+        }
+      } catch (error) {
+        console.error('Failed to fetch pending queries:', error);
+      }
+    };
+
+    checkPendingQueries();
+    // Check every 30 seconds for updates
+    const interval = setInterval(checkPendingQueries, 30000);
+    return () => clearInterval(interval);
+  }, [projectId, card.id]);
 
   const handleDragStart = (e: React.DragEvent) => {
+    // Don't allow dragging if waiting for blocking queries
+    if (isWaitingForQuery) {
+      e.preventDefault();
+      return;
+    }
+    
     e.dataTransfer.setData('text/plain', card.id);
     setIsDragging(true);
   };
@@ -55,12 +99,10 @@ export default function KanbanCardComponent({ card, onUpdate, onDelete, projectI
   };
 
   const handleDelete = async () => {
-    if (window.confirm('Are you sure you want to delete this card?')) {
-      try {
-        await onDelete(card.id);
-      } catch (error) {
-        console.error('Failed to delete card:', error);
-      }
+    try {
+      await onDelete(card.id);
+    } catch (error) {
+      console.error('Failed to delete card:', error);
     }
   };
 
@@ -72,6 +114,25 @@ export default function KanbanCardComponent({ card, onUpdate, onDelete, projectI
       case 'REVIEW': return 'border-l-purple-400';
       case 'DONE': return 'border-l-green-400';
       default: return 'border-l-gray-400';
+    }
+  };
+
+  const getQueryUrgencyColor = (urgency: string) => {
+    switch (urgency) {
+      case 'BLOCKING': return 'text-red-500 bg-red-900/20 border-red-500/30';
+      case 'ADVISORY': return 'text-blue-500 bg-blue-900/20 border-blue-500/30';
+      default: return 'text-gray-500 bg-gray-900/20 border-gray-500/30';
+    }
+  };
+
+  const getQueryTypeLabel = (type: string) => {
+    switch (type) {
+      case 'ARCHITECTURE': return '架構';
+      case 'BUSINESS_LOGIC': return '業務邏輯';
+      case 'UI_UX': return '用戶界面';
+      case 'INTEGRATION': return '集成';
+      case 'CLARIFICATION': return '澄清';
+      default: return type;
     }
   };
 
@@ -112,21 +173,57 @@ export default function KanbanCardComponent({ card, onUpdate, onDelete, projectI
 
   return (
     <div
-      draggable
+      draggable={!isWaitingForQuery}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       className={cn(
-        'bg-primary-800 p-3 rounded-lg shadow-sm border-l-4 cursor-move transition-all duration-200 group hover:shadow-md',
+        'bg-primary-800 p-3 rounded-lg shadow-sm border-l-4 transition-all duration-200 group hover:shadow-md',
         getStatusColor(card.status),
-        isDragging && 'opacity-50 rotate-2'
+        isDragging && 'opacity-50 rotate-2',
+        isWaitingForQuery && 'opacity-75 cursor-not-allowed border-2 border-dashed border-yellow-500/50'
       )}
     >
+      {/* Waiting for Query Indicator */}
+      {isWaitingForQuery && (
+        <div className="mb-3 p-2 bg-yellow-900/20 border border-yellow-500/30 rounded">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="animate-pulse w-2 h-2 bg-yellow-500 rounded-full"></div>
+            <span className="text-yellow-400 text-xs font-medium">等待用戶查詢</span>
+          </div>
+          <div className="space-y-1">
+            {pendingQueries.map((query) => (
+              <div
+                key={query.id}
+                className={cn(
+                  'text-xs px-2 py-1 rounded border',
+                  getQueryUrgencyColor(query.urgency)
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{query.title}</span>
+                  <span className="text-xs opacity-75">{getQueryTypeLabel(query.type)}</span>
+                </div>
+                <div className="text-xs opacity-75 mt-1">
+                  {query.urgency === 'BLOCKING' ? '阻塞性查詢' : '建議性查詢'}
+                </div>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => window.open(`/projects/${projectId}?tab=queries`, '_blank')}
+            className="mt-2 w-full px-2 py-1 bg-yellow-600/20 text-yellow-300 text-xs rounded hover:bg-yellow-600/30 transition-colors"
+          >
+            查看查詢詳情
+          </button>
+        </div>
+      )}
+
       <div className="flex items-start justify-between mb-2">
         <h4 className="font-medium text-accent-50 text-sm leading-tight">
           {card.title}
         </h4>
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {projectId && (
+          {projectId && !isWaitingForQuery && (
             <button
               onClick={() => setShowAgentInvoker(true)}
               className="p-1 text-primary-400 hover:text-accent-600 focus:outline-none"
@@ -147,7 +244,7 @@ export default function KanbanCardComponent({ card, onUpdate, onDelete, projectI
             </svg>
           </button>
           <button
-            onClick={handleDelete}
+            onClick={() => setShowDeleteConfirm(true)}
             className="p-1 text-primary-400 hover:text-red-600 focus:outline-none"
             title="Delete card"
           >
@@ -175,6 +272,15 @@ export default function KanbanCardComponent({ card, onUpdate, onDelete, projectI
         )}
       </div>
 
+      {card.targetBranch && (
+        <div className="mt-2 text-xs">
+          <span className="text-primary-400">目標分支：</span>
+          <span className="text-accent-400 font-mono bg-accent-900 px-2 py-1 rounded">
+            {card.targetBranch}
+          </span>
+        </div>
+      )}
+
       <div className="mt-2 text-xs text-primary-400">
         Updated {new Date(card.updatedAt).toLocaleDateString()}
       </div>
@@ -186,6 +292,17 @@ export default function KanbanCardComponent({ card, onUpdate, onDelete, projectI
           onClose={() => setShowAgentInvoker(false)}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDelete}
+        title="刪除卡片"
+        message="您確定要刪除這張卡片嗎？此操作無法復原。"
+        confirmText="刪除"
+        cancelText="取消"
+        type="danger"
+      />
     </div>
   );
 }

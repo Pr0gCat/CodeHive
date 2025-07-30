@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useToast } from './ui/ToastManager';
 
 interface EnhancedAgentInvokerProps {
   cardId: string;
@@ -35,6 +36,7 @@ interface ValidationResult {
 }
 
 export default function EnhancedAgentInvoker({ cardId, projectId, onClose }: EnhancedAgentInvokerProps) {
+  const { showToast } = useToast();
   const [availableAgents, setAvailableAgents] = useState<AgentType[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<string>('');
   const [agentCapabilities, setAgentCapabilities] = useState<AgentCapabilities | null>(null);
@@ -44,6 +46,7 @@ export default function EnhancedAgentInvoker({ cardId, projectId, onClose }: Enh
   const [validating, setValidating] = useState(false);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [taskId, setTaskId] = useState<string | null>(null);
+  const [isExecuting, setIsExecuting] = useState(false);
 
   useEffect(() => {
     fetchAvailableAgents();
@@ -129,7 +132,7 @@ export default function EnhancedAgentInvoker({ cardId, projectId, onClose }: Enh
     e.preventDefault();
     if (!command.trim() || (validation && !validation.valid)) return;
 
-    setLoading(true);
+    setIsExecuting(true);
     try {
       let response;
       
@@ -171,14 +174,16 @@ export default function EnhancedAgentInvoker({ cardId, projectId, onClose }: Enh
         } else {
           setTaskId(data.data.taskId);
         }
+        onClose();
+        showToast('代理已成功執行', 'success');
       } else {
-        alert(`Failed to execute agent: ${data.error}`);
+        showToast(`執行代理失敗：${data.error}`, 'error');
       }
     } catch (error) {
-      alert('Failed to execute agent. Please try again.');
-      console.error('Agent execution error:', error);
+      console.error('Error executing agent:', error);
+      showToast('執行代理失敗，請重試。', 'error');
     } finally {
-      setLoading(false);
+      setIsExecuting(false);
     }
   };
 
@@ -391,10 +396,10 @@ export default function EnhancedAgentInvoker({ cardId, projectId, onClose }: Enh
             </button>
             <button
               type="submit"
-              disabled={loading || !command.trim() || (validation ? !validation.valid : false)}
+              disabled={isExecuting || !command.trim() || (validation ? !validation.valid : false)}
               className="px-4 py-2 bg-accent-600 text-accent-50 rounded-md hover:bg-accent-700 focus:outline-none focus:ring-2 focus:ring-accent-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? (
+              {isExecuting ? (
                 <span className="flex items-center">
                   <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-accent-50" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
