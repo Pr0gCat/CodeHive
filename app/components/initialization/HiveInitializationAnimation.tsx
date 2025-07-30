@@ -29,7 +29,6 @@ export default function HiveInitializationAnimation({
   projectName = 'New Project',
 }: HiveInitializationAnimationProps) {
   const [showContent, setShowContent] = useState(false);
-  const [animatedBees, setAnimatedBees] = useState<number[]>([]);
 
   const currentPhase = phases[currentPhaseIndex];
   const isComplete = currentPhaseIndex >= phases.length;
@@ -65,16 +64,6 @@ export default function HiveInitializationAnimation({
     }
   }, [hasError, phases, onError]);
 
-  // Animate bees based on current phase
-  useEffect(() => {
-    if (currentPhaseIndex >= 0) {
-      const beesToAnimate = Array.from(
-        { length: Math.min(currentPhaseIndex + 1, 6) },
-        (_, i) => i
-      );
-      setAnimatedBees(beesToAnimate);
-    }
-  }, [currentPhaseIndex]);
 
   const getOverallProgress = () => {
     const completedPhases = phases.filter(
@@ -99,48 +88,6 @@ export default function HiveInitializationAnimation({
         {/* CodeHive Logo with Hexagon */}
         <div className="mb-8">
           <div className="relative inline-block">
-            {/* Hexagon Container */}
-            <div className="relative w-32 h-32 mx-auto mb-6">
-              <svg viewBox="0 0 100 100" className="w-full h-full">
-                {/* Hexagon Base */}
-                <polygon
-                  points="50,5 85,25 85,65 50,85 15,65 15,25"
-                  className="fill-accent-600/20 stroke-accent-500 stroke-2"
-                />
-
-                {/* Inner Hexagons for Hive Effect */}
-                {[0, 1, 2, 3, 4, 5].map(index => (
-                  <polygon
-                    key={index}
-                    points={`50,${15 + index * 8} ${75 - index * 4},${25 + index * 5} ${75 - index * 4},${55 - index * 5} 50,${75 - index * 8} ${25 + index * 4},${55 - index * 5} ${25 + index * 4},${25 + index * 5}`}
-                    className={`fill-accent-500/10 stroke-accent-400 stroke-1 transition-all duration-500 ${
-                      animatedBees.includes(index)
-                        ? 'opacity-100'
-                        : 'opacity-30'
-                    }`}
-                    style={{
-                      animationDelay: `${index * 0.2}s`,
-                    }}
-                  />
-                ))}
-
-                {/* Animated Bees */}
-                {animatedBees.map(beeIndex => (
-                  <g key={beeIndex}>
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="2"
-                      className="fill-yellow-400"
-                      style={{
-                        animation: `bee-flight-${beeIndex} 3s ease-in-out infinite`,
-                        transformOrigin: '50px 50px',
-                      }}
-                    />
-                  </g>
-                ))}
-              </svg>
-            </div>
 
             <h1 className="text-4xl font-bold text-accent-50 mb-2">CodeHive</h1>
             <p className="text-lg text-primary-300 mb-4">
@@ -242,89 +189,6 @@ export default function HiveInitializationAnimation({
 
       </div>
 
-      {/* CSS Animations for Bees */}
-      <style jsx>{`
-        @keyframes bee-flight-0 {
-          0%,
-          100% {
-            transform: translate(0, 0) rotate(0deg);
-          }
-          25% {
-            transform: translate(15px, -10px) rotate(45deg);
-          }
-          50% {
-            transform: translate(0, -20px) rotate(90deg);
-          }
-          75% {
-            transform: translate(-15px, -10px) rotate(135deg);
-          }
-        }
-
-        @keyframes bee-flight-1 {
-          0%,
-          100% {
-            transform: translate(0, 0) rotate(0deg);
-          }
-          33% {
-            transform: translate(20px, 0) rotate(60deg);
-          }
-          66% {
-            transform: translate(-20px, 0) rotate(120deg);
-          }
-        }
-
-        @keyframes bee-flight-2 {
-          0%,
-          100% {
-            transform: translate(0, 0) rotate(0deg);
-          }
-          25% {
-            transform: translate(-10px, 15px) rotate(-45deg);
-          }
-          50% {
-            transform: translate(0, 25px) rotate(-90deg);
-          }
-          75% {
-            transform: translate(10px, 15px) rotate(-135deg);
-          }
-        }
-
-        @keyframes bee-flight-3 {
-          0%,
-          100% {
-            transform: translate(0, 0) rotate(0deg);
-          }
-          50% {
-            transform: translate(25px, -15px) rotate(180deg);
-          }
-        }
-
-        @keyframes bee-flight-4 {
-          0%,
-          100% {
-            transform: translate(0, 0) rotate(0deg);
-          }
-          25% {
-            transform: translate(-20px, -15px) rotate(-60deg);
-          }
-          75% {
-            transform: translate(20px, 15px) rotate(60deg);
-          }
-        }
-
-        @keyframes bee-flight-5 {
-          0%,
-          100% {
-            transform: translate(0, 0) rotate(0deg);
-          }
-          33% {
-            transform: translate(0, -25px) rotate(120deg);
-          }
-          66% {
-            transform: translate(0, 25px) rotate(240deg);
-          }
-        }
-      `}</style>
     </div>
   );
 }
