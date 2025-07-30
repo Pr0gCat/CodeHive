@@ -40,6 +40,8 @@ model Project {
   budget      ProjectBudget?
   cycles      Cycle[]
   queries     Query[]
+  epics       Epic[]
+  mvpPhases   MVPPhase[]
 
   @@map("projects")
 }
@@ -48,7 +50,7 @@ model GlobalSettings {
   id          String   @id @default("global")
   
   // Token Limit Settings (managed by sliders)
-  dailyTokenLimit      Int      @default(10000000)  // 10M tokens default
+  dailyTokenLimit      Int      @default(100000000) // 100M tokens default
   warningThreshold     Float    @default(0.75)      // 75% warning threshold
   criticalThreshold    Float    @default(0.90)      // 90% critical threshold
   
@@ -58,6 +60,17 @@ model GlobalSettings {
   // Auto-management Settings
   autoResumeEnabled    Boolean  @default(true)       // Auto-resume when limits reset
   pauseOnWarning       Boolean  @default(false)      // Pause at warning threshold
+  
+  // Claude API Configuration
+  claudeCodePath       String   @default("claude")   // Path to claude command
+  rateLimitPerMinute   Int      @default(50)         // API calls per minute
+  
+  // Application URLs
+  appUrl               String   @default("http://localhost:3000")
+  wsUrl                String   @default("ws://localhost:3000")
+  
+  // Database Configuration
+  databaseUrl          String   @default("file:./prisma/codehive.db")
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -140,21 +153,53 @@ model ProjectSettings {
 model KanbanCard {
   id          String     @id @default(cuid())
   projectId   String
+  epicId      String?    // Optional: which epic this story belongs to
   title       String
   description String?
   status      String @default("BACKLOG")
   position    Int
   assignedAgent String?
   targetBranch String?   // Target Git branch for this card
+  
+  // Story details
+  storyPoints Int?       // Estimation in story points
+  priority    String     @default("MEDIUM") // LOW, MEDIUM, HIGH
+  sequence    Int        @default(0) // Order within epic
+  tddEnabled  Boolean    @default(false) // Whether to use TDD for this story
+  
+  // Acceptance criteria
+  acceptanceCriteria String? // JSON array of criteria
+  
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
   // Relations
   project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  epic        Epic?        @relation(fields: [epicId], references: [id], onDelete: SetNull)
   agentTasks  AgentTask[]
   queuedTasks QueuedTask[]
+  cycles      Cycle[]      // TDD cycles for this story
+  dependencies StoryDependency[] @relation("StoryDependencies")
+  dependents   StoryDependency[] @relation("StoryDependents")
 
   @@map("kanban_cards")
+}
+
+model StoryDependency {
+  id          String     @id @default(cuid())
+  storyId     String     // Story that depends on another
+  dependsOnId String     // Story that this story depends on
+  type        String     @default("BLOCKS") // BLOCKS, RELATES_TO
+  description String?    // Why this dependency exists
+  
+  createdAt   DateTime   @default(now())
+
+  // Relations
+  story       KanbanCard @relation("StoryDependencies", fields: [storyId], references: [id], onDelete: Cascade)
+  dependsOn   KanbanCard @relation("StoryDependents", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, dependsOnId])
+  @@map("story_dependencies")
 }
 
 model AgentTask {
@@ -305,14 +350,93 @@ model UsageLimit {
   @@map("usage_limits")
 }
 
+// Epic-Kanban-TDD Integration Models
+model Epic {
+  id          String   @id @default(cuid())
+  projectId   String
+  title       String   // "電商購物車系統"
+  description String?  // Optional detailed description
+  type        String   @default("FEATURE") // MVP, ENHANCEMENT, FEATURE, BUGFIX
+  phase       String   @default("PLANNING") // PLANNING, IN_PROGRESS, DONE, CANCELLED
+  status      String   @default("ACTIVE") // ACTIVE, PAUSED, COMPLETED, ARCHIVED
+  
+  // MVP and prioritization
+  mvpPriority String   @default("MEDIUM") // CRITICAL, HIGH, MEDIUM, LOW, FUTURE
+  coreValue   String?  // Core business value description
+  sequence    Int      @default(0) // Order within project
+  
+  // Estimation and tracking
+  estimatedStoryPoints Int     @default(0)
+  actualStoryPoints    Int     @default(0)
+  startDate            DateTime?
+  dueDate              DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  completedAt DateTime?
+
+  // Relations
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stories     KanbanCard[] // Epic contains multiple stories/cards
+  dependencies EpicDependency[] @relation("EpicDependencies")
+  dependents   EpicDependency[] @relation("EpicDependents")
+
+  @@map("epics")
+}
+
+model EpicDependency {
+  id          String   @id @default(cuid())
+  epicId      String   // Epic that depends on another
+  dependsOnId String   // Epic that this epic depends on
+  type        String   @default("BLOCKS") // BLOCKS, RELATES_TO, SIMILAR_TO
+  description String?  // Why this dependency exists
+  
+  createdAt   DateTime @default(now())
+
+  // Relations
+  epic        Epic     @relation("EpicDependencies", fields: [epicId], references: [id], onDelete: Cascade)
+  dependsOn   Epic     @relation("EpicDependents", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@unique([epicId, dependsOnId])
+  @@map("epic_dependencies")
+}
+
+model MVPPhase {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String   // "Core MVP", "Enhanced MVP v1"
+  description String?  // Phase description
+  sequence    Int      @default(0) // Phase order
+  status      String   @default("PLANNING") // PLANNING, IN_PROGRESS, COMPLETED, CANCELLED
+  
+  // Phase targets
+  targetDate  DateTime?
+  coreFeatures String  // JSON array of Epic IDs that are core to this phase
+  
+  // Progress tracking
+  plannedStoryPoints Int @default(0)
+  completedStoryPoints Int @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  releasedAt  DateTime?
+
+  // Relations
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("mvp_phases")
+}
+
 // AI-Native TDD Development Models
 model Cycle {
   id          String   @id @default(cuid())
   projectId   String
+  storyId     String?  // Optional: which story/card this cycle belongs to
   title       String   // "Add user authentication"
   description String?  // Optional detailed description
   phase       String   @default("RED") // RED, GREEN, REFACTOR, REVIEW
   status      String   @default("ACTIVE") // ACTIVE, PAUSED, COMPLETED, FAILED
+  sequence    Int      @default(0) // Order within story
   
   // Feature definition
   acceptanceCriteria String // JSON array of criteria
@@ -324,6 +448,7 @@ model Cycle {
 
   // Relations
   project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  story       KanbanCard? @relation(fields: [storyId], references: [id], onDelete: SetNull)
   tests       Test[]
   queries     Query[]
   artifacts   Artifact[]
@@ -427,6 +552,13 @@ model Artifact {
 // CardStatus: "BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DONE"
 // TaskStatus: "PENDING", "RUNNING", "COMPLETED", "FAILED", "PAUSED"
 // MilestoneStatus: "PLANNED", "IN_PROGRESS", "COMPLETED"
+// EpicType: "MVP", "ENHANCEMENT", "FEATURE", "BUGFIX"
+// EpicPhase: "PLANNING", "IN_PROGRESS", "DONE", "CANCELLED"
+// EpicStatus: "ACTIVE", "PAUSED", "COMPLETED", "ARCHIVED"
+// MVPPriority: "CRITICAL", "HIGH", "MEDIUM", "LOW", "FUTURE"
+// MVPPhaseStatus: "PLANNING", "IN_PROGRESS", "COMPLETED", "CANCELLED"
+// StoryPriority: "LOW", "MEDIUM", "HIGH"
+// DependencyType: "BLOCKS", "RELATES_TO", "SIMILAR_TO"
 // CyclePhase: "RED", "GREEN", "REFACTOR", "REVIEW"
 // CycleStatus: "ACTIVE", "PAUSED", "COMPLETED", "FAILED"
 // TestStatus: "FAILING", "PASSING", "SKIPPED", "BROKEN"

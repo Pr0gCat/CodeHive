@@ -267,40 +267,47 @@ const projects = await db.execute('SELECT * FROM projects');
 - Foreign key relationships use CASCADE deletes where appropriate
 - JSON fields store complex data (agent capabilities, performance metrics)
 
-## Environment Configuration
+## Configuration System
 
-Use the configuration module for type-safe environment access:
+CodeHive uses a **database-driven configuration system** - no `.env` file needed! All application settings are managed through the Settings page at `/settings`.
+
+### Using Configuration in Code
 
 ```typescript
-import { config } from '@/lib/config';
+import { getConfig } from '@/lib/config';
 
-// Access validated configuration
+// Get runtime configuration (async)
+const config = await getConfig();
 const dbUrl = config.databaseUrl;
 const isProduction = config.isProduction;
+
+// For synchronous access when database might not be available
+import { fallbackConfig } from '@/lib/config';
+const claudePath = fallbackConfig.claudeCodePath;
 ```
 
-### Required Environment Variables
+### Configuration Management
 
-Create `.env` file (see `.env.example`):
+- **UI-Based**: All settings configurable through `/settings` page
+- **Database Storage**: Settings stored in `GlobalSettings` table
+- **Real-time Updates**: Changes take effect immediately with cache invalidation
+- **Fallback System**: Hardcoded defaults if database unavailable
+- **No Environment Files**: `.env` file has been removed
 
-```env
-# Database
-DATABASE_URL="file:./codehive.db"
+### Available Settings
 
-# Claude Code Configuration  
-CLAUDE_CODE_PATH="claude"  # or full path like /usr/local/bin/claude
-CLAUDE_DAILY_TOKEN_LIMIT="10000000"
-CLAUDE_RATE_LIMIT_PER_MINUTE="50"
+All settings can be configured via the web interface:
+- **Token Management**: Daily limits, warning/critical thresholds
+- **Claude API**: Command path, rate limiting
+- **Application URLs**: Main app URL, WebSocket URL
+- **Database**: SQLite file location
+- **Auto Management**: Resume settings, pause behavior
 
-# Application URLs
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
-NEXT_PUBLIC_WS_URL="ws://localhost:3000"
+### Environment Variables
 
-# Environment
-NODE_ENV="development"
-```
-
-The configuration module validates all required variables on startup and provides type-safe access throughout the application.
+Only `NODE_ENV` is still needed (automatically set by Next.js in development):
+- `development` (default for `bun run dev`)
+- `production` (set manually in production deployments)
 
 ## Recent Improvements
 

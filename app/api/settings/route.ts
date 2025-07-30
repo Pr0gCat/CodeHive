@@ -1,14 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { configCache } from '@/lib/config';
 import { z } from 'zod';
 
 const globalSettingsSchema = z.object({
-  dailyTokenLimit: z.number().min(1000000).max(100000000), // 1M to 100M
+  dailyTokenLimit: z.number().min(1000000).max(500000000), // 1M to 500M
   warningThreshold: z.number().min(0.1).max(0.95), // 10% to 95%
   criticalThreshold: z.number().min(0.1).max(0.99), // 10% to 99%
   allocationStrategy: z.number().min(0.0).max(1.0), // 0% to 100%
   autoResumeEnabled: z.boolean(),
   pauseOnWarning: z.boolean(),
+  // Claude API Configuration
+  claudeCodePath: z.string().min(1),
+  rateLimitPerMinute: z.number().min(1).max(1000),
+  // Application URLs
+  appUrl: z.string().url(),
+  wsUrl: z.string().min(1),
+  // Database Configuration
+  databaseUrl: z.string().min(1),
 }).refine((data) => data.warningThreshold < data.criticalThreshold, {
   message: "Warning threshold must be less than critical threshold",
   path: ["warningThreshold"],
@@ -16,24 +25,25 @@ const globalSettingsSchema = z.object({
 
 export async function GET() {
   try {
-    let settings = await prisma.globalSettings.findUnique({
+    // Use upsert to ensure the record exists
+    const settings = await prisma.globalSettings.upsert({
       where: { id: 'global' },
+      create: {
+        id: 'global',
+        dailyTokenLimit: 100000000, // 100M tokens
+        warningThreshold: 0.75,      // 75%
+        criticalThreshold: 0.90,     // 90%
+        allocationStrategy: 0.5,     // 50% mix
+        autoResumeEnabled: true,
+        pauseOnWarning: false,
+        claudeCodePath: 'claude',
+        rateLimitPerMinute: 50,
+        appUrl: 'http://localhost:3000',
+        wsUrl: 'ws://localhost:3000',
+        databaseUrl: 'file:./prisma/codehive.db',
+      },
+      update: {} // Don't change existing settings
     });
-
-    // Create default settings if they don't exist
-    if (!settings) {
-      settings = await prisma.globalSettings.create({
-        data: {
-          id: 'global',
-          dailyTokenLimit: 10000000, // 10M tokens
-          warningThreshold: 0.75,     // 75%
-          criticalThreshold: 0.90,    // 90%
-          allocationStrategy: 0.5,    // 50% mix
-          autoResumeEnabled: true,
-          pauseOnWarning: false,
-        },
-      });
-    }
 
     return NextResponse.json({
       success: true,
@@ -67,6 +77,9 @@ export async function PUT(request: NextRequest) {
 
     // After updating global settings, recalculate project budgets
     await recalculateProjectBudgets(settings);
+
+    // Invalidate configuration cache so new settings take effect immediately
+    configCache.invalidate();
 
     return NextResponse.json({
       success: true,

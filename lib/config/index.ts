@@ -1,8 +1,9 @@
 /**
- * Environment configuration and validation
+ * Hybrid configuration system - uses database config first, falls back to env vars
  */
 
 import { formatShortNumber } from '@/lib/utils';
+import { configCache, type DatabaseConfig } from './database-config';
 
 export interface Config {
   // Database
@@ -10,8 +11,8 @@ export interface Config {
   
   // Claude Code
   claudeCodePath: string;
-  claudeDailyTokenLimit: string;
-  claudeRateLimitPerMinute: string;
+  claudeDailyTokenLimit: number;
+  claudeRateLimitPerMinute: number;
   
   // Application
   appUrl: string;
@@ -19,6 +20,13 @@ export interface Config {
   nodeEnv: string;
   
   // Runtime
+  isProduction: boolean;
+  isDevelopment: boolean;
+}
+
+// Static configuration from environment (fallback only)
+interface StaticConfig {
+  nodeEnv: string;
   isProduction: boolean;
   isDevelopment: boolean;
 }
@@ -31,63 +39,83 @@ function getEnvVar(name: string, defaultValue?: string): string {
   return value;
 }
 
-function getEnvNumber(name: string, defaultValue?: number): number {
-  const value = process.env[name];
-  if (!value) {
-    if (defaultValue !== undefined) return defaultValue;
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  
-  const parsed = parseInt(value, 10);
-  if (isNaN(parsed)) {
-    throw new Error(`Environment variable ${name} must be a number, got: ${value}`);
-  }
-  
-  return parsed;
-}
-
-export const config: Config = {
-  // Database
-  databaseUrl: getEnvVar('DATABASE_URL'),
-  
-  // Claude Code
-  claudeCodePath: getEnvVar('CLAUDE_CODE_PATH', 'claude'),
-  claudeDailyTokenLimit: getEnvVar('CLAUDE_DAILY_TOKEN_LIMIT', '10000000'),
-  claudeRateLimitPerMinute: getEnvVar('CLAUDE_RATE_LIMIT_PER_MINUTE', '50'),
-  
-  // Application
-  appUrl: getEnvVar('NEXT_PUBLIC_APP_URL', 'http://localhost:3000'),
-  wsUrl: getEnvVar('NEXT_PUBLIC_WS_URL', 'ws://localhost:3000'),
+// Static config that doesn't come from database
+const staticConfig: StaticConfig = {
   nodeEnv: getEnvVar('NODE_ENV', 'development'),
-  
-  // Runtime flags
   isProduction: process.env.NODE_ENV === 'production',
   isDevelopment: process.env.NODE_ENV === 'development',
 };
 
-// Validate configuration on module load
-export function validateConfig(): void {
+/**
+ * Get runtime configuration by merging database config with static config
+ */
+export async function getConfig(): Promise<Config> {
+  const dbConfig = await configCache.getConfig();
+  
+  return {
+    // Database config takes precedence
+    databaseUrl: dbConfig.databaseUrl,
+    claudeCodePath: dbConfig.claudeCodePath,
+    claudeDailyTokenLimit: dbConfig.dailyTokenLimit,
+    claudeRateLimitPerMinute: dbConfig.rateLimitPerMinute,
+    appUrl: dbConfig.appUrl,
+    wsUrl: dbConfig.wsUrl,
+    
+    // Static config from environment
+    nodeEnv: staticConfig.nodeEnv,
+    isProduction: staticConfig.isProduction,
+    isDevelopment: staticConfig.isDevelopment,
+  };
+}
+
+/**
+ * Synchronous fallback config for when database is not available
+ * Uses sensible defaults since .env file has been removed
+ */
+export const fallbackConfig: Config = {
+  // Database - use default SQLite path
+  databaseUrl: 'file:./prisma/codehive.db',
+  
+  // Claude Code - use system default
+  claudeCodePath: 'claude',
+  claudeDailyTokenLimit: 100000000, // 100M tokens
+  claudeRateLimitPerMinute: 50,
+  
+  // Application - use localhost defaults
+  appUrl: 'http://localhost:3000',
+  wsUrl: 'ws://localhost:3000',
+  
+  // Static config from environment (NODE_ENV still needed)
+  nodeEnv: staticConfig.nodeEnv,
+  isProduction: staticConfig.isProduction,
+  isDevelopment: staticConfig.isDevelopment,
+};
+
+/**
+ * Validate a configuration object
+ */
+export function validateConfig(config: Config): void {
   const errors: string[] = [];
   
   // Check required paths
   if (!config.databaseUrl) {
-    errors.push('DATABASE_URL is required');
+    errors.push('Database URL is required');
   }
   
   // Check token limits
-  if (parseInt(config.claudeDailyTokenLimit) <= 0) {
-    errors.push('CLAUDE_DAILY_TOKEN_LIMIT must be positive');
+  if (config.claudeDailyTokenLimit <= 0) {
+    errors.push('Claude daily token limit must be positive');
   }
   
-  if (parseInt(config.claudeRateLimitPerMinute) <= 0) {
-    errors.push('CLAUDE_RATE_LIMIT_PER_MINUTE must be positive');
+  if (config.claudeRateLimitPerMinute <= 0) {
+    errors.push('Claude rate limit per minute must be positive');
   }
   
   // Check URLs
   try {
     new URL(config.appUrl);
   } catch {
-    errors.push('NEXT_PUBLIC_APP_URL must be a valid URL');
+    errors.push('App URL must be a valid URL');
   }
   
   if (errors.length > 0) {
@@ -95,16 +123,20 @@ export function validateConfig(): void {
   }
 }
 
-// Run validation
-validateConfig();
+// Validate fallback configuration on module load
+validateConfig(fallbackConfig);
 
 // Log configuration in development
-if (config.isDevelopment) {
-  console.log('📝 Configuration loaded:', {
-    nodeEnv: config.nodeEnv,
-    appUrl: config.appUrl,
-    claudeCodePath: config.claudeCodePath,
-    tokenLimit: formatShortNumber(parseInt(config.claudeDailyTokenLimit)),
-    rateLimit: config.claudeRateLimitPerMinute,
+if (staticConfig.isDevelopment) {
+  console.log('📝 Fallback configuration loaded:', {
+    nodeEnv: staticConfig.nodeEnv,
+    appUrl: fallbackConfig.appUrl,
+    claudeCodePath: fallbackConfig.claudeCodePath,
+    tokenLimit: formatShortNumber(fallbackConfig.claudeDailyTokenLimit),
+    rateLimit: fallbackConfig.claudeRateLimitPerMinute,
   });
 }
+
+// Export individual functions for config management
+export { configCache, getDatabaseConfig, updateDatabaseConfig } from './database-config';
+export type { DatabaseConfig } from './database-config';

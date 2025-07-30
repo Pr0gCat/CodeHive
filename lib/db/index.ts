@@ -25,6 +25,11 @@ export type {
   AgentEvolution,
   UsageTracking,
   UsageLimit,
+  // Epic-Kanban-TDD Integration Models
+  Epic,
+  EpicDependency,
+  MVPPhase,
+  StoryDependency,
   // AI-Native TDD Models
   Cycle,
   Test,
@@ -126,12 +131,70 @@ export const ArtifactType = {
   CONFIG: 'CONFIG',
 } as const;
 
+// Epic-Kanban-TDD Integration Status Constants
+export const EpicType = {
+  MVP: 'MVP',
+  ENHANCEMENT: 'ENHANCEMENT',
+  FEATURE: 'FEATURE',
+  BUGFIX: 'BUGFIX',
+} as const;
+
+export const EpicPhase = {
+  PLANNING: 'PLANNING',
+  IN_PROGRESS: 'IN_PROGRESS',
+  DONE: 'DONE',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export const EpicStatus = {
+  ACTIVE: 'ACTIVE',
+  PAUSED: 'PAUSED',
+  COMPLETED: 'COMPLETED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+
+export const MVPPriority = {
+  CRITICAL: 'CRITICAL',
+  HIGH: 'HIGH',
+  MEDIUM: 'MEDIUM',
+  LOW: 'LOW',
+  FUTURE: 'FUTURE',
+} as const;
+
+export const MVPPhaseStatus = {
+  PLANNING: 'PLANNING',
+  IN_PROGRESS: 'IN_PROGRESS',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export const StoryPriority = {
+  LOW: 'LOW',
+  MEDIUM: 'MEDIUM',
+  HIGH: 'HIGH',
+} as const;
+
+export const DependencyType = {
+  BLOCKS: 'BLOCKS',
+  RELATES_TO: 'RELATES_TO',
+  SIMILAR_TO: 'SIMILAR_TO',
+} as const;
+
 export type ProjectStatusType = (typeof ProjectStatus)[keyof typeof ProjectStatus];
 export type CardStatusType = (typeof CardStatus)[keyof typeof CardStatus];
 export type TaskStatusType = (typeof TaskStatus)[keyof typeof TaskStatus];
 export type MilestoneStatusType = (typeof MilestoneStatus)[keyof typeof MilestoneStatus];
 export type TaskPriorityType = (typeof TaskPriority)[keyof typeof TaskPriority];
 export type CodeAnalysisDepthType = (typeof CodeAnalysisDepth)[keyof typeof CodeAnalysisDepth];
+
+// Epic-Kanban-TDD Integration Type definitions
+export type EpicTypeType = (typeof EpicType)[keyof typeof EpicType];
+export type EpicPhaseType = (typeof EpicPhase)[keyof typeof EpicPhase];
+export type EpicStatusType = (typeof EpicStatus)[keyof typeof EpicStatus];
+export type MVPPriorityType = (typeof MVPPriority)[keyof typeof MVPPriority];
+export type MVPPhaseStatusType = (typeof MVPPhaseStatus)[keyof typeof MVPPhaseStatus];
+export type StoryPriorityType = (typeof StoryPriority)[keyof typeof StoryPriority];
+export type DependencyTypeType = (typeof DependencyType)[keyof typeof DependencyType];
 
 // AI-Native TDD Type definitions
 export type CyclePhaseType = (typeof CyclePhase)[keyof typeof CyclePhase];
