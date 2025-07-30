@@ -109,9 +109,9 @@ export default function ProjectProgressDashboard() {
   return (
     <div className="bg-primary-900 border border-primary-800 rounded-lg p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-accent-50">Project Progress</h2>
+        <h2 className="text-xl font-semibold text-accent-50">專案進度</h2>
         <div className="text-sm text-primary-400">
-          {projects.filter(p => p.status === 'ACTIVE').length} active projects
+          {projects.filter(p => p.status === 'ACTIVE').length} 個活躍專案
         </div>
       </div>
 
@@ -131,10 +131,10 @@ export default function ProjectProgressDashboard() {
               
               <div className="text-right">
                 <div className="text-sm font-medium text-accent-50">
-                  {project.progress.completed}/{project.progress.total} tasks
+                  {project.progress.completed}/{project.progress.total} 個任務
                 </div>
                 <div className="text-xs text-primary-400">
-                  {project.activeAgents} agents active
+                  {project.activeAgents} 個代理活躍
                 </div>
               </div>
             </div>
@@ -156,7 +156,7 @@ export default function ProjectProgressDashboard() {
             {/* Task Breakdown */}
             <div className="grid grid-cols-5 gap-2 text-xs">
               <div className="text-center">
-                <div className="text-primary-400">Backlog</div>
+                <div className="text-primary-400">待辦清單</div>
                 <div className="font-medium text-accent-50">{project.tasks.backlog}</div>
               </div>
               <div className="text-center">
@@ -164,15 +164,15 @@ export default function ProjectProgressDashboard() {
                 <div className="font-medium text-blue-300">{project.tasks.todo}</div>
               </div>
               <div className="text-center">
-                <div className="text-primary-400">In Progress</div>
+                <div className="text-primary-400">進行中</div>
                 <div className="font-medium text-yellow-300">{project.tasks.inProgress}</div>
               </div>
               <div className="text-center">
-                <div className="text-primary-400">Review</div>
+                <div className="text-primary-400">審查中</div>
                 <div className="font-medium text-purple-300">{project.tasks.review}</div>
               </div>
               <div className="text-center">
-                <div className="text-primary-400">Done</div>
+                <div className="text-primary-400">已完成</div>
                 <div className="font-medium text-green-300">{project.tasks.done}</div>
               </div>
             </div>

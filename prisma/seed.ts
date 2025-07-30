@@ -3,8 +3,14 @@ import { prisma, ProjectStatus, CardStatus } from '../lib/db';
 async function main() {
   console.log('🌱 Seeding database...');
 
-  // Create a demo project
-  const demoProject = await prisma.project.create({
+  // Check if demo project already exists
+  let demoProject = await prisma.project.findUnique({
+    where: { localPath: 'repos/codehive-demo' },
+  });
+
+  if (!demoProject) {
+    // Create a demo project
+    demoProject = await prisma.project.create({
     data: {
       name: 'CodeHive Demo Project',
       description: 'Demo project',
@@ -63,6 +69,7 @@ async function main() {
       },
     },
   });
+  }
 
   // Create some sample token usage data
   await prisma.tokenUsage.create({
@@ -85,9 +92,11 @@ async function main() {
     },
   });
 
-  // Create usage limits
-  await prisma.usageLimit.create({
-    data: {
+  // Create usage limits (upsert to avoid duplicates)
+  await prisma.usageLimit.upsert({
+    where: { limitType: 'tokens_per_day' },
+    update: {},
+    create: {
       limitType: 'tokens_per_day',
       limitValue: 10000000,
       currentUsage: 0,
@@ -95,12 +104,42 @@ async function main() {
     },
   });
 
-  await prisma.usageLimit.create({
-    data: {
+  await prisma.usageLimit.upsert({
+    where: { limitType: 'requests_per_minute' },
+    update: {},
+    create: {
       limitType: 'requests_per_minute',
       limitValue: 50,
       currentUsage: 0,
       resetAt: new Date(Date.now() + 60 * 1000), // 1 minute from now
+    },
+  });
+
+  // Create global settings for token limits (upsert to avoid duplicates)
+  await prisma.globalSettings.upsert({
+    where: { id: 'global' },
+    update: {},
+    create: {
+      id: 'global',
+      dailyTokenLimit: 10000000, // 10M tokens
+      warningThreshold: 0.75,     // 75%
+      criticalThreshold: 0.90,    // 90%
+      allocationStrategy: 0.5,    // 50% mix
+      autoResumeEnabled: true,
+      pauseOnWarning: false,
+    },
+  });
+
+  // Create project budget allocation (upsert to avoid duplicates)
+  await prisma.projectBudget.upsert({
+    where: { projectId: demoProject.id },
+    update: {},
+    create: {
+      projectId: demoProject.id,
+      allocatedPercentage: 0.8,  // 80% of global limit
+      dailyTokenBudget: 8000000, // 8M tokens
+      usedTokens: 2300000,       // 2.3M used (about 29%)
+      lastResetAt: new Date(),
     },
   });
 

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import Navbar from '../../components/Navbar';
 
 interface AvailableRepo {
@@ -104,10 +104,10 @@ export default function NewProjectPage() {
       if (data.success) {
         router.push(`/projects/${data.data.id}`);
       } else {
-        setError(data.error || 'Failed to create project');
+        setError(data.error || '無法建立專案');
       }
     } catch {
-      setError('Failed to create project');
+      setError('無法建立專案');
     } finally {
       setLoading(false);
     }
@@ -119,8 +119,8 @@ export default function NewProjectPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-accent-50 mb-2">Create New Project</h1>
-            <p className="text-primary-300">Set up a new project for multi-agent development</p>
+            <h1 className="text-3xl font-bold text-accent-50 mb-2">建立新專案</h1>
+            <p className="text-primary-300">設定新的多 Agent 開發專案</p>
           </div>
 
           <div className="bg-primary-900 rounded-lg shadow-sm border border-primary-800 p-6">
@@ -142,7 +142,7 @@ export default function NewProjectPage() {
 
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-primary-300 mb-2">
-                  Project Name *
+                  專案名稱 *
                 </label>
                 <input
                   type="text"
@@ -152,13 +152,13 @@ export default function NewProjectPage() {
                   value={formData.name}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
-                  placeholder="Enter project name"
+                  placeholder="輸入專案名稱"
                 />
               </div>
 
               <div>
                 <label htmlFor="description" className="block text-sm font-medium text-primary-300 mb-2">
-                  Description
+                  描述
                 </label>
                 <textarea
                   id="description"
@@ -167,21 +167,21 @@ export default function NewProjectPage() {
                   value={formData.description}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
-                  placeholder="Describe your project"
+                  placeholder="描述您的專案"
                 />
               </div>
 
               <div>
                 <label htmlFor="repoSelect" className="block text-sm font-medium text-primary-300 mb-2">
-                  Select Repository *
+                  選擇儲存庫 *
                 </label>
                 {loadingRepos ? (
                   <div className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-md">
-                    <div className="text-primary-400 text-sm">Loading available repositories...</div>
+                    <div className="text-primary-400 text-sm">載入可用儲存庫中...</div>
                   </div>
                 ) : availableRepos.length === 0 ? (
                   <div className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-md">
-                    <div className="text-primary-400 text-sm">No available repositories found in repos/ directory</div>
+                    <div className="text-primary-400 text-sm">在 repos/ 目錄中找不到可用的儲存庫</div>
                   </div>
                 ) : (
                   <select
@@ -191,7 +191,7 @@ export default function NewProjectPage() {
                     required
                     className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
                   >
-                    <option value="">Select a repository folder...</option>
+                    <option value="">選擇儲存庫資料夾...</option>
                     {availableRepos.map((repo) => (
                       <option key={repo.path} value={repo.path}>
                         {repo.name} ({repo.projectType}) {repo.hasGit ? '🔗' : ''}
@@ -204,17 +204,17 @@ export default function NewProjectPage() {
                   <div className="mt-2 p-3 bg-primary-800 border border-primary-700 rounded-md">
                     <div className="text-sm space-y-1">
                       <div className="text-primary-300">
-                        <span className="font-medium">Path:</span> <span className="font-mono text-primary-400">{selectedRepo.path}</span>
+                        <span className="font-medium">路徑：</span> <span className="font-mono text-primary-400">{selectedRepo.path}</span>
                       </div>
                       <div className="text-primary-300">
-                        <span className="font-medium">Type:</span> <span className="text-accent-50">{selectedRepo.projectType}</span>
+                        <span className="font-medium">類型：</span> <span className="text-accent-50">{selectedRepo.projectType}</span>
                       </div>
                       <div className="text-primary-300">
-                        <span className="font-medium">Files:</span> <span className="text-accent-50">{selectedRepo.fileCount}</span>
+                        <span className="font-medium">檔案：</span> <span className="text-accent-50">{selectedRepo.fileCount}</span>
                       </div>
                       {selectedRepo.hasGit && (
                         <div className="text-primary-300">
-                          <span className="font-medium">Git:</span> <span className="text-green-400">✓ Repository detected</span>
+                          <span className="font-medium">Git：</span> <span className="text-green-400">✓ 已偵測到儲存庫</span>
                         </div>
                       )}
                     </div>
@@ -222,13 +222,13 @@ export default function NewProjectPage() {
                 )}
                 
                 <p className="mt-1 text-sm text-primary-400">
-                  Choose from available folders in the repos/ directory that aren&apos;t already indexed as projects
+                  從 repos/ 目錄中選擇尚未建立為專案的可用資料夾
                 </p>
               </div>
 
               <div>
                 <label htmlFor="gitUrl" className="block text-sm font-medium text-primary-300 mb-2">
-                  Git Repository URL
+                  Git 儲存庫網址
                 </label>
                 <input
                   type="url"
@@ -242,23 +242,23 @@ export default function NewProjectPage() {
                 />
                 <p className="mt-1 text-sm text-primary-400">
                   {selectedRepo?.hasGit && selectedRepo?.gitUrl 
-                    ? 'Git URL automatically detected from repository' 
-                    : 'Optional: Git repository URL for version control integration'
+                    ? '已自動從儲存庫偵測到 Git 網址' 
+                    : '選填：用於版本控制整合的 Git 儲存庫網址'
                   }
                 </p>
               </div>
 
               {/* Tech Stack Configuration */}
               <div className="space-y-4 pt-4 border-t border-primary-700">
-                <h3 className="text-lg font-semibold text-accent-50">Tech Stack Configuration</h3>
+                <h3 className="text-lg font-semibold text-accent-50">技術堆疊設定</h3>
                 <p className="text-sm text-primary-400">
-                  Specify the tools and frameworks for this project. Leave empty to use global defaults.
+                  指定此專案的工具和框架。留空則使用全域預設值。
                 </p>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="framework" className="block text-sm font-medium text-primary-300 mb-2">
-                      Framework
+                      框架
                     </label>
                     <input
                       type="text"
@@ -267,13 +267,13 @@ export default function NewProjectPage() {
                       value={formData.framework}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
-                      placeholder="e.g., Next.js, React, Vue"
+                      placeholder="例如：Next.js、React、Vue"
                     />
                   </div>
 
                   <div>
                     <label htmlFor="language" className="block text-sm font-medium text-primary-300 mb-2">
-                      Language
+                      語言
                     </label>
                     <input
                       type="text"
@@ -282,13 +282,13 @@ export default function NewProjectPage() {
                       value={formData.language}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
-                      placeholder="e.g., typescript, javascript"
+                      placeholder="例如：typescript、javascript"
                     />
                   </div>
 
                   <div>
                     <label htmlFor="packageManager" className="block text-sm font-medium text-primary-300 mb-2">
-                      Package Manager
+                      套件管理器
                     </label>
                     <input
                       type="text"
@@ -297,13 +297,13 @@ export default function NewProjectPage() {
                       value={formData.packageManager}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
-                      placeholder="e.g., npm, yarn, pnpm, bun"
+                      placeholder="例如：npm、yarn、pnpm、bun"
                     />
                   </div>
 
                   <div>
                     <label htmlFor="testFramework" className="block text-sm font-medium text-primary-300 mb-2">
-                      Test Framework
+                      測試框架
                     </label>
                     <input
                       type="text"
@@ -312,13 +312,13 @@ export default function NewProjectPage() {
                       value={formData.testFramework}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
-                      placeholder="e.g., jest, vitest, cypress"
+                      placeholder="例如：jest、vitest、cypress"
                     />
                   </div>
 
                   <div>
                     <label htmlFor="lintTool" className="block text-sm font-medium text-primary-300 mb-2">
-                      Lint Tool
+                      程式碼檢查工具
                     </label>
                     <input
                       type="text"
@@ -327,13 +327,13 @@ export default function NewProjectPage() {
                       value={formData.lintTool}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
-                      placeholder="e.g., eslint, tslint, pylint"
+                      placeholder="例如：eslint、tslint、pylint"
                     />
                   </div>
 
                   <div>
                     <label htmlFor="buildTool" className="block text-sm font-medium text-primary-300 mb-2">
-                      Build Tool
+                      建置工具
                     </label>
                     <input
                       type="text"
@@ -342,7 +342,7 @@ export default function NewProjectPage() {
                       value={formData.buildTool}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
-                      placeholder="e.g., webpack, vite, rollup"
+                      placeholder="例如：webpack、vite、rollup"
                     />
                   </div>
                 </div>
@@ -353,7 +353,7 @@ export default function NewProjectPage() {
                   href="/projects"
                   className="px-4 py-2 text-primary-200 bg-primary-800 border border-primary-700 rounded-md hover:bg-primary-700 hover:text-accent-50 focus:outline-none focus:ring-2 focus:ring-accent-500"
                 >
-                  Cancel
+                  取消
                 </Link>
                 <button
                   type="submit"
@@ -366,10 +366,10 @@ export default function NewProjectPage() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Creating...
+                      建立中...
                     </span>
                   ) : (
-                    'Create Project'
+                    '建立專案'
                   )}
                 </button>
               </div>

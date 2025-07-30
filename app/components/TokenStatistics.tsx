@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { formatShortNumber } from '@/lib/utils';
+import { useEffect, useState } from 'react';
 
 interface TokenStats {
   total: {
@@ -105,7 +105,7 @@ export default function TokenStatistics() {
           <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
-          Token Usage Statistics
+          Token 使用統計
         </h2>
       </div>
 
@@ -115,9 +115,9 @@ export default function TokenStatistics() {
         <div className="bg-primary-800 rounded-lg p-4 border border-primary-600">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-primary-300">Total Tokens</p>
+              <p className="text-sm text-primary-300">總 Token</p>
               <p className="text-2xl font-bold text-accent-50">{formatShortNumber(stats.total.tokens)}</p>
-              <p className="text-xs text-primary-400">{stats.total.requests} requests</p>
+              <p className="text-xs text-primary-400">{stats.total.requests} 次請求</p>
             </div>
             <div className="text-3xl text-accent-500">🔥</div>
           </div>
@@ -127,9 +127,9 @@ export default function TokenStatistics() {
         <div className="bg-primary-800 rounded-lg p-4 border border-primary-600">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-primary-300">Today</p>
+              <p className="text-sm text-primary-300">今日</p>
               <p className="text-2xl font-bold text-accent-50">{formatShortNumber(stats.today.tokens)}</p>
-              <p className="text-xs text-primary-400">{stats.today.requests} requests</p>
+              <p className="text-xs text-primary-400">{stats.today.requests} 次請求</p>
             </div>
             <div className="text-3xl text-blue-500">📅</div>
           </div>
@@ -139,9 +139,9 @@ export default function TokenStatistics() {
         <div className="bg-primary-800 rounded-lg p-4 border border-primary-600">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-primary-300">This Week</p>
+              <p className="text-sm text-primary-300">本週</p>
               <p className="text-2xl font-bold text-accent-50">{formatShortNumber(stats.week.tokens)}</p>
-              <p className="text-xs text-primary-400">{stats.week.requests} requests</p>
+              <p className="text-xs text-primary-400">{stats.week.requests} 次請求</p>
             </div>
             <div className="text-3xl text-green-500">📊</div>
           </div>

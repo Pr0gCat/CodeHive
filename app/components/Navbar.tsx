@@ -36,7 +36,7 @@ export default function Navbar() {
                   : 'text-primary-300 hover:text-accent-50 hover:bg-primary-800'
               }`}
             >
-              Home
+              首頁
             </Link>
             <Link
               href="/projects"
@@ -46,7 +46,17 @@ export default function Navbar() {
                   : 'text-primary-300 hover:text-accent-50 hover:bg-primary-800'
               }`}
             >
-              Projects
+              專案
+            </Link>
+            <Link
+              href="/settings"
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                isActive('/settings')
+                  ? 'bg-accent-600 text-accent-50' 
+                  : 'text-primary-300 hover:text-accent-50 hover:bg-primary-800'
+              }`}
+            >
+              設定
             </Link>
           </div>
         </div>

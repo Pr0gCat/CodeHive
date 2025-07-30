@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { formatShortNumber } from '@/lib/utils';
+import { useEffect, useState } from 'react';
 
 interface AgentStatusPanelProps {
   projectId: string;
@@ -48,10 +48,10 @@ export default function AgentStatusPanel({ projectId }: AgentStatusPanelProps) {
         setQueueStatus(data.data);
         setError(null);
       } else {
-        setError(data.error || 'Failed to fetch queue status');
+        setError('無法載入佇列狀態');
       }
     } catch (err) {
-      setError('Failed to fetch queue status');
+      setError('無法載入佇列狀態');
     } finally {
       setLoading(false);
     }
@@ -72,10 +72,10 @@ export default function AgentStatusPanel({ projectId }: AgentStatusPanelProps) {
       if (data.success) {
         setQueueStatus(data.data);
       } else {
-        alert(`Failed to toggle queue: ${data.error}`);
+        alert(`切換佇列失敗：${data.error}`);
       }
     } catch (err) {
-      alert('Failed to toggle queue');
+      alert('切換佇列失敗');
     }
   };
 
@@ -117,7 +117,7 @@ export default function AgentStatusPanel({ projectId }: AgentStatusPanelProps) {
   return (
     <div className="bg-primary-800 rounded-lg shadow-sm border border-primary-700 p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-accent-50">Agent Status</h3>
+        <h3 className="font-semibold text-accent-50">Agent 狀態</h3>
         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(queueStatus.status)}`}>
           {queueStatus.status}
         </span>
@@ -126,18 +126,18 @@ export default function AgentStatusPanel({ projectId }: AgentStatusPanelProps) {
       <div className="grid grid-cols-2 gap-4">
         <div className="text-center">
           <div className="text-2xl font-bold text-accent-50">{queueStatus.pendingTasks}</div>
-          <div className="text-xs text-primary-400">Pending Tasks</div>
+          <div className="text-xs text-primary-400">等待中任務</div>
         </div>
         <div className="text-center">
           <div className="text-2xl font-bold text-accent-50">{queueStatus.activeTasks}</div>
-          <div className="text-xs text-primary-400">Active Tasks</div>
+          <div className="text-xs text-primary-400">執行中任務</div>
         </div>
       </div>
 
       <div className="space-y-3">
         <div>
           <div className="flex items-center justify-between text-sm mb-1">
-            <span className="text-primary-300">Daily Tokens</span>
+            <span className="text-primary-300">每日 Tokens</span>
             <span className="text-accent-50">
               {formatShortNumber(queueStatus.rateLimitStatus.dailyTokens.used)} / {formatShortNumber(queueStatus.rateLimitStatus.dailyTokens.limit)}
             </span>
@@ -149,15 +149,15 @@ export default function AgentStatusPanel({ projectId }: AgentStatusPanelProps) {
             />
           </div>
           <div className="text-xs text-primary-400 mt-1">
-            {queueStatus.rateLimitStatus.dailyTokens.percentage}% used
+            {queueStatus.rateLimitStatus.dailyTokens.percentage}% 已使用
           </div>
         </div>
 
         <div>
           <div className="flex items-center justify-between text-sm mb-1">
-            <span className="text-primary-300">Requests/Min</span>
+            <span className="text-primary-300">請求/分鐘</span>
             <span className="text-accent-50">
-              {queueStatus.rateLimitStatus.minuteRequests.used} / min
+              {queueStatus.rateLimitStatus.minuteRequests.used} / 分鐘
             </span>
           </div>
           <div className="w-full bg-primary-800 rounded-full h-2">
@@ -167,7 +167,7 @@ export default function AgentStatusPanel({ projectId }: AgentStatusPanelProps) {
             />
           </div>
           <div className="text-xs text-primary-400 mt-1">
-            Rate limit: {queueStatus.rateLimitStatus.minuteRequests.limit}/min
+            速率限制：{queueStatus.rateLimitStatus.minuteRequests.limit}/分鐘
           </div>
         </div>
       </div>
@@ -181,7 +181,7 @@ export default function AgentStatusPanel({ projectId }: AgentStatusPanelProps) {
               : 'bg-accent-600 text-accent-50 hover:bg-accent-700 focus:ring-accent-500'
           }`}
         >
-          {queueStatus.status === 'ACTIVE' ? 'Pause Queue' : 'Resume Queue'}
+          {queueStatus.status === 'ACTIVE' ? '暫停佇列' : '恢復佇列'}
         </button>
       </div>
     </div>

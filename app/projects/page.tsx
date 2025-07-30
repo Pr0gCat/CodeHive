@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { CardStatus, KanbanCard, Project } from '@/lib/db';
 import Link from 'next/link';
-import { Project, KanbanCard, CardStatus } from '@/lib/db';
+import { useEffect, useState } from 'react';
 import Navbar from '../components/Navbar';
-import ProjectImportModal from '../components/ProjectImportModal';
 import ProgressBar from '../components/ProgressBar';
+import ProjectImportModal from '../components/ProjectImportModal';
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -76,7 +76,7 @@ export default function ProjectsPage() {
       <div className="min-h-screen bg-primary-950 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-700 mx-auto mb-4"></div>
-          <p className="text-primary-300">Loading projects...</p>
+          <p className="text-primary-300">載入專案中...</p>
         </div>
       </div>
     );
@@ -96,7 +96,7 @@ export default function ProjectsPage() {
             onClick={fetchProjects}
             className="mt-4 px-4 py-2 bg-accent-600 text-accent-50 rounded hover:bg-accent-700"
           >
-            Try Again
+            重新嘗試
           </button>
         </div>
       </div>
@@ -109,21 +109,21 @@ export default function ProjectsPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-accent-50 mb-2">Projects</h1>
-            <p className="text-primary-300">Manage your software development projects</p>
+            <h1 className="text-3xl font-bold text-accent-50 mb-2">專案</h1>
+            <p className="text-primary-300">管理您的軟體開發專案</p>
           </div>
           <div className="flex space-x-3">
             <button
               onClick={() => setShowImportModal(true)}
               className="px-4 py-2 bg-primary-700 text-accent-50 rounded-lg hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
             >
-              Import from Git
+              從 Git 匯入
             </button>
             <Link
               href="/projects/new"
               className="px-4 py-2 bg-accent-600 text-accent-50 rounded-lg hover:bg-accent-700 focus:outline-none focus:ring-2 focus:ring-accent-500 transition-colors"
             >
-              Create Project
+              建立專案
             </Link>
           </div>
         </div>
@@ -135,13 +135,13 @@ export default function ProjectsPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-accent-50 mb-2">No projects yet</h3>
-            <p className="text-primary-300 mb-6">Get started by creating your first project</p>
+            <h3 className="text-lg font-medium text-accent-50 mb-2">尚無專案</h3>
+            <p className="text-primary-300 mb-6">建立第一個專案即可開始</p>
             <Link
               href="/projects/new"
               className="inline-flex items-center px-4 py-2 bg-accent-600 text-accent-50 rounded-lg hover:bg-accent-700"
             >
-              Create Project
+              建立專案
             </Link>
           </div>
         ) : (
@@ -180,8 +180,8 @@ export default function ProjectsPage() {
                     return progress.total > 0 ? (
                       <div className="mb-4">
                         <div className="flex items-center justify-between text-xs text-primary-400 mb-2">
-                          <span>Progress</span>
-                          <span>{progress.completed}/{progress.total} completed</span>
+                          <span>進度</span>
+                          <span>{progress.completed}/{progress.total} 已完成</span>
                         </div>
                         <ProgressBar 
                           total={progress.total} 
@@ -198,13 +198,13 @@ export default function ProjectsPage() {
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                         </svg>
-                        {project._count?.kanbanCards || 0} cards
+                        {project._count?.kanbanCards || 0} 卡片
                       </span>
                       <span className="flex items-center">
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
-                        {project._count?.tokenUsage || 0} tasks
+                        {project._count?.tokenUsage || 0} 任務
                       </span>
                     </div>
                     <span>

@@ -13,6 +13,8 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 export type {
   Project,
   ProjectSettings,
+  GlobalSettings,
+  ProjectBudget,
   KanbanCard,
   AgentTask,
   TokenUsage,
