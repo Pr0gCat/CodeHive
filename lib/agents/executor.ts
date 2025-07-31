@@ -116,7 +116,6 @@ export class AgentExecutor {
               prompt,
             fullPrompt: prompt.length <= 500 ? prompt : '[too long to display]',
             promptLength: prompt.length,
-            estimatedTokens,
           });
         }
 
