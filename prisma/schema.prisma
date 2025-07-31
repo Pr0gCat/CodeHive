@@ -43,6 +43,7 @@ model Project {
   epics       Epic[]
   mvpPhases   MVPPhase[]
   taskExecutions TaskExecution[]
+  logs        ProjectLog[]
 
   @@map("projects")
 }
@@ -643,3 +644,25 @@ model Artifact {
 // QueryUrgency: "BLOCKING", "ADVISORY"
 // QueryStatus: "PENDING", "ANSWERED", "DISMISSED", "EXPIRED"
 // ArtifactType: "CODE", "TEST", "DOCS", "SCHEMA", "CONFIG"
+// LogLevel: "info", "warn", "error", "debug"
+
+model ProjectLog {
+  id        String   @id @default(cuid())
+  projectId String
+  
+  // Log details
+  level     String   // "info", "warn", "error", "debug"
+  message   String   // Log message
+  source    String   // Source of the log (e.g., "claude-code", "agent-executor", "api")
+  metadata  String?  // JSON string for additional data
+  
+  createdAt DateTime @default(now())
+
+  // Relations
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt])
+  @@index([projectId, level])
+  @@index([projectId, source])
+  @@map("project_logs")
+}

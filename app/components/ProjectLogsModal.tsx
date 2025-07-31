@@ -43,8 +43,8 @@ export default function ProjectLogsModal({
         );
         const data = await response.json();
 
-        if (data.success && Array.isArray(data.data)) {
-          setLogs(data.data);
+        if (data.success && data.data && Array.isArray(data.data.logs)) {
+          setLogs(data.data.logs);
         } else {
           console.warn('收到無效的記錄資料：', data);
           setLogs([]);

@@ -5,7 +5,8 @@ import { FileText, RefreshCw, Settings, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastManager';
 
 interface ClaudeMdViewerProps {
-  projectId: number;
+  projectId: string;
+  onClaudeMdUpdate?: () => void;
 }
 
 interface ClaudeMdData {
@@ -15,7 +16,7 @@ interface ClaudeMdData {
   message?: string;
 }
 
-export default function ClaudeMdViewer({ projectId }: ClaudeMdViewerProps) {
+export default function ClaudeMdViewer({ projectId, onClaudeMdUpdate }: ClaudeMdViewerProps) {
   const { showToast } = useToast();
   const [claudeMdData, setClaudeMdData] = useState<ClaudeMdData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,6 +55,7 @@ export default function ClaudeMdViewer({ projectId }: ClaudeMdViewerProps) {
       if (data.success) {
         showToast('CLAUDE.md 已成功更新', 'success');
         await fetchClaudeMd(); // Refresh content
+        onClaudeMdUpdate?.(); // Notify parent component
       } else {
         showToast(`更新失敗：${data.error}`, 'error');
       }
@@ -76,6 +78,7 @@ export default function ClaudeMdViewer({ projectId }: ClaudeMdViewerProps) {
       if (data.success) {
         showToast('CLAUDE.md 已重新生成', 'success');
         await fetchClaudeMd(); // Refresh content
+        onClaudeMdUpdate?.(); // Notify parent component
       } else {
         showToast(`重新生成失敗：${data.error}`, 'error');
       }

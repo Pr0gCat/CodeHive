@@ -65,9 +65,11 @@ bun run format           # Format all files with Prettier
 bun run format:check     # Check if files are formatted
 bun run type-check       # Run TypeScript type checking
 
-# Testing (when implemented)
+# Testing
 bun test                 # Run all tests
 bun test --watch         # Run tests in watch mode
+bun test:coverage        # Run tests with coverage
+bun test:ci             # Run tests in CI environment
 ```
 
 ## Architecture Overview
@@ -159,6 +161,43 @@ const claudePath = fallbackConfig.claudeCodePath;
 - **Fallback System**: Hardcoded defaults if database unavailable
 - **No Environment Files**: `.env` file has been removed
 
+## Agent System Architecture
+
+### Core Agents and Their Responsibilities
+
+1. **Project Manager Agent** (`/lib/agents/project-manager.ts`)
+   - Analyzes projects and generates CLAUDE.md files
+   - Breaks down features into Epics and Stories
+   - Manages project roadmaps and priorities
+
+2. **TDD Developer Agent** (`/lib/agents/specs/tdd-developer.ts`)
+   - Implements RED-GREEN-REFACTOR-REVIEW cycle
+   - Writes tests first, then implementations
+   - Handles code refactoring
+
+3. **Code Reviewer Agent** (`/lib/agents/specs/code-reviewer.ts`)
+   - Reviews code quality and standards
+   - Suggests improvements
+   - Ensures best practices
+
+4. **Git Operations Agent** (`/lib/agents/specs/git-operations.ts`)
+   - Manages version control
+   - Handles branching and commits
+   - Tracks changes
+
+5. **Documentation Agent** (`/lib/agents/specs/documentation.ts`)
+   - Generates README files
+   - Updates technical documentation
+   - Maintains API docs
+
+### Agent Execution System
+
+- **Unified Executor** (`/lib/agents/executor.ts`): Handles all Claude Code CLI interactions
+- **Rate Limiting**: Project-level token and request limits
+- **Retry Logic**: Exponential backoff with max 3 retries
+- **Progress Tracking**: Real-time progress updates via database
+- **Token Usage**: Tracks usage per agent and project
+
 ## Development Workflow
 
 ### Unified Project Creation and Import
@@ -197,6 +236,22 @@ await taskManager.updatePhaseProgress(taskId, phaseId, actualProgress, {
 await taskManager.completeTask(taskId, actualResult);
 ```
 
+## TDD Cycle Implementation
+
+### Database Models
+
+- **Cycle**: Represents a complete TDD cycle (RED → GREEN → REFACTOR → REVIEW)
+- **Test**: Individual test cases within a cycle
+- **Query**: AI-to-user questions (blocking or suggestion types)
+- **Artifact**: Generated code, tests, or documentation
+
+### Phase Transitions
+
+1. **RED Phase**: Generate failing tests based on requirements
+2. **GREEN Phase**: Implement minimum code to pass tests
+3. **REFACTOR Phase**: Improve code quality while maintaining tests
+4. **REVIEW Phase**: AI and human review of implementation
+
 ## Code Quality Standards
 
 - All code must pass TypeScript compilation
@@ -204,6 +259,14 @@ await taskManager.completeTask(taskId, actualResult);
 - Use the provided utility functions in `/lib/utils`
 - Follow existing patterns for error handling and validation
 - **NEVER implement fake progress or simulated delays**
+
+## Testing Strategy
+
+- Jest configured with Next.js support
+- Test files: `**/__tests__/**/*.(ts|tsx|js)` or `**/*.(test|spec).(ts|tsx|js)`
+- Coverage targets: `/lib` and `/app` directories
+- Test timeout: 10 seconds
+- Run single test: `bun test path/to/test.spec.ts`
 
 ## Memories
 
@@ -215,10 +278,3 @@ await taskManager.completeTask(taskId, actualResult);
 - **NO FAKE PROGRESS**: All progress tracking must reflect real operations - no setTimeout delays or simulated progress
 - **REAL SSE**: All Server-Sent Events must come from database state, not in-memory simulations
 - **GENUINE OPERATIONS**: Git clones, file scanning, and project analysis must report actual progress
-
-# important-instruction-reminders
-Do what has been asked; nothing more, nothing less.
-NEVER create files unless they're absolutely necessary for achieving your goal.
-ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
-NEVER implement fake progress indicators - all progress must reflect real operations.

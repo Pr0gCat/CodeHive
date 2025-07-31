@@ -1,4 +1,5 @@
 import { EventEmitter } from 'events';
+import { prisma } from '@/lib/db';
 
 export interface LogEntry {
   id: string;
@@ -13,8 +14,9 @@ export interface LogEntry {
 export type LogLevel = LogEntry['level'];
 
 class ProjectLogger extends EventEmitter {
-  private logs: Map<string, LogEntry[]> = new Map();
+  private logs: Map<string, LogEntry[]> = new Map(); // In-memory cache for real-time updates
   private maxLogsPerProject = 1000;
+  private maxCachePerProject = 100; // Limit cache size
 
   // Log methods for different levels
   info(
@@ -53,7 +55,7 @@ class ProjectLogger extends EventEmitter {
     this.log('debug', projectId, source, message, metadata);
   }
 
-  private log(
+  private async log(
     level: LogLevel,
     projectId: string,
     source: string,
@@ -70,7 +72,22 @@ class ProjectLogger extends EventEmitter {
       metadata,
     };
 
-    // Store log in memory (in production, this would go to a proper logging system)
+    // Store in database for persistence
+    try {
+      await prisma.projectLog.create({
+        data: {
+          projectId,
+          level,
+          message,
+          source,
+          metadata: metadata ? JSON.stringify(metadata) : null,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to save log to database:', error);
+    }
+
+    // Store log in memory cache for real-time updates
     if (!this.logs.has(projectId)) {
       this.logs.set(projectId, []);
     }
@@ -78,8 +95,8 @@ class ProjectLogger extends EventEmitter {
     const projectLogs = this.logs.get(projectId)!;
     projectLogs.push(logEntry);
 
-    // Keep only the most recent logs to prevent memory issues
-    if (projectLogs.length > this.maxLogsPerProject) {
+    // Keep only the most recent logs in cache to prevent memory issues
+    if (projectLogs.length > this.maxCachePerProject) {
       projectLogs.shift();
     }
 
@@ -106,8 +123,37 @@ class ProjectLogger extends EventEmitter {
     }
   }
 
-  // Get logs for a specific project
-  getProjectLogs(projectId: string, limit?: number): LogEntry[] {
+  // Get logs for a specific project from database
+  async getProjectLogs(projectId: string, limit?: number): Promise<LogEntry[]> {
+    try {
+      const dbLogs = await prisma.projectLog.findMany({
+        where: { projectId },
+        orderBy: { createdAt: 'desc' },
+        take: limit || this.maxLogsPerProject,
+      });
+
+      return dbLogs.map(log => ({
+        id: log.id,
+        timestamp: log.createdAt,
+        level: log.level as LogLevel,
+        message: log.message,
+        source: log.source,
+        projectId: log.projectId,
+        metadata: log.metadata ? JSON.parse(log.metadata) : undefined,
+      }));
+    } catch (error) {
+      console.error('Failed to fetch logs from database:', error);
+      // Fallback to in-memory cache
+      const logs = this.logs.get(projectId) || [];
+      if (limit) {
+        return logs.slice(-limit);
+      }
+      return [...logs];
+    }
+  }
+
+  // Synchronous method for backward compatibility (uses cache only)
+  getProjectLogsSync(projectId: string, limit?: number): LogEntry[] {
     const logs = this.logs.get(projectId) || [];
     if (limit) {
       return logs.slice(-limit);
@@ -116,7 +162,17 @@ class ProjectLogger extends EventEmitter {
   }
 
   // Clear logs for a project
-  clearProjectLogs(projectId: string) {
+  async clearProjectLogs(projectId: string) {
+    try {
+      // Clear from database
+      await prisma.projectLog.deleteMany({
+        where: { projectId },
+      });
+    } catch (error) {
+      console.error('Failed to clear logs from database:', error);
+    }
+
+    // Clear from memory cache
     this.logs.delete(projectId);
     this.emit(`clear:${projectId}`);
   }

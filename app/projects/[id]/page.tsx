@@ -34,6 +34,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     'overview' | 'development' | 'queries' | 'claude-md'
   >('overview');
   const [devSubTab, setDevSubTab] = useState<'epics' | 'tdd'>('epics');
+  const [claudeMdLastUpdate, setClaudeMdLastUpdate] = useState<Date | null>(null);
 
   // Check URL parameters for tab selection
   useEffect(() => {
@@ -82,14 +83,31 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     }
   }, []);
 
+  const fetchClaudeMdStatus = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/projects/${params.id}/claude-md`);
+      const data = await response.json();
+
+      if (data.success && data.data.lastModified) {
+        setClaudeMdLastUpdate(new Date(data.data.lastModified));
+      }
+    } catch {
+      // Silently fail for CLAUDE.md status updates
+    }
+  }, [params.id]);
+
   useEffect(() => {
     fetchProject();
     fetchAgentStatus();
+    fetchClaudeMdStatus();
 
     // Update agent status every 5 seconds
-    const interval = setInterval(fetchAgentStatus, 5000);
+    const interval = setInterval(() => {
+      fetchAgentStatus();
+      fetchClaudeMdStatus();
+    }, 5000);
     return () => clearInterval(interval);
-  }, [fetchProject, fetchAgentStatus]);
+  }, [fetchProject, fetchAgentStatus, fetchClaudeMdStatus]);
 
   const handleProjectReview = async () => {
     setReviewLoading(true);
@@ -216,16 +234,15 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                 <h1 className="text-2xl font-bold text-accent-50">
                   {project.name}
                 </h1>
-                {project.summary && (
-                  <p className="text-primary-200 mt-1 text-sm font-medium">
-                    {project.summary}
-                  </p>
-                )}
-                {project.description && (
+                {project.description ? (
                   <p className="text-primary-300 mt-1 text-sm">
                     {project.description}
                   </p>
-                )}
+                ) : project.summary ? (
+                  <p className="text-primary-200 mt-1 text-sm font-medium">
+                    {project.summary}
+                  </p>
+                ) : null}
               </div>
             </div>
 
@@ -433,7 +450,19 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                   />
                 </svg>
-                CLAUDE.md
+                <div className="flex flex-col items-start">
+                  <span>CLAUDE.md</span>
+                  {claudeMdLastUpdate && (
+                    <span className="text-xs text-primary-500 font-normal">
+                      {claudeMdLastUpdate.toLocaleDateString('zh-TW', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  )}
+                </div>
               </button>
             </div>
           </div>
@@ -514,7 +543,10 @@ export default function ProjectPage({ params }: ProjectPageProps) {
             <div
               className={`h-full ${activeTab === 'claude-md' ? 'block' : 'hidden'}`}
             >
-              <ClaudeMdViewer projectId={Number(project.id)} />
+              <ClaudeMdViewer 
+                projectId={project.id} 
+                onClaudeMdUpdate={fetchClaudeMdStatus}
+              />
             </div>
           </div>
         </div>
