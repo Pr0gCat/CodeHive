@@ -308,9 +308,16 @@ Config files: ${analysisData.configFiles.join(', ')}
 Package files: ${analysisData.packageFiles.join(', ')}
 Total files: ${analysisData.totalFiles} (${analysisData.sourceFiles} source, ${analysisData.testFiles} test)
 
+Special notes:
+- If this is "CodeHive" or contains "multi-agent", "Claude Code", "TDD", or "agent orchestration" concepts, it's a development platform
+- Look for keywords in files and directories to understand the core functionality
+- Don't just classify by tech stack (avoid "Node.js app", "Python package" etc.)
+
 Respond with only a brief description (3-6 words maximum) of what this project does. Examples:
 - "E-commerce platform"
 - "Task management app" 
+- "Development platform"
+- "Multi-agent system"
 - "API service"
 - "Documentation site"
 - "Chat application"
@@ -359,26 +366,34 @@ Description:`;
       );
       
       // Provide a more intelligent fallback based on project structure
-      if (structure?.packageFiles?.length) {
-        const packageFile = structure.packageFiles[0];
-        if (packageFile.includes('package.json')) {
-          return 'Node.js application';
-        } else if (packageFile.includes('requirements.txt')) {
-          return 'Python application';
-        } else if (packageFile.includes('Cargo.toml')) {
-          return 'Rust application';
-        } else if (packageFile.includes('go.mod')) {
-          return 'Go application';
-        }
+      
+      // Special case for CodeHive itself
+      if (name.toLowerCase().includes('codehive') || name.toLowerCase().includes('code-hive')) {
+        return 'Multi-agent development platform';
       }
       
-      // Check for common framework indicators
+      // Check for specific framework indicators first (more specific than package files)
       if (structure?.files?.some(f => f.path.includes('next.config'))) {
         return 'Next.js application';
       } else if (structure?.files?.some(f => f.path.includes('vue.config'))) {
         return 'Vue.js application';
       } else if (structure?.files?.some(f => f.path.includes('angular.json'))) {
         return 'Angular application';
+      }
+      
+      // Then check package files
+      if (structure?.packageFiles?.length) {
+        const packageFile = structure.packageFiles[0];
+        if (packageFile.includes('package.json')) {
+          // Check if it's a web application based on dependencies
+          return 'Web application';
+        } else if (packageFile.includes('requirements.txt') || packageFile.includes('pyproject.toml')) {
+          return 'Python application';
+        } else if (packageFile.includes('Cargo.toml')) {
+          return 'Rust application';
+        } else if (packageFile.includes('go.mod')) {
+          return 'Go application';
+        }
       }
       
       return 'Software project';
