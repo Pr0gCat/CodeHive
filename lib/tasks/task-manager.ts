@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db';
+import { taskEventEmitter } from '@/lib/events/task-event-emitter';
 
 export interface TaskPhase {
   phaseId: string;
@@ -73,6 +74,9 @@ export class TaskManager {
       })),
     });
 
+    // Emit task created event
+    taskEventEmitter.emitTaskCreated(taskId, { type, phases: phases.length, ...options });
+
     console.log(`📝 Created task ${taskId} with ${phases.length} phases`);
   }
 
@@ -88,6 +92,9 @@ export class TaskManager {
         lastUpdatedAt: new Date(),
       },
     });
+
+    // Emit task started event
+    taskEventEmitter.emitTaskStarted(taskId);
 
     await this.emitEvent(taskId, null, {
       type: 'INFO',
@@ -169,6 +176,9 @@ export class TaskManager {
       },
     });
 
+    // Emit phase updated event
+    taskEventEmitter.emitPhaseUpdated(taskId, phaseId, progress, event.message, event.details);
+
     await this.emitEvent(taskId, phaseId, {
       ...event,
       progress,
@@ -234,6 +244,9 @@ export class TaskManager {
       },
     });
 
+    // Emit task failed event
+    taskEventEmitter.emitTaskFailed(taskId, error);
+
     await this.emitEvent(taskId, phaseId, {
       type: 'ERROR',
       message: error,
@@ -258,6 +271,9 @@ export class TaskManager {
         result: result ? JSON.stringify(result) : undefined,
       },
     });
+
+    // Emit task completed event
+    taskEventEmitter.emitTaskCompleted(taskId, result);
 
     await this.emitEvent(taskId, null, {
       type: 'INFO',
@@ -331,7 +347,10 @@ export class TaskManager {
       },
     });
 
-    // Notify subscribers
+    // Emit to event emitter system
+    taskEventEmitter.emitTaskEvent(taskId, event.type, event.message, event.details);
+
+    // Notify subscribers (legacy callback system)
     const callbacks = this.progressCallbacks.get(taskId);
     if (callbacks) {
       for (const callback of callbacks) {

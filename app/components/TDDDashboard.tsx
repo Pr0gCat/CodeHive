@@ -64,9 +64,42 @@ export default function TDDDashboard({ projectId }: TDDDashboardProps) {
 
   useEffect(() => {
     fetchCycles();
-    // Poll for updates every 5 seconds
-    const interval = setInterval(fetchCycles, 5000);
-    return () => clearInterval(interval);
+    
+    // Set up SSE connection for real-time updates
+    if (!projectId) return;
+    
+    console.log(`🔗 Connecting to TDD Cycles SSE for project: ${projectId}`);
+    const eventSource = new EventSource(`/api/projects/${projectId}/cycles/live`);
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('📡 TDD Cycles SSE Event received:', data);
+        
+        if (data.type === 'connected') {
+          console.log(`✅ Connected to TDD cycles stream for project: ${data.projectId}`);
+        } else if (data.type === 'cycles_state') {
+          // Handle initial cycles state
+          setCycles(data.cycles || []);
+        } else if (data.type === 'cycles_updated') {
+          // Handle cycle updates
+          setCycles(data.cycles || []);
+        }
+      } catch (error) {
+        console.error('Error parsing TDD cycles SSE event:', error);
+      }
+    };
+    
+    eventSource.onerror = (error) => {
+      console.error('TDD Cycles SSE connection error:', error);
+      // Fallback to manual fetch on error
+      setTimeout(fetchCycles, 5000);
+    };
+    
+    return () => {
+      console.log('🔌 Closing TDD Cycles SSE connection');
+      eventSource.close();
+    };
   }, [projectId]);
 
   const executePhase = async (cycleId: string) => {

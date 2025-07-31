@@ -97,12 +97,43 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     fetchAgentStatus();
     fetchClaudeMdStatus();
 
-    // Update agent status every 5 seconds
-    const interval = setInterval(() => {
-      fetchAgentStatus();
-      fetchClaudeMdStatus();
-    }, 5000);
-    return () => clearInterval(interval);
+    // Set up SSE connection for agent status updates
+    console.log(`🔗 Connecting to Agent Queue SSE`);
+    const eventSource = new EventSource('/api/agents/queue/live');
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('📡 Agent Queue SSE Event received:', data);
+        
+        if (data.type === 'connected') {
+          console.log(`✅ Connected to agent queue stream`);
+        } else if (data.type === 'queue_status') {
+          // Handle queue status updates
+          setAgentStatus(data.status.status.toLowerCase());
+        } else if (data.type === 'queue_event') {
+          // Handle specific queue events
+          console.log('Queue event:', data.event);
+        }
+      } catch (error) {
+        console.error('Error parsing agent queue SSE event:', error);
+      }
+    };
+    
+    eventSource.onerror = (error) => {
+      console.error('Agent Queue SSE connection error:', error);
+      // Fallback to manual fetch on error
+      setTimeout(fetchAgentStatus, 10000);
+    };
+
+    // CLAUDE.md doesn't need frequent updates - only check every 2 minutes
+    const claudeMdInterval = setInterval(fetchClaudeMdStatus, 120000);
+    
+    return () => {
+      console.log('🔌 Closing Agent Queue SSE connection');
+      eventSource.close();
+      clearInterval(claudeMdInterval);
+    };
   }, [fetchProject, fetchAgentStatus, fetchClaudeMdStatus]);
 
 

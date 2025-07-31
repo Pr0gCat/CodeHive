@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db';
+import { taskEventEmitter, TaskEventData } from '@/lib/events/task-event-emitter';
 
 export async function GET(
   request: NextRequest,
@@ -9,7 +10,7 @@ export async function GET(
 
   const stream = new ReadableStream({
     async start(controller) {
-      console.log(`🔗 SSE connection established for task: ${taskId}`);
+      console.log(`🔗 Event-driven SSE connection established for task: ${taskId}`);
       
       // Send initial connection message
       controller.enqueue(`data: ${JSON.stringify({ 
@@ -51,91 +52,66 @@ export async function GET(
             })}\n\n`);
           }
 
-          // If task is already completed, send completion message
+          // If task is already completed, send completion message and close
           if (task.status === 'COMPLETED') {
             controller.enqueue(`data: ${JSON.stringify({
               type: 'completed',
               taskId,
               result: task.result ? JSON.parse(task.result) : null,
             })}\n\n`);
+            controller.close();
+            return;
           } else if (task.status === 'FAILED') {
             controller.enqueue(`data: ${JSON.stringify({
               type: 'error',
               taskId,
               error: task.error,
             })}\n\n`);
+            controller.close();
+            return;
           }
         }
       } catch (error) {
         console.error('Failed to get initial task state:', error);
       }
 
-      // Poll for updates
-      const pollInterval = setInterval(async () => {
+      // Set up event-driven updates instead of polling
+      const eventHandler = (event: TaskEventData) => {
         try {
-          // Get recent events for this task
-          const recentEvents = await prisma.taskEvent.findMany({
-            where: { 
-              taskId,
-              timestamp: { 
-                gte: new Date(Date.now() - 5000) // Last 5 seconds
-              }
-            },
-            orderBy: { timestamp: 'desc' },
-            take: 10,
-          });
+          // Convert TaskEventData to SSE format
+          const sseMessage = {
+            type: event.type,
+            taskId: event.taskId,
+            timestamp: event.timestamp,
+            data: event.data,
+          };
 
-          // Send recent events
-          for (const event of recentEvents.reverse()) {
-            controller.enqueue(`data: ${JSON.stringify({
-              type: 'event',
-              taskId,
-              event: {
-                ...event,
-                details: event.details ? JSON.parse(event.details) : null,
-              },
-            })}\n\n`);
-          }
+          controller.enqueue(`data: ${JSON.stringify(sseMessage)}\n\n`);
+          console.log(`📡 Sent real-time event for task ${taskId}:`, event.type);
 
-          // Check if task is complete
-          const task = await prisma.taskExecution.findUnique({
-            where: { taskId },
-            select: { status: true, result: true, error: true },
-          });
-
-          if (task?.status === 'COMPLETED') {
-            controller.enqueue(`data: ${JSON.stringify({
-              type: 'completed',
-              taskId,
-              result: task.result ? JSON.parse(task.result) : null,
-            })}\n\n`);
-            
-            clearInterval(pollInterval);
-            controller.close();
-          } else if (task?.status === 'FAILED') {
-            controller.enqueue(`data: ${JSON.stringify({
-              type: 'error',
-              taskId,
-              error: task.error,
-            })}\n\n`);
-            
-            clearInterval(pollInterval);
+          // Close connection on task completion or failure
+          if (event.type === 'task_completed' || event.type === 'task_failed') {
+            console.log(`🏁 Task ${taskId} finished, closing SSE connection`);
+            cleanup();
             controller.close();
           }
         } catch (error) {
-          console.error('SSE polling error:', error);
-          clearInterval(pollInterval);
+          console.error('Error sending SSE event:', error);
+          cleanup();
           controller.close();
         }
-      }, 1000); // Poll every second
-
-      // Clean up on connection close
-      const cleanup = () => {
-        clearInterval(pollInterval);
-        console.log(`🔌 SSE connection closed for task: ${taskId}`);
       };
 
-      // Set up cleanup for various close scenarios
+      // Subscribe to events for this specific task
+      const unsubscribe = taskEventEmitter.onTaskEvent(taskId, eventHandler);
+
+      // Clean up function
+      const cleanup = () => {
+        unsubscribe();
+        console.log(`🔌 Event-driven SSE connection closed for task: ${taskId}`);
+      };
+
+      // Set up cleanup for connection close
       request.signal?.addEventListener('abort', cleanup);
       
       return cleanup;

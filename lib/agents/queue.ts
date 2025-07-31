@@ -10,20 +10,21 @@ import {
   canQueueTask,
   canRunParallelAgent,
 } from './project-settings';
+import { queueEventEmitter } from '@/lib/events/queue-event-emitter';
 
 export class TaskQueue {
   private executor: AgentExecutor;
   private rateLimiter: RateLimiter;
   private performanceTracker: PerformanceTracker;
   private status: QueueStatus = QueueStatus.ACTIVE;
-  private processingInterval: NodeJS.Timeout | null = null;
-  private readonly POLL_INTERVAL = 5000; // 5 seconds
+  private processingCleanup: (() => void) | null = null;
+  private isProcessing = false;
 
   constructor() {
     this.executor = new AgentExecutor();
     this.rateLimiter = new RateLimiter();
     this.performanceTracker = new PerformanceTracker();
-    this.startProcessing();
+    this.setupEventDrivenProcessing();
   }
 
   async enqueue(task: Omit<AgentTask, 'id' | 'createdAt'>): Promise<string> {
@@ -63,6 +64,16 @@ export class TaskQueue {
       },
     });
 
+    // Emit task queued event and trigger processing
+    queueEventEmitter.emitTaskQueued(queuedTask.taskId, {
+      projectId: task.projectId,
+      agentType: task.agentType || task.agent,
+      priority,
+    });
+    
+    // Trigger immediate processing instead of waiting for poll
+    queueEventEmitter.triggerProcessing();
+
     console.log(`Task enqueued: ${queuedTask.taskId} (priority: ${priority})`);
     return queuedTask.taskId;
   }
@@ -94,17 +105,15 @@ export class TaskQueue {
 
   async toggleQueue(): Promise<void> {
     if (this.status === QueueStatus.ACTIVE) {
-      // Pause: Stop the timer completely
+      // Pause: Stop event-driven processing
       this.status = QueueStatus.PAUSED;
-      if (this.processingInterval) {
-        clearInterval(this.processingInterval);
-        this.processingInterval = null;
-      }
+      queueEventEmitter.emitQueueStatusChanged(QueueStatus.PAUSED);
       console.log('Task queue paused');
     } else {
-      // Resume: Recreate the timer
+      // Resume: Activate event-driven processing and trigger immediately
       this.status = QueueStatus.ACTIVE;
-      this.startProcessing();
+      queueEventEmitter.emitQueueStatusChanged(QueueStatus.ACTIVE);
+      queueEventEmitter.triggerProcessing();
       console.log('Task queue resumed');
     }
   }
@@ -133,21 +142,36 @@ export class TaskQueue {
     return this.status;
   }
 
-  private startProcessing(): void {
-    if (this.processingInterval) {
-      clearInterval(this.processingInterval);
+  // Cleanup method for shutdown
+  cleanup(): void {
+    if (this.processingCleanup) {
+      this.processingCleanup();
+      this.processingCleanup = null;
     }
+    console.log('Task queue cleanup completed');
+  }
 
-    this.processingInterval = setInterval(async () => {
-      if (this.status === QueueStatus.ACTIVE) {
+  private setupEventDrivenProcessing(): void {
+    // Set up event-driven processing instead of polling
+    this.processingCleanup = queueEventEmitter.onProcessingTrigger(async () => {
+      if (this.status === QueueStatus.ACTIVE && !this.isProcessing) {
         await this.processNextTask();
       }
-    }, this.POLL_INTERVAL);
+    });
 
-    console.log('Task queue processing started');
+    // Initial processing trigger
+    queueEventEmitter.triggerProcessing();
+
+    console.log('Event-driven task queue processing started');
   }
 
   private async processNextTask(): Promise<void> {
+    if (this.isProcessing) {
+      return; // Prevent concurrent processing
+    }
+
+    this.isProcessing = true;
+    
     try {
       // Check rate limits
       const canProceed = await this.rateLimiter.canProceed();
@@ -170,6 +194,12 @@ export class TaskQueue {
       }
 
       console.log(`Processing task: ${queuedTask.taskId}`);
+
+      // Emit task started event
+      queueEventEmitter.emitTaskStarted(queuedTask.taskId, {
+        projectId: queuedTask.projectId,
+        agentType: queuedTask.agentType,
+      });
 
       // Mark task as running and create agent task record
       const payload = JSON.parse(queuedTask.payload);
@@ -249,12 +279,34 @@ export class TaskQueue {
         console.error('Error recording performance metrics:', error);
       }
 
+      // Emit completion/failure event
+      if (result.success) {
+        queueEventEmitter.emitTaskCompleted(queuedTask.taskId, result);
+      } else {
+        queueEventEmitter.emitTaskFailed(queuedTask.taskId, result.error);
+      }
+
       console.log(
         `Task ${queuedTask.taskId} ${result.success ? 'completed' : 'failed'}`
       );
+      
+      // Check if there are more tasks and trigger processing
+      const remainingTasks = await prisma.queuedTask.count({
+        where: { status: 'PENDING' },
+      });
+      
+      if (remainingTasks > 0) {
+        // Trigger processing for next task
+        setTimeout(() => queueEventEmitter.triggerProcessing(), 100);
+      }
+      
     } catch (error) {
       console.error('Error processing task:', error);
-      // Continue processing other tasks
+      
+      // Try to trigger processing again in case there are other tasks
+      setTimeout(() => queueEventEmitter.triggerProcessing(), 1000);
+    } finally {
+      this.isProcessing = false;
     }
   }
 
