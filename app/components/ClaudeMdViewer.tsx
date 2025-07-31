@@ -47,9 +47,16 @@ export default function ClaudeMdViewer({ projectId, onClaudeMdUpdate }: ClaudeMd
   const handleUpdateClaudeMd = async () => {
     setIsUpdating(true);
     try {
+      // Create AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 200000); // 200 seconds timeout
+
       const response = await fetch(`/api/projects/${projectId}/claude-md`, {
         method: 'PUT',
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
       const data = await response.json();
 
       if (data.success) {
@@ -60,7 +67,11 @@ export default function ClaudeMdViewer({ projectId, onClaudeMdUpdate }: ClaudeMd
         showToast(`更新失敗：${data.error}`, 'error');
       }
     } catch (err) {
-      showToast('更新 CLAUDE.md 時發生錯誤', 'error');
+      if ((err as Error).name === 'AbortError') {
+        showToast('更新 CLAUDE.md 超時，請重試', 'error');
+      } else {
+        showToast('更新 CLAUDE.md 時發生錯誤', 'error');
+      }
       console.error('Error updating CLAUDE.md:', err);
     } finally {
       setIsUpdating(false);
@@ -70,9 +81,16 @@ export default function ClaudeMdViewer({ projectId, onClaudeMdUpdate }: ClaudeMd
   const handleRegenerateClaudeMd = async () => {
     setIsRegenerating(true);
     try {
+      // Create AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 200000); // 200 seconds timeout
+
       const response = await fetch(`/api/projects/${projectId}/claude-md`, {
         method: 'POST',
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
       const data = await response.json();
 
       if (data.success) {
@@ -83,7 +101,11 @@ export default function ClaudeMdViewer({ projectId, onClaudeMdUpdate }: ClaudeMd
         showToast(`重新生成失敗：${data.error}`, 'error');
       }
     } catch (err) {
-      showToast('重新生成 CLAUDE.md 時發生錯誤', 'error');
+      if ((err as Error).name === 'AbortError') {
+        showToast('重新生成 CLAUDE.md 超時，請重試', 'error');
+      } else {
+        showToast('重新生成 CLAUDE.md 時發生錯誤', 'error');
+      }
       console.error('Error regenerating CLAUDE.md:', err);
     } finally {
       setIsRegenerating(false);

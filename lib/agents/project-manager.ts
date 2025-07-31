@@ -1017,26 +1017,20 @@ Guidelines:
       // Use Claude Code to generate/update CLAUDE.md
       const claudeMdPath = `${project.localPath}/CLAUDE.md`;
       
-      // Check if CLAUDE.md already exists
-      const claudeMdExists = await fs.access(claudeMdPath).then(() => true).catch(() => false);
+      // Update CLAUDE.md using Claude Code
+      console.log(`🤖 Updating CLAUDE.md using Claude Code for project: ${context.name}`);
       
-      if (claudeMdExists) {
-        console.log(`📋 CLAUDE.md already exists at ${claudeMdPath}, skipping update`);
-      } else {
-        console.log(`🤖 Generating CLAUDE.md using Claude Code for project: ${context.name}`);
-        
-        const claudeResult = await this.generateClaudeMdWithClaudeCode(
-          project.localPath,
-          context,
-          []
-        );
-        
-        if (!claudeResult.success) {
-          throw new Error(`Claude Code CLAUDE.md generation failed: ${claudeResult.error}`);
-        }
-        
-        console.log(`✅ CLAUDE.md generated successfully using Claude Code`);
+      const claudeResult = await this.generateClaudeMdWithClaudeCode(
+        project.localPath,
+        context,
+        []
+      );
+      
+      if (!claudeResult.success) {
+        throw new Error(`Claude Code CLAUDE.md generation failed: ${claudeResult.error}`);
       }
+      
+      console.log(`✅ CLAUDE.md updated successfully using Claude Code`);
     } catch (error) {
       console.error('Error maintaining CLAUDE.md:', error);
       throw new Error(
