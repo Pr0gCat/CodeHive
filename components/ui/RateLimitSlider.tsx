@@ -6,6 +6,7 @@ import Slider from './Slider';
 interface RateLimitSliderProps {
   value: number;
   onChange: (value: number) => void;
+  onChangeEnd?: (value: number) => void;
   disabled?: boolean;
   className?: string;
   min?: number;
@@ -16,6 +17,7 @@ interface RateLimitSliderProps {
 export default function RateLimitSlider({
   value,
   onChange,
+  onChangeEnd,
   disabled = false,
   className = '',
   min = 10,
@@ -40,6 +42,7 @@ export default function RateLimitSlider({
         max={max}
         value={value}
         onChange={onChange}
+        onChangeEnd={onChangeEnd}
         step={step}
         disabled={disabled}
         color="accent"

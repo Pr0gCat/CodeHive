@@ -9,9 +9,6 @@ export interface DatabaseConfig {
   pauseOnWarning: boolean;
   claudeCodePath: string;
   rateLimitPerMinute: number;
-  appUrl: string;
-  wsUrl: string;
-  databaseUrl: string;
 }
 
 /**
@@ -36,9 +33,6 @@ export async function getDatabaseConfig(): Promise<DatabaseConfig> {
           pauseOnWarning: false,
           claudeCodePath: 'claude',
           rateLimitPerMinute: 50,
-          appUrl: 'http://localhost:3000',
-          wsUrl: 'ws://localhost:3000',
-          databaseUrl: 'file:./prisma/codehive.db',
         },
       });
     }
@@ -52,9 +46,6 @@ export async function getDatabaseConfig(): Promise<DatabaseConfig> {
       pauseOnWarning: settings.pauseOnWarning,
       claudeCodePath: settings.claudeCodePath,
       rateLimitPerMinute: settings.rateLimitPerMinute,
-      appUrl: settings.appUrl,
-      wsUrl: settings.wsUrl,
-      databaseUrl: settings.databaseUrl,
     };
   } catch (error) {
     console.error('Failed to load database config:', error);
@@ -69,9 +60,6 @@ export async function getDatabaseConfig(): Promise<DatabaseConfig> {
       pauseOnWarning: false,
       claudeCodePath: 'claude',
       rateLimitPerMinute: 50,
-      appUrl: 'http://localhost:3000',
-      wsUrl: 'ws://localhost:3000',
-      databaseUrl: 'file:./prisma/codehive.db',
     };
   }
 }
@@ -94,9 +82,6 @@ export async function updateDatabaseConfig(
       pauseOnWarning: config.pauseOnWarning ?? false,
       claudeCodePath: config.claudeCodePath ?? 'claude',
       rateLimitPerMinute: config.rateLimitPerMinute ?? 50,
-      appUrl: config.appUrl ?? 'http://localhost:3000',
-      wsUrl: config.wsUrl ?? 'ws://localhost:3000',
-      databaseUrl: config.databaseUrl ?? 'file:./prisma/codehive.db',
     },
     update: config,
   });
@@ -110,9 +95,6 @@ export async function updateDatabaseConfig(
     pauseOnWarning: settings.pauseOnWarning,
     claudeCodePath: settings.claudeCodePath,
     rateLimitPerMinute: settings.rateLimitPerMinute,
-    appUrl: settings.appUrl,
-    wsUrl: settings.wsUrl,
-    databaseUrl: settings.databaseUrl,
   };
 }
 

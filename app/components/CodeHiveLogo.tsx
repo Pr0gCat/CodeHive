@@ -9,83 +9,30 @@ export default function CodeHiveLogo({
 }: CodeHiveLogoProps) {
   return (
     <svg
-      width={size * 0.5}
+      width={size * 0.35}
       height={size}
-      viewBox="0 0 26 16"
+      viewBox="0 0 12 12"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
     >
-      {/* Main Hexagon (Hive Cell) - Optimized for tight bounds */}
-      <polygon
-        points="13,2 19,5 19,11 13,14 7,11 7,5"
-        fill="currentColor"
-        fillOpacity="0.15"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeOpacity="0.8"
-      />
-      
-      {/* Inner Hexagon Cells */}
-      <polygon
-        points="13,5 16,6.5 16,9.5 13,11 10,9.5 10,6.5"
-        fill="currentColor"
-        fillOpacity="0.25"
-        stroke="currentColor"
-        strokeWidth="1"
-        strokeOpacity="0.6"
-      />
-      
-      {/* Smaller inner cell */}
-      <polygon
-        points="13,7 14.5,7.75 14.5,8.25 13,9 11.5,8.25 11.5,7.75"
-        fill="currentColor"
-        fillOpacity="0.4"
-        stroke="currentColor"
-        strokeWidth="0.8"
-        strokeOpacity="0.7"
-      />
-
-      {/* Bee representation (small circle with motion trail) */}
-      <g opacity="0.8">
-        {/* Bee body */}
-        <circle
-          cx="15.5"
-          cy="6"
-          r="1.2"
-          fill="#fbbf24"
-          stroke="#f59e0b"
-          strokeWidth="0.3"
-        />
+      {/* Geometric H shape made of hexagonal segments */}
+      <g fill="#fbbf24">
+        {/* Left vertical line as connected hexagons */}
+        <polygon points="2,2 3,1.5 4,2 4,4 3,4.5 2,4" />
+        <polygon points="2,4 3,3.5 4,4 4,6 3,6.5 2,6" />
         
-        {/* Bee stripes */}
-        <line
-          x1="14.7"
-          y1="6"
-          x2="16.3"  
-          y2="6"
-          stroke="#d97706"
-          strokeWidth="0.4"
-          opacity="0.7"
-        />
+        {/* Right vertical line as connected hexagons */}
+        <polygon points="8,2 9,1.5 10,2 10,4 9,4.5 8,4" />
+        <polygon points="8,4 9,3.5 10,4 10,6 9,6.5 8,6" />
         
-        {/* Bee wings (tiny) */}
-        <ellipse
-          cx="15.5"
-          cy="5.2"
-          rx="0.6"
-          ry="0.3"
-          fill="#ffffff"
-          opacity="0.6"
-        />
+        {/* Horizontal connecting line */}
+        <polygon points="4,4 5,3.5 7,3.5 8,4 7,4.5 5,4.5" />
       </g>
-
-      {/* Motion trail dots */}
-      <g opacity="0.4">
-        <circle cx="18" cy="4.5" r="0.4" fill="#fbbf24" />
-        <circle cx="20" cy="3.5" r="0.3" fill="#fbbf24" />
-        <circle cx="22" cy="2.5" r="0.2" fill="#fbbf24" />
-      </g>
+      
+      {/* Small animated dots representing AI agents */}
+      <circle cx="6" cy="2" r="0.5" fill="currentColor" opacity="0.7" />
+      <circle cx="6" cy="10" r="0.5" fill="currentColor" opacity="0.7" />
     </svg>
   );
 }

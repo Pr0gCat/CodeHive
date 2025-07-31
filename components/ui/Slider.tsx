@@ -13,6 +13,7 @@ interface SliderProps {
   max: number;
   value: number;
   onChange: (value: number) => void;
+  onChangeEnd?: (value: number) => void;
   step?: number;
   disabled?: boolean;
   className?: string;
@@ -90,6 +91,7 @@ export default function Slider({
   max,
   value,
   onChange,
+  onChangeEnd,
   step = 1,
   disabled = false,
   className = '',
@@ -160,8 +162,11 @@ export default function Slider({
   );
 
   const handleMouseUp = useCallback(() => {
+    if (isDragging && onChangeEnd) {
+      onChangeEnd(tempValue);
+    }
     setIsDragging(false);
-  }, []);
+  }, [isDragging, onChangeEnd, tempValue]);
 
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
@@ -198,8 +203,12 @@ export default function Slider({
       event.preventDefault();
       setTempValue(newValue);
       onChange(newValue);
+      // For keyboard interactions, call onChangeEnd immediately
+      if (onChangeEnd) {
+        onChangeEnd(newValue);
+      }
     },
-    [disabled, value, min, max, step, onChange]
+    [disabled, value, min, max, step, onChange, onChangeEnd]
   );
 
   // Add global mouse event listeners when dragging

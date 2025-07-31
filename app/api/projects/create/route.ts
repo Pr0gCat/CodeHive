@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     
     await taskManager.createTask(taskIdToUse, 'PROJECT_CREATE', phases, {
       projectName: name,
-      projectPath: localPath,
+      projectId: '', // Will be set after creation
     });
 
     // Start the task
@@ -66,9 +66,12 @@ export async function POST(request: NextRequest) {
       gitUrl,
       localPath,
       initializeGit,
-    }).catch(error => {
+    }).catch(async (error) => {
       console.error('Project creation failed:', error);
-      taskManager.failTask(taskIdToUse, error.message);
+      await taskManager.updatePhaseProgress(taskIdToUse, 'complete', 100, {
+        type: 'ERROR',
+        message: `Project creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
     });
 
     return NextResponse.json({
@@ -86,7 +89,7 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: 'Invalid project data',
-          details: error.errors,
+          details: error.issues,
         },
         { status: 400 }
       );
@@ -124,7 +127,7 @@ async function createProjectAsync(
 
     // Check project name availability
     await taskManager.updatePhaseProgress(taskId, validationPhaseId, 30, {
-      type: 'PROGRESS',
+      type: 'PHASE_PROGRESS',
       message: 'Checking project name availability',
     });
 
@@ -132,7 +135,7 @@ async function createProjectAsync(
     await fs.mkdir(path.dirname(localPath), { recursive: true });
     
     await taskManager.updatePhaseProgress(taskId, validationPhaseId, 70, {
-      type: 'PROGRESS',
+      type: 'PHASE_PROGRESS',
       message: 'Validating project path',
     });
     
@@ -149,7 +152,7 @@ async function createProjectAsync(
     });
 
     await taskManager.updatePhaseProgress(taskId, setupPhaseId, 20, {
-      type: 'PROGRESS',
+      type: 'PHASE_PROGRESS',
       message: 'Creating project directory',
     });
 
@@ -157,7 +160,7 @@ async function createProjectAsync(
     await fs.mkdir(localPath, { recursive: true });
     
     await taskManager.updatePhaseProgress(taskId, setupPhaseId, 50, {
-      type: 'PROGRESS',
+      type: 'PHASE_PROGRESS',
       message: 'Generating README.md',
     });
     
@@ -186,7 +189,7 @@ ${gitUrl ? `- **Repository**: ${gitUrl}` : ''}
     await fs.writeFile(readmePath, readmeContent, 'utf8');
     
     await taskManager.updatePhaseProgress(taskId, setupPhaseId, 80, {
-      type: 'PROGRESS',
+      type: 'PHASE_PROGRESS',
       message: 'Creating initial project files',
     });
     
@@ -262,7 +265,7 @@ ${gitUrl ? `- **Repository**: ${gitUrl}` : ''}
     });
 
     await taskManager.updatePhaseProgress(taskId, completionPhaseId, 30, {
-      type: 'PROGRESS',
+      type: 'PHASE_PROGRESS',
       message: 'Project record created',
     });
 
@@ -272,7 +275,7 @@ ${gitUrl ? `- **Repository**: ${gitUrl}` : ''}
       console.log(`🤖 Generating project description using Claude Code for: ${project.name}...`);
 
       await taskManager.updatePhaseProgress(taskId, completionPhaseId, 50, {
-        type: 'PROGRESS',
+        type: 'PHASE_PROGRESS',
         message: '使用 Claude Code 分析專案',
       });
 
@@ -319,7 +322,7 @@ ${gitUrl ? `- **Repository**: ${gitUrl}` : ''}
     }
 
     await taskManager.updatePhaseProgress(taskId, completionPhaseId, 70, {
-      type: 'PROGRESS',
+      type: 'PHASE_PROGRESS',
       message: '生成專案 CLAUDE.md 文件',
     });
 
@@ -376,7 +379,10 @@ ${gitUrl ? `- **Repository**: ${gitUrl}` : ''}
 
   } catch (error) {
     console.error('Error in createProjectAsync:', error);
-    await taskManager.failTask(taskId, error.message);
+    await taskManager.updatePhaseProgress(taskId, 'complete', 100, {
+      type: 'ERROR',
+      message: `Project creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    });
     throw error;
   }
 }

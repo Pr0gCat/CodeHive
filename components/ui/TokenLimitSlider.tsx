@@ -5,6 +5,7 @@ import Slider from './Slider';
 interface TokenLimitSliderProps {
   value: number;
   onChange: (value: number) => void;
+  onChangeEnd?: (value: number) => void;
   disabled?: boolean;
   className?: string;
   min?: number;
@@ -14,6 +15,7 @@ interface TokenLimitSliderProps {
 export default function TokenLimitSlider({
   value,
   onChange,
+  onChangeEnd,
   disabled = false,
   className = '',
   min = 1000000, // 1M tokens
@@ -59,6 +61,7 @@ export default function TokenLimitSlider({
         max={max}
         value={value}
         onChange={onChange}
+        onChangeEnd={onChangeEnd}
         step={5000000} // 5M step for better UX with larger range
         disabled={disabled}
         color="accent"

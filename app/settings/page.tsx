@@ -27,25 +27,38 @@ interface BudgetData {
 export default function SettingsPage() {
   const { showToast } = useToast();
 
-  // Global settings (sliders - immediate save)
-  const [globalSettings, setGlobalSettings] = useState({
+  // All settings combined
+  const [allSettings, setAllSettings] = useState({
+    // Global settings
     dailyTokenLimit: 100000000,
     warningThreshold: 0.75,
     criticalThreshold: 0.9,
     allocationStrategy: 0.5,
-  });
-
-  // Auto management settings (toggles - immediate save)
-  const [autoSettings, setAutoSettings] = useState({
+    // Auto management settings
     autoResumeEnabled: true,
     pauseOnWarning: false,
-  });
-
-  // Claude Code settings (immediate save)
-  const [claudeSettings, setClaudeSettings] = useState({
+    // Claude Code settings
     claudeCodePath: 'claude',
     rateLimitPerMinute: 50,
   });
+
+  // Derived states for UI convenience
+  const globalSettings = {
+    dailyTokenLimit: allSettings.dailyTokenLimit,
+    warningThreshold: allSettings.warningThreshold,
+    criticalThreshold: allSettings.criticalThreshold,
+    allocationStrategy: allSettings.allocationStrategy,
+  };
+
+  const autoSettings = {
+    autoResumeEnabled: allSettings.autoResumeEnabled,
+    pauseOnWarning: allSettings.pauseOnWarning,
+  };
+
+  const claudeSettings = {
+    claudeCodePath: allSettings.claudeCodePath,
+    rateLimitPerMinute: allSettings.rateLimitPerMinute,
+  };
 
   // Test connection state
   const [testingConnection, setTestingConnection] = useState(false);
@@ -78,20 +91,14 @@ export default function SettingsPage() {
 
       if (data.success) {
         const settings = data.data;
-        // Split settings into different categories
-        setGlobalSettings({
+        // Update all settings at once
+        setAllSettings({
           dailyTokenLimit: settings.dailyTokenLimit,
           warningThreshold: settings.warningThreshold,
           criticalThreshold: settings.criticalThreshold,
           allocationStrategy: settings.allocationStrategy,
-        });
-
-        setAutoSettings({
           autoResumeEnabled: settings.autoResumeEnabled,
           pauseOnWarning: settings.pauseOnWarning,
-        });
-
-        setClaudeSettings({
           claudeCodePath: settings.claudeCodePath,
           rateLimitPerMinute: settings.rateLimitPerMinute,
         });
@@ -122,27 +129,30 @@ export default function SettingsPage() {
     }
   };
 
-  // Handle global settings (sliders) - immediate save
-  const handleGlobalSettingChange = async (key: string, value: any) => {
-    setGlobalSettings(prev => ({
+  // Handle global settings changes (visual updates only)
+  const handleGlobalSettingChange = (key: string, value: any) => {
+    setAllSettings(prev => ({
       ...prev,
       [key]: value,
     }));
+  };
 
-    // Immediate save for sliders
+  // Handle global settings save (on drag end)
+  const handleGlobalSettingSave = async (key: string, value: any) => {
     await saveGlobalSetting(key, value);
   };
 
-  const handleThresholdChange = async (warning: number, critical: number) => {
-    setGlobalSettings(prev => ({
+  const handleThresholdChange = (warning: number, critical: number) => {
+    setAllSettings(prev => ({
       ...prev,
       warningThreshold: warning,
       criticalThreshold: critical,
     }));
+  };
 
-    // Immediate save for thresholds
+  const handleThresholdSave = async (warning: number, critical: number) => {
     await saveGlobalSettings({
-      ...globalSettings,
+      ...allSettings,
       warningThreshold: warning,
       criticalThreshold: critical,
     });
@@ -150,7 +160,7 @@ export default function SettingsPage() {
 
   // Handle auto management settings (toggles) - immediate save
   const handleAutoSettingChange = async (key: string, value: boolean) => {
-    setAutoSettings(prev => ({
+    setAllSettings(prev => ({
       ...prev,
       [key]: value,
     }));
@@ -159,14 +169,16 @@ export default function SettingsPage() {
     await saveGlobalSetting(key, value);
   };
 
-  // Handle Claude Code settings - immediate save
-  const handleClaudeSettingChange = async (key: string, value: string | number) => {
-    setClaudeSettings(prev => ({
+  // Handle Claude Code settings changes (visual updates only)
+  const handleClaudeSettingChange = (key: string, value: string | number) => {
+    setAllSettings(prev => ({
       ...prev,
       [key]: value,
     }));
+  };
 
-    // Immediate save
+  // Handle Claude Code settings save (on drag end or input blur)
+  const handleClaudeSettingSave = async (key: string, value: string | number) => {
     await saveGlobalSetting(key, value);
   };
 
@@ -210,13 +222,11 @@ export default function SettingsPage() {
     }
   };
 
-  // Save individual global setting (immediate)
+  // Save individual global setting
   const saveGlobalSetting = async (key: string, value: any) => {
     try {
-      const allSettings = {
-        ...globalSettings,
-        ...autoSettings,
-        ...claudeSettings,
+      const updatedSettings = {
+        ...allSettings,
         [key]: value,
       };
 
@@ -225,7 +235,7 @@ export default function SettingsPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(allSettings),
+        body: JSON.stringify(updatedSettings),
       });
 
       if (!response.ok) {
@@ -239,20 +249,14 @@ export default function SettingsPage() {
   };
 
   // Save all global settings (for thresholds)
-  const saveGlobalSettings = async (updatedGlobalSettings: any) => {
+  const saveGlobalSettings = async (updatedSettings: any) => {
     try {
-      const allSettings = {
-        ...updatedGlobalSettings,
-        ...autoSettings,
-        ...claudeSettings,
-      };
-
       const response = await fetch('/api/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(allSettings),
+        body: JSON.stringify(updatedSettings),
       });
 
       if (!response.ok) {
@@ -348,6 +352,9 @@ export default function SettingsPage() {
                     onChange={value =>
                       handleGlobalSettingChange('dailyTokenLimit', value)
                     }
+                    onChangeEnd={value =>
+                      handleGlobalSettingSave('dailyTokenLimit', value)
+                    }
                     disabled={false}
                   />
                 </div>
@@ -358,6 +365,7 @@ export default function SettingsPage() {
                     minValue={globalSettings.warningThreshold}
                     maxValue={globalSettings.criticalThreshold}
                     onChange={handleThresholdChange}
+                    onChangeEnd={handleThresholdSave}
                     min={0.1}
                     max={0.99}
                     step={0.01}
@@ -373,6 +381,9 @@ export default function SettingsPage() {
                     value={globalSettings.allocationStrategy}
                     onChange={value =>
                       handleGlobalSettingChange('allocationStrategy', value)
+                    }
+                    onChangeEnd={value =>
+                      handleGlobalSettingSave('allocationStrategy', value)
                     }
                     disabled={false}
                     label="分配策略"
@@ -492,6 +503,9 @@ export default function SettingsPage() {
                       onChange={e =>
                         handleClaudeSettingChange('claudeCodePath', e.target.value)
                       }
+                      onBlur={e =>
+                        handleClaudeSettingSave('claudeCodePath', e.target.value)
+                      }
                       className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-md text-primary-100 focus:outline-none focus:ring-2 focus:ring-accent-600 focus:border-accent-600"
                       placeholder="claude"
                     />
@@ -512,6 +526,9 @@ export default function SettingsPage() {
                       value={claudeSettings.rateLimitPerMinute}
                       onChange={value =>
                         handleClaudeSettingChange('rateLimitPerMinute', value)
+                      }
+                      onChangeEnd={value =>
+                        handleClaudeSettingSave('rateLimitPerMinute', value)
                       }
                       disabled={false}
                     />

@@ -6,6 +6,7 @@ import Slider from './Slider';
 interface PercentageSliderProps {
   value: number; // 0.0 to 1.0
   onChange: (value: number) => void;
+  onChangeEnd?: (value: number) => void;
   disabled?: boolean;
   className?: string;
   label: string;
@@ -20,6 +21,7 @@ interface PercentageSliderProps {
 export default function PercentageSlider({
   value,
   onChange,
+  onChangeEnd,
   disabled = false,
   className = '',
   label,
@@ -62,6 +64,7 @@ export default function PercentageSlider({
         max={max}
         value={value}
         onChange={onChange}
+        onChangeEnd={onChangeEnd}
         step={step}
         disabled={disabled}
         color={color}

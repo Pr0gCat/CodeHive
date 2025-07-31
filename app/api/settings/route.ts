@@ -14,11 +14,6 @@ const globalSettingsSchema = z
     // Claude API Configuration
     claudeCodePath: z.string().min(1),
     rateLimitPerMinute: z.number().min(1).max(1000),
-    // Application URLs
-    appUrl: z.string().url(),
-    wsUrl: z.string().min(1),
-    // Database Configuration
-    databaseUrl: z.string().min(1),
   })
   .refine(data => data.warningThreshold < data.criticalThreshold, {
     message: 'Warning threshold must be less than critical threshold',
@@ -40,9 +35,6 @@ export async function GET() {
         pauseOnWarning: false,
         claudeCodePath: 'claude',
         rateLimitPerMinute: 50,
-        appUrl: 'http://localhost:3000',
-        wsUrl: 'ws://localhost:3000',
-        databaseUrl: 'file:./prisma/codehive.db',
       },
       update: {}, // Don't change existing settings
     });

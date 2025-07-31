@@ -7,7 +7,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+  url      = "file:./prisma/codehive.db"
 }
 
 model Project {
@@ -65,13 +65,6 @@ model GlobalSettings {
   // Claude API Configuration
   claudeCodePath       String   @default("claude")   // Path to claude command
   rateLimitPerMinute   Int      @default(50)         // API calls per minute
-  
-  // Application URLs
-  appUrl               String   @default("http://localhost:3000")
-  wsUrl                String   @default("ws://localhost:3000")
-  
-  // Database Configuration
-  databaseUrl          String   @default("file:./prisma/codehive.db")
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

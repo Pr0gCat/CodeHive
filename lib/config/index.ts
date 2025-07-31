@@ -31,19 +31,11 @@ interface StaticConfig {
   isDevelopment: boolean;
 }
 
-function getEnvVar(name: string, defaultValue?: string): string {
-  const value = process.env[name] ?? defaultValue;
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-}
-
-// Static config that doesn't come from database
+// Static config with sensible defaults (no environment variables required)
 const staticConfig: StaticConfig = {
-  nodeEnv: getEnvVar('NODE_ENV', 'development'),
+  nodeEnv: process.env.NODE_ENV || 'development',
   isProduction: process.env.NODE_ENV === 'production',
-  isDevelopment: process.env.NODE_ENV === 'development',
+  isDevelopment: process.env.NODE_ENV !== 'production',
 };
 
 /**
@@ -54,12 +46,12 @@ export async function getConfig(): Promise<Config> {
 
   return {
     // Database config takes precedence
-    databaseUrl: dbConfig.databaseUrl,
+    databaseUrl: fallbackConfig.databaseUrl,
     claudeCodePath: dbConfig.claudeCodePath,
     claudeDailyTokenLimit: dbConfig.dailyTokenLimit,
     claudeRateLimitPerMinute: dbConfig.rateLimitPerMinute,
-    appUrl: dbConfig.appUrl,
-    wsUrl: dbConfig.wsUrl,
+    appUrl: fallbackConfig.appUrl,
+    wsUrl: fallbackConfig.wsUrl,
 
     // Static config from environment
     nodeEnv: staticConfig.nodeEnv,
@@ -69,23 +61,23 @@ export async function getConfig(): Promise<Config> {
 }
 
 /**
- * Synchronous fallback config for when database is not available
- * Uses environment variables with sensible defaults
+ * Synchronous fallback config with sensible defaults
+ * No environment variables required - works out of the box
  */
 export const fallbackConfig: Config = {
-  // Database - use environment variable
-  databaseUrl: process.env.DATABASE_URL || 'file:./prisma/codehive.db',
+  // Database - default SQLite file
+  databaseUrl: 'file:./prisma/codehive.db',
 
-  // Claude Code - fallback values (environment variables as optional override)
-  claudeCodePath: process.env.CLAUDE_CODE_PATH || 'claude',
+  // Claude Code - sensible defaults
+  claudeCodePath: 'claude',
   claudeDailyTokenLimit: 100000000, // 100M tokens
-  claudeRateLimitPerMinute: parseInt(process.env.CLAUDE_RATE_LIMIT || '50'),
+  claudeRateLimitPerMinute: 50,
 
-  // Application - use environment variables
-  appUrl: process.env.APP_URL || 'http://localhost:3000',
-  wsUrl: process.env.WS_URL || 'ws://localhost:3000',
+  // Application - localhost defaults
+  appUrl: 'http://localhost:3000',
+  wsUrl: 'ws://localhost:3000',
 
-  // Static config from environment (NODE_ENV still needed)
+  // Runtime environment
   nodeEnv: staticConfig.nodeEnv,
   isProduction: staticConfig.isProduction,
   isDevelopment: staticConfig.isDevelopment,

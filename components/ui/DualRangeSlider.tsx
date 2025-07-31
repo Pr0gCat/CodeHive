@@ -6,6 +6,7 @@ interface DualRangeSliderProps {
   minValue: number;
   maxValue: number;
   onChange: (min: number, max: number) => void;
+  onChangeEnd?: (min: number, max: number) => void;
   min?: number;
   max?: number;
   step?: number;
@@ -20,6 +21,7 @@ export default function DualRangeSlider({
   minValue,
   maxValue,
   onChange,
+  onChangeEnd,
   min = 0,
   max = 1,
   step = 0.01,
@@ -120,9 +122,12 @@ export default function DualRangeSlider({
   );
 
   const handleMouseUp = useCallback(() => {
+    if ((isDraggingMin || isDraggingMax) && onChangeEnd) {
+      onChangeEnd(tempMinValue, tempMaxValue);
+    }
     setIsDraggingMin(false);
     setIsDraggingMax(false);
-  }, []);
+  }, [isDraggingMin, isDraggingMax, onChangeEnd, tempMinValue, tempMaxValue]);
 
   // Add global mouse event listeners when dragging
   useEffect(() => {

@@ -1,6 +1,124 @@
 # CodeHive
 
-A multi-agent software development platform that orchestrates Claude Code agents to manage and develop multiple projects simultaneously using Test-Driven Development principles.
+A multi-agent software development platform that orchestrates Claude Code agents for intelligent project management and development.
+
+## 🚀 Quick Start
+
+**No configuration files needed!** Just clone and run:
+
+```bash
+# Clone the repository
+git clone <your-repo-url>
+cd CodeHive
+
+# Install dependencies, setup database, and start development server
+bun run quick-start
+```
+
+That's it! The application will be available at http://localhost:3000
+
+## 📋 Manual Setup
+
+If you prefer step-by-step setup:
+
+```bash
+# 1. Install dependencies
+bun install
+
+# 2. Setup database and generate Prisma client
+bun run db:setup
+
+# 3. Seed database with demo data
+bun run db:seed
+
+# 4. Start development server
+bun run dev
+```
+
+## 🛠 Development Commands
+
+```bash
+# Development
+bun run dev              # Start development server
+bun run build            # Build for production
+bun run start            # Start production server
+
+# Database
+bun run db:setup         # Initialize database and run migrations
+bun run db:migrate       # Run new migrations
+bun run db:seed          # Seed database with demo data
+
+# Code Quality
+bun run lint             # Run ESLint
+bun run lint:fix         # Fix auto-fixable lint issues
+bun run format           # Format all files with Prettier
+bun run type-check       # Run TypeScript type checking
+
+# Testing
+bun test                 # Run tests
+bun test --watch         # Run tests in watch mode
+```
+
+## 🔧 Configuration
+
+CodeHive uses a **database-driven configuration system** - no `.env` file needed!
+
+All settings can be configured through the Settings page at `/settings` once the application is running. The system comes with sensible defaults:
+
+- **Database**: SQLite file at `./prisma/codehive.db`
+- **Claude Code Path**: `claude` (assumes it's in your PATH)
+- **Port**: 3000 (development)
+- **Token Limits**: 100M tokens daily
+
+## 📁 Project Structure
+
+```
+CodeHive/
+├── app/                 # Next.js 14 App Router
+├── components/          # Reusable React components
+├── lib/                 # Core business logic
+│   ├── config/         # Database-driven configuration
+│   ├── db/             # Database client and types
+│   ├── agents/         # Claude Code agent orchestration
+│   └── utils/          # Common utilities
+├── prisma/             # Database schema and migrations
+├── repos/              # Local Git repositories (auto-created)
+└── docs/               # Documentation
+```
+
+## 🎯 Features
+
+- **Multi-Agent Development**: Orchestrates specialized Claude Code agents
+- **Real-Time Progress Tracking**: Live updates with Server-Sent Events
+- **Git Integration**: Full Git operations with progress tracking
+- **Database-Driven Configuration**: No config files needed
+- **Project Management**: Epic/Story hierarchy with autonomous backlog management
+- **Token Usage Monitoring**: Smart resource allocation and limits
+
+## 🤖 Requirements
+
+- **Bun** (recommended) or Node.js 18+
+- **Claude Code CLI** installed and available in PATH
+- **Git** for repository management
+
+## 📖 Usage
+
+1. **Start the application**: `bun run quick-start`
+2. **Open**: http://localhost:3000
+3. **Configure**: Visit `/settings` to adjust configuration
+4. **Create Projects**: Add new projects or import existing repositories
+5. **Manage**: Use the dashboard to monitor agent activity and progress
+
+## 🔍 Troubleshooting
+
+**Port already in use?**
+The development server will automatically find an available port starting from 3000.
+
+**Database issues?**
+Delete `prisma/codehive.db` and run `bun run db:setup` to reset.
+
+**Claude Code not found?**
+Ensure Claude Code CLI is installed and available in your PATH, or configure the path in Settings.
 
 ## Overview
 
