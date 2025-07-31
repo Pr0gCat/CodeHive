@@ -289,6 +289,7 @@ export async function POST(request: NextRequest) {
 
         // Check if CLAUDE.md already exists
         const claudeMdPath = `${finalLocalPath}/CLAUDE.md`;
+        const { promises: fs } = await import('fs');
         const claudeMdExists = await fs.access(claudeMdPath).then(() => true).catch(() => false);
         
         if (claudeMdExists) {

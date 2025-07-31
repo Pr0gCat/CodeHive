@@ -13,6 +13,7 @@ import ProjectSettingsModal from '../../components/ProjectSettingsModal';
 import TDDDashboard from '../../components/TDDDashboard';
 import { useToast } from '@/components/ui/ToastManager';
 import UserQueriesPanel from '../../components/UserQueriesPanel';
+import ClaudeMdViewer from '../../components/ClaudeMdViewer';
 
 interface ProjectPageProps {
   params: { id: string };
@@ -30,7 +31,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     useState<ProjectSettings | null>(null);
   const [agentStatus, setAgentStatus] = useState<string>('unknown');
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'development' | 'queries'
+    'overview' | 'development' | 'queries' | 'claude-md'
   >('overview');
   const [devSubTab, setDevSubTab] = useState<'epics' | 'tdd'>('epics');
 
@@ -42,6 +43,8 @@ export default function ProjectPage({ params }: ProjectPageProps) {
       setActiveTab('development');
     } else if (tab === 'queries') {
       setActiveTab('queries');
+    } else if (tab === 'claude-md') {
+      setActiveTab('claude-md');
     } else {
       setActiveTab('overview');
     }
@@ -409,6 +412,29 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                 </svg>
                 諮詢
               </button>
+              <button
+                onClick={() => setActiveTab('claude-md')}
+                className={`px-8 py-4 text-base font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                  activeTab === 'claude-md'
+                    ? 'text-accent-50 border-accent-500'
+                    : 'text-primary-400 hover:text-accent-50 border-transparent hover:border-primary-600'
+                }`}
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                CLAUDE.md
+              </button>
             </div>
           </div>
 
@@ -482,6 +508,13 @@ export default function ProjectPage({ params }: ProjectPageProps) {
               <div className="p-6 h-full overflow-y-auto">
                 <UserQueriesPanel projectId={project.id} />
               </div>
+            </div>
+
+            {/* CLAUDE.md Viewer */}
+            <div
+              className={`h-full ${activeTab === 'claude-md' ? 'block' : 'hidden'}`}
+            >
+              <ClaudeMdViewer projectId={Number(project.id)} />
             </div>
           </div>
         </div>

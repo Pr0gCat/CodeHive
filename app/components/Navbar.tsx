@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import CodeHiveLogo from './CodeHiveLogo';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -16,9 +17,11 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-24">
           <div className="flex items-center space-x-8">
             <Link href="/">
-              <h1 className="text-2xl font-bold text-accent-50 hover:text-accent-100 transition-colors">
-                CodeHive
-              </h1>
+              <CodeHiveLogo 
+                size={40} 
+                showText={true}
+                className="hover:opacity-80 transition-opacity"
+              />
             </Link>
           </div>
 

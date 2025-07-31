@@ -13,7 +13,7 @@ export default function Home() {
         {/* Header Section */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-6">
-            <CodeHiveLogo size={64} className="text-accent-500 mr-4" />
+            <CodeHiveLogo size={64} className="mr-4" />
             <h1 className="text-4xl font-bold text-accent-50">
               歡迎使用 CodeHive
             </h1>

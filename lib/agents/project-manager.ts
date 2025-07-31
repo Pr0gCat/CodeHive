@@ -151,7 +151,7 @@ export class ProjectManagerAgent {
           const claudeResult = await this.generateClaudeMdWithClaudeCode(
             project.localPath,
             context,
-            recommendations
+            recommendations.map(r => typeof r === 'string' ? r : r.reason || r.agentType || 'Unknown recommendation')
           );
           
           if (claudeResult.success) {
@@ -1279,7 +1279,8 @@ ${
     recommendations: string[]
   ): Promise<{ success: boolean; content?: string; error?: string; tokensUsed?: number }> {
     try {
-      const { name, framework, language, techStack, description } = context;
+      const { name, framework, language, techStack } = context;
+      const description = (context as any).description;
       
       // Prepare context information for Claude Code
       const contextInfo = `
@@ -1288,7 +1289,7 @@ Description: ${description || 'No description provided'}
 Primary Language: ${language}
 Framework: ${framework}
 Tech Stack:
-${Object.entries(techStack).map(([key, value]) => `- ${key}: ${value}`).join('\n')}
+${techStack ? Object.entries(techStack).map(([key, value]) => `- ${key}: ${value}`).join('\n') : '- No tech stack information available'}
 
 Recommendations:
 ${recommendations.length > 0 ? recommendations.map(r => `- ${r}`).join('\n') : '- No specific recommendations'}

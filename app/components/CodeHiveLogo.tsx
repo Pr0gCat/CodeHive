@@ -1,38 +1,52 @@
+import Image from 'next/image';
+import CodeHiveLogoSVG from './CodeHiveLogoSVG';
+
 interface CodeHiveLogoProps {
   className?: string;
   size?: number;
+  showText?: boolean;
+  withBackground?: boolean;
+  useSVG?: boolean;
 }
 
 export default function CodeHiveLogo({
   className = '',
-  size = 128,
+  size = 32,
+  showText = false,
+  withBackground = false,
+  useSVG = false,
 }: CodeHiveLogoProps) {
+  // 如果使用 SVG 版本
+  if (useSVG) {
+    return <CodeHiveLogoSVG className={className} size={size} showText={showText} />;
+  }
+
+  // 使用 PNG 版本 - 簡化的輪廓效果
   return (
-    <svg
-      width={size * 0.35}
-      height={size}
-      viewBox="0 0 12 12"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-    >
-      {/* Geometric H shape made of hexagonal segments */}
-      <g fill="#fbbf24">
-        {/* Left vertical line as connected hexagons */}
-        <polygon points="2,2 3,1.5 4,2 4,4 3,4.5 2,4" />
-        <polygon points="2,4 3,3.5 4,4 4,6 3,6.5 2,6" />
-        
-        {/* Right vertical line as connected hexagons */}
-        <polygon points="8,2 9,1.5 10,2 10,4 9,4.5 8,4" />
-        <polygon points="8,4 9,3.5 10,4 10,6 9,6.5 8,6" />
-        
-        {/* Horizontal connecting line */}
-        <polygon points="4,4 5,3.5 7,3.5 8,4 7,4.5 5,4.5" />
-      </g>
-      
-      {/* Small animated dots representing AI agents */}
-      <circle cx="6" cy="2" r="0.5" fill="currentColor" opacity="0.7" />
-      <circle cx="6" cy="10" r="0.5" fill="currentColor" opacity="0.7" />
-    </svg>
+    <div className={`flex items-center ${className}`}>
+      <div className="relative">
+        <Image
+          src="/icon.png"
+          alt="CodeHive Logo"
+          width={size}
+          height={size}
+          className="relative object-contain"
+          style={{
+            filter: `
+              drop-shadow(0 0 1px rgba(255, 255, 255, 0.8))
+              drop-shadow(0 0 2px rgba(255, 255, 255, 0.6))
+              drop-shadow(0 0 3px rgba(255, 255, 255, 0.4))
+              brightness(1.1)
+            `,
+          }}
+          priority
+        />
+      </div>
+      {showText && (
+        <span className="ml-3 text-xl font-bold text-accent-50 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+          CodeHive
+        </span>
+      )}
+    </div>
   );
 }

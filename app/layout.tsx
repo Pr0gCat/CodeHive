@@ -8,6 +8,11 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata = {
   title: 'CodeHive',
   description: 'Multi-agent software development platform',
+  icons: {
+    icon: '/icon.png',
+    shortcut: '/icon.png',
+    apple: '/icon.png',
+  },
 };
 
 export default function RootLayout({
