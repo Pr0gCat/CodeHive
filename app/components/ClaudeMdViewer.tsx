@@ -47,32 +47,12 @@ export default function ClaudeMdViewer({ projectId, onClaudeMdUpdate }: ClaudeMd
   const handleUpdateClaudeMd = async () => {
     setIsUpdating(true);
     try {
-      // Create AbortController for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 200000); // 200 seconds timeout
-
-      const response = await fetch(`/api/projects/${projectId}/claude-md`, {
-        method: 'PUT',
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      const data = await response.json();
-
-      if (data.success) {
-        showToast('CLAUDE.md 已成功更新', 'success');
-        await fetchClaudeMd(); // Refresh content
-        onClaudeMdUpdate?.(); // Notify parent component
-      } else {
-        showToast(`更新失敗：${data.error}`, 'error');
-      }
+      await fetchClaudeMd(); // Just refetch the file content
+      showToast('CLAUDE.md 內容已重新載入', 'success');
+      onClaudeMdUpdate?.(); // Notify parent component
     } catch (err) {
-      if ((err as Error).name === 'AbortError') {
-        showToast('更新 CLAUDE.md 超時，請重試', 'error');
-      } else {
-        showToast('更新 CLAUDE.md 時發生錯誤', 'error');
-      }
-      console.error('Error updating CLAUDE.md:', err);
+      showToast('重新載入 CLAUDE.md 時發生錯誤', 'error');
+      console.error('Error refreshing CLAUDE.md:', err);
     } finally {
       setIsUpdating(false);
     }
@@ -232,7 +212,7 @@ export default function ClaudeMdViewer({ projectId, onClaudeMdUpdate }: ClaudeMd
             className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-primary-300 border border-primary-600 rounded hover:bg-primary-800 hover:text-accent-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <RefreshCw className={`w-4 h-4 ${isUpdating ? 'animate-spin' : ''}`} />
-            <span>{isUpdating ? '更新中...' : '更新'}</span>
+            <span>{isUpdating ? '載入中...' : '重新載入'}</span>
           </button>
 
           {/* Regenerate Button */}
