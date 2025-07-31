@@ -104,6 +104,22 @@ export class AgentExecutor {
       attempt++;
 
       try {
+        // Log the prompt in development environment
+        if (process.env.NODE_ENV === 'development') {
+          console.log('\n🤖 [Claude Code Executor] Sending prompt:', {
+            projectId,
+            agentType,
+            workingDirectory,
+            attempt,
+            promptPreview: prompt.length > 200 ? 
+              prompt.substring(0, 200) + '...[truncated]' : 
+              prompt,
+            fullPrompt: prompt.length <= 500 ? prompt : '[too long to display]',
+            promptLength: prompt.length,
+            estimatedTokens,
+          });
+        }
+
         // Use enhanced file operations if we have a project context
         const result =
           projectId && workingDirectory !== process.cwd()
@@ -123,6 +139,20 @@ export class AgentExecutor {
 
         const executionTime = Date.now() - startTime;
         totalTokensUsed = result.tokensUsed || 0;
+
+        // Log the result in development environment
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ [Claude Code Executor] Execution result:', {
+            success: result.success,
+            executionTime: `${executionTime}ms`,
+            tokensUsed: totalTokensUsed,
+            outputLength: result.output?.length || 0,
+            outputPreview: result.output && result.output.length > 300 ? 
+              result.output.substring(0, 300) + '...[truncated]' : 
+              result.output,
+            error: result.error || null,
+          });
+        }
 
         if (result.success) {
           // Track token usage with new system
@@ -157,6 +187,18 @@ export class AgentExecutor {
         }
       } catch (error) {
         lastError = error as Error;
+        
+        // Log error in development environment
+        if (process.env.NODE_ENV === 'development') {
+          console.error(`❌ [Claude Code Executor] Attempt ${attempt} failed:`, {
+            error: error instanceof Error ? error.message : String(error),
+            projectId,
+            agentType,
+            workingDirectory,
+            promptLength: prompt.length,
+          });
+        }
+
         console.error(`Agent execution attempt ${attempt} failed:`, error);
 
         // If it's the last attempt, don't retry
@@ -166,6 +208,9 @@ export class AgentExecutor {
 
         // Exponential backoff
         const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`⏳ [Claude Code Executor] Retrying in ${delay}ms...`);
+        }
         await this.sleep(delay);
       }
     }
