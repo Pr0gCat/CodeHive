@@ -23,7 +23,6 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [reviewLoading, setReviewLoading] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [logsModalOpen, setLogsModalOpen] = useState(false);
   const [projectSettings, setProjectSettings] =
@@ -106,29 +105,6 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     return () => clearInterval(interval);
   }, [fetchProject, fetchAgentStatus, fetchClaudeMdStatus]);
 
-  const handleProjectReview = async () => {
-    setReviewLoading(true);
-    try {
-      const response = await fetch(`/api/projects/${params.id}/review`, {
-        method: 'POST',
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        showToast(
-          `專案檢視完成！\n\nCLAUDE.md 已${data.data.result.artifacts?.claudeMdPath ? '建立' : '產生'}。`,
-          'success'
-        );
-      } else {
-        showToast(`專案檢視失敗：${data.error}`, 'error');
-      }
-    } catch (error) {
-      console.error('Project review error:', error);
-      showToast('無法完成專案檢視，請重試。', 'error');
-    } finally {
-      setReviewLoading(false);
-    }
-  };
 
   const handleSettingsUpdate = (settings: ProjectSettings) => {
     setProjectSettings(settings);
@@ -247,35 +223,6 @@ export default function ProjectPage({ params }: ProjectPageProps) {
               <div className="text-sm text-primary-400">
                 最後更新：{new Date(project.updatedAt).toLocaleDateString()}
               </div>
-              <button
-                onClick={handleProjectReview}
-                disabled={reviewLoading}
-                className="px-4 py-2 text-sm font-medium text-accent-50 bg-accent-600 rounded-lg hover:bg-accent-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-              >
-                {reviewLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-accent-50"></div>
-                    <span>檢視中...</span>
-                  </>
-                ) : (
-                  <>
-                    <svg
-                      className="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                    <span>檢視專案</span>
-                  </>
-                )}
-              </button>
               <button
                 onClick={() => setLogsModalOpen(true)}
                 className="px-4 py-2 text-sm font-medium text-primary-300 border border-primary-600 rounded-lg hover:bg-primary-800 hover:text-accent-50 flex items-center space-x-2"
