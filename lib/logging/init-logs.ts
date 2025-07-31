@@ -26,10 +26,7 @@ export function initializeSampleLogs() {
       }
     );
 
-    projectLogger.debug('system', 'api', 'API routes initialized', {
-      totalRoutes: 15,
-      version: 'v1',
-    });
+    // API routes initialized - logged to console only, not stored in project logs
   }, 1000);
 }
 
@@ -56,8 +53,5 @@ export function addInitialProjectLogs(projectId: string, projectName: string) {
     }
   );
 
-  projectLogger.info(projectId, 'api', `Project API endpoints activated`, {
-    projectId,
-    endpoints: ['cards', 'settings', 'logs'],
-  });
+  // Project API endpoints activated - not logged to avoid clutter
 }

@@ -32,6 +32,19 @@ export default function ProjectLogsModal({
   const logsContainerRef = useRef<HTMLDivElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
+  // Disable body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
   useEffect(() => {
     if (!isOpen || !projectId) return;
 
@@ -126,8 +139,22 @@ export default function ProjectLogsModal({
     setAutoScroll(isAtBottom);
   };
 
-  const clearLogs = () => {
-    setLogs([]);
+  const clearLogs = async () => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/logs`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setLogs([]);
+        console.log(`已從資料庫清除 ${data.data?.deletedCount || 0} 筆記錄`);
+      } else {
+        console.error('清除記錄失敗');
+      }
+    } catch (error) {
+      console.error('清除記錄時發生錯誤：', error);
+    }
   };
 
   const getLevelColor = (level: string) => {
@@ -170,9 +197,9 @@ export default function ProjectLogsModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-primary-900 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden">
+      <div className="bg-primary-900 rounded-lg w-full max-w-6xl h-[80vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-primary-700">
+        <div className="flex items-center justify-between p-4 border-b border-primary-700 flex-shrink-0">
           <div className="flex items-center space-x-4">
             <h2 className="text-xl font-bold text-accent-50">專案記錄</h2>
             <div className="flex items-center space-x-2">
@@ -244,7 +271,7 @@ export default function ProjectLogsModal({
         <div
           ref={logsContainerRef}
           onScroll={handleScroll}
-          className="p-4 max-h-[calc(90vh-120px)] overflow-y-auto bg-primary-950 font-mono text-sm"
+          className="p-4 flex-1 overflow-y-auto bg-primary-950 font-mono text-sm"
         >
           {filteredLogs.length === 0 ? (
             <div className="text-center py-8 text-primary-400">
@@ -289,7 +316,7 @@ export default function ProjectLogsModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-4 border-t border-primary-700 bg-primary-900">
+        <div className="flex items-center justify-between p-4 border-t border-primary-700 bg-primary-900 flex-shrink-0">
           <div className="text-sm text-primary-400">
             {filteredLogs.length} 項目{' '}
             {filter !== 'all' && `(${logs.length} 總計)`}
