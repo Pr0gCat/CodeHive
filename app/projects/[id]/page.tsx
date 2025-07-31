@@ -98,40 +98,82 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     fetchClaudeMdStatus();
 
     // Set up SSE connection for agent status updates
-    console.log(`🔗 Connecting to Agent Queue SSE`);
-    const eventSource = new EventSource('/api/agents/queue/live');
+    let eventSource: EventSource | null = null;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 3;
+    let reconnectTimeout: NodeJS.Timeout | null = null;
     
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('📡 Agent Queue SSE Event received:', data);
-        
-        if (data.type === 'connected') {
-          console.log(`✅ Connected to agent queue stream`);
-        } else if (data.type === 'queue_status') {
-          // Handle queue status updates
-          setAgentStatus(data.status.status.toLowerCase());
-        } else if (data.type === 'queue_event') {
-          // Handle specific queue events
-          console.log('Queue event:', data.event);
-        }
-      } catch (error) {
-        console.error('Error parsing agent queue SSE event:', error);
+    const connectAgentSSE = () => {
+      if (eventSource) {
+        eventSource.close();
       }
+      
+      console.log(`🔗 Connecting to Agent Queue SSE`);
+      eventSource = new EventSource('/api/agents/queue/live');
+      
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('📡 Agent Queue SSE Event received:', data);
+          
+          // Reset reconnect attempts on successful message
+          reconnectAttempts = 0;
+          
+          if (data.type === 'connected') {
+            console.log(`✅ Connected to agent queue stream`);
+          } else if (data.type === 'queue_status') {
+            // Handle queue status updates
+            setAgentStatus(data.status.status.toLowerCase());
+          } else if (data.type === 'queue_event') {
+            // Handle specific queue events
+            console.log('Queue event:', data.event);
+          }
+        } catch (error) {
+          console.error('Error parsing agent queue SSE event:', error);
+        }
+      };
+      
+      eventSource.onerror = (error) => {
+        const eventSourceState = eventSource?.readyState;
+        
+        // Only log error if it's not a normal close (readyState 2)
+        if (eventSourceState !== EventSource.CLOSED) {
+          console.warn('Agent Queue SSE connection interrupted, attempting to reconnect...');
+        }
+        
+        // Close current connection
+        eventSource?.close();
+        
+        // Attempt to reconnect if under limit
+        if (reconnectAttempts < maxReconnectAttempts) {
+          reconnectAttempts++;
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000);
+          
+          console.log(`🔄 Reconnecting Agent Queue SSE in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
+          
+          reconnectTimeout = setTimeout(() => {
+            connectAgentSSE();
+          }, delay);
+        } else {
+          console.error('Agent Queue SSE max reconnection attempts reached, falling back to polling');
+          // Fallback to manual fetch on persistent error
+          setTimeout(fetchAgentStatus, 10000);
+        }
+      };
     };
     
-    eventSource.onerror = (error) => {
-      console.error('Agent Queue SSE connection error:', error);
-      // Fallback to manual fetch on error
-      setTimeout(fetchAgentStatus, 10000);
-    };
+    // Initial connection
+    connectAgentSSE();
 
     // CLAUDE.md doesn't need frequent updates - only check every 2 minutes
     const claudeMdInterval = setInterval(fetchClaudeMdStatus, 120000);
     
     return () => {
       console.log('🔌 Closing Agent Queue SSE connection');
-      eventSource.close();
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
+      eventSource?.close();
       clearInterval(claudeMdInterval);
     };
   }, [fetchProject, fetchAgentStatus, fetchClaudeMdStatus]);
