@@ -11,11 +11,14 @@ A multi-agent software development platform that orchestrates Claude Code agents
 git clone <your-repo-url>
 cd CodeHive
 
-# Install dependencies, setup database, and start development server
-bun run quick-start
+# Install dependencies
+bun install
+
+# 🔥 Setup and start everything
+bun run app
 ```
 
-That's it! The application will be available at http://localhost:3000
+**That's it!** The application will be available at http://localhost:3000
 
 ## 📋 Manual Setup
 
@@ -28,10 +31,7 @@ bun install
 # 2. Setup database and generate Prisma client
 bun run db:setup
 
-# 3. Seed database with demo data
-bun run db:seed
-
-# 4. Start development server
+# 3. Start development server
 bun run dev
 ```
 
@@ -46,7 +46,6 @@ bun run start            # Start production server
 # Database
 bun run db:setup         # Initialize database and run migrations
 bun run db:migrate       # Run new migrations
-bun run db:seed          # Seed database with demo data
 
 # Code Quality
 bun run lint             # Run ESLint
@@ -103,11 +102,12 @@ CodeHive/
 
 ## 📖 Usage
 
-1. **Start the application**: `bun run quick-start`
-2. **Open**: http://localhost:3000
-3. **Configure**: Visit `/settings` to adjust configuration
-4. **Create Projects**: Add new projects or import existing repositories
-5. **Manage**: Use the dashboard to monitor agent activity and progress
+1. **Install dependencies**: `bun install`  
+2. **Start the application**: `bun run app`
+3. **Open**: http://localhost:3000
+4. **Configure**: Visit `/settings` to adjust configuration
+5. **Create Projects**: Add new projects or import existing repositories
+6. **Manage**: Use the dashboard to monitor agent activity and progress
 
 ## 🔍 Troubleshooting
 

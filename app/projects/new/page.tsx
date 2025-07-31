@@ -96,6 +96,13 @@ export default function NewProjectPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Validation: For new projects, description is required
+    if (creationMode === 'new' && !formData.description.trim()) {
+      setError('創建新專案時需要提供專案描述');
+      return;
+    }
+
     setLoading(true);
 
     // Generate task ID for real-time tracking
@@ -258,6 +265,7 @@ export default function NewProjectPage() {
                     rows={4}
                     value={formData.description}
                     onChange={handleInputChange}
+                    required={creationMode === 'new'}
                     className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
                     placeholder="描述您的專案"
                   />

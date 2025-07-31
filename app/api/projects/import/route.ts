@@ -105,16 +105,22 @@ export async function POST(request: NextRequest) {
           order: 3,
         },
         {
+          phaseId: 'claude_md_generation',
+          title: '生成 CLAUDE.md',
+          description: '使用 Claude Code 生成專案指南',
+          order: 4,
+        },
+        {
           phaseId: 'database',
           title: '建立專案記錄',
           description: '在資料庫中建立專案和初始設定',
-          order: 4,
+          order: 5,
         },
         {
           phaseId: 'initialization',
           title: '初始化專案管理',
           description: '啟動 AI 專案管理器和工作流程',
-          order: 5,
+          order: 6,
         },
       ];
 
@@ -270,6 +276,72 @@ export async function POST(request: NextRequest) {
         remoteUrl: actualRemoteUrl,
       });
 
+      // Phase 3.5: Generate CLAUDE.md BEFORE database creation
+      await taskManager.startPhase(taskId!, 'claude_md_generation');
+      
+      try {
+        console.log(`📝 Generating CLAUDE.md for project: ${projectName}...`);
+
+        await taskManager.updatePhaseProgress(taskId!, 'claude_md_generation', 30, {
+          type: 'PHASE_PROGRESS',
+          message: '生成專案 CLAUDE.md 文件',
+        });
+
+        // Check if CLAUDE.md already exists
+        const claudeMdPath = `${finalLocalPath}/CLAUDE.md`;
+        const claudeMdExists = await fs.access(claudeMdPath).then(() => true).catch(() => false);
+        
+        if (claudeMdExists) {
+          console.log(`📋 CLAUDE.md already exists at ${claudeMdPath}, skipping generation`);
+          await taskManager.updatePhaseProgress(taskId!, 'claude_md_generation', 100, {
+            type: 'PHASE_PROGRESS',
+            message: 'CLAUDE.md 已存在，跳過生成',
+          });
+        } else {
+          // Use Claude Code /init to generate CLAUDE.md
+          await taskManager.updatePhaseProgress(taskId!, 'claude_md_generation', 60, {
+            type: 'PHASE_PROGRESS',
+            message: '使用 Claude Code 生成 CLAUDE.md',
+          });
+
+          const { claudeCode } = await import('@/lib/claude-code');
+          
+          const claudeResult = await claudeCode.execute('/init', {
+            workingDirectory: finalLocalPath,
+            timeout: 180000, // 3 minutes
+          });
+
+          if (claudeResult.success) {
+            console.log(`✅ CLAUDE.md generated successfully using Claude Code`);
+            await taskManager.updatePhaseProgress(taskId!, 'claude_md_generation', 100, {
+              type: 'PHASE_PROGRESS',
+              message: 'CLAUDE.md 生成成功',
+            });
+          } else {
+            console.log(`⚠️ Claude Code generation failed: ${claudeResult.error}`);
+            await taskManager.updatePhaseProgress(taskId!, 'claude_md_generation', 100, {
+              type: 'PHASE_PROGRESS',
+              message: 'CLAUDE.md 生成失敗，將繼續匯入',
+            });
+          }
+        }
+
+        await taskManager.completePhase(taskId!, 'claude_md_generation', {
+          claudeMdExists: claudeMdExists,
+          generated: !claudeMdExists,
+        });
+
+      } catch (claudeMdError) {
+        console.error(`❌ Error generating CLAUDE.md for ${projectName}:`, claudeMdError);
+        await taskManager.updatePhaseProgress(taskId!, 'claude_md_generation', 100, {
+          type: 'ERROR',
+          message: `CLAUDE.md 生成錯誤: ${claudeMdError instanceof Error ? claudeMdError.message : 'Unknown error'}`,
+        });
+        await taskManager.completePhase(taskId!, 'claude_md_generation', {
+          error: claudeMdError instanceof Error ? claudeMdError.message : 'Unknown error',
+        });
+      }
+
       // Phase 4: Database Creation
       await taskManager.startPhase(taskId!, 'database');
       
@@ -408,41 +480,7 @@ export async function POST(request: NextRequest) {
         console.log(`📝 Using fallback description: "${projectDescription}"`);
       }
 
-      // Step 2: Generate and save CLAUDE.md
-      try {
-        console.log(`📝 Generating CLAUDE.md for project: ${project.name}...`);
-
-        await taskManager.updatePhaseProgress(taskId!, 'initialization', 70, {
-          type: 'PHASE_PROGRESS',
-          message: '生成專案 CLAUDE.md 文件',
-        });
-
-        const claudeMdResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/agents/project-manager`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              projectId: project.id,
-              action: 'maintain-claude-md',
-            }),
-          }
-        );
-
-        const claudeMdResult = await claudeMdResponse.json();
-        if (claudeMdResult.success) {
-          console.log(`✅ CLAUDE.md generated successfully for ${project.name}`);
-        } else {
-          console.log(`⚠️ CLAUDE.md generation failed for ${project.name}:`, claudeMdResult.error);
-        }
-      } catch (claudeMdError) {
-        console.error(`❌ Error generating CLAUDE.md for ${project.name}:`, claudeMdError);
-        // Continue with import even if CLAUDE.md generation fails
-      }
-
-      // Step 3: Update project with generated description
+      // Step 2: Update project with generated description
       if (projectDescription !== project.description) {
         await prisma.project.update({
           where: { id: project.id },
@@ -450,7 +488,7 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      await taskManager.updatePhaseProgress(taskId!, 'initialization', 90, {
+      await taskManager.updatePhaseProgress(taskId!, 'initialization', 100, {
         type: 'PHASE_PROGRESS',
         message: '完成專案初始化設定',
       });

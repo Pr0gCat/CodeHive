@@ -133,14 +133,9 @@ export class ProjectManagerAgent {
       // Generate project summary based on analysis
       const projectSummary = await this.generateProjectSummary(context);
 
-      // Generate CLAUDE.md content based on analysis
-      const claudeMdContent = await this.generateClaudeMd(
-        context,
-        recommendations
-      );
-
-      // Write CLAUDE.md to the project directory
+      // Generate CLAUDE.md using Claude Code for imported projects
       const claudeMdPath = `${project.localPath}/CLAUDE.md`;
+      let claudeMdContent = '';
 
       try {
         // Check if CLAUDE.md already exists
@@ -148,10 +143,40 @@ export class ProjectManagerAgent {
         
         if (claudeMdExists) {
           console.log(`📋 CLAUDE.md already exists at ${claudeMdPath}, skipping generation`);
+          claudeMdContent = await fs.readFile(claudeMdPath, 'utf8');
         } else {
-          // Write CLAUDE.md file directly using Node.js fs
-          await fs.writeFile(claudeMdPath, claudeMdContent, 'utf8');
-          console.log(`✅ Created new CLAUDE.md at ${claudeMdPath}`);
+          // Use Claude Code to generate CLAUDE.md
+          console.log(`🤖 Generating CLAUDE.md using Claude Code for project: ${context.name}`);
+          
+          const claudeResult = await this.generateClaudeMdWithClaudeCode(
+            project.localPath,
+            context,
+            recommendations
+          );
+          
+          if (claudeResult.success) {
+            claudeMdContent = claudeResult.content || '';
+            console.log(`✅ CLAUDE.md generated successfully using Claude Code`);
+            
+            // Log token usage from Claude Code execution
+            if (claudeResult.tokensUsed && claudeResult.tokensUsed > 0) {
+              const inputTokens = Math.ceil(claudeResult.tokensUsed * 0.3); // Approximate input tokens
+              const outputTokens = claudeResult.tokensUsed - inputTokens;
+              
+              await logTokenUsage(
+                projectId,
+                'project-manager-claude-md',
+                inputTokens,
+                outputTokens
+              );
+            }
+          } else {
+            // Fallback to template-based generation
+            console.log(`⚠️ Claude Code generation failed: ${claudeResult.error}`);
+            console.log(`📝 Using template-based fallback for CLAUDE.md generation`);
+            claudeMdContent = await this.generateClaudeMd(context, recommendations);
+            await fs.writeFile(claudeMdPath, claudeMdContent, 'utf8');
+          }
         }
 
         // Update project with generated summary
@@ -1243,5 +1268,64 @@ ${
     );
 
     return enhancedContent;
+  }
+
+  /**
+   * Generate CLAUDE.md using Claude Code with /init prompt
+   */
+  private async generateClaudeMdWithClaudeCode(
+    projectPath: string,
+    context: ProjectContext,
+    recommendations: string[]
+  ): Promise<{ success: boolean; content?: string; error?: string; tokensUsed?: number }> {
+    try {
+      const { name, framework, language, techStack, description } = context;
+      
+      // Prepare context information for Claude Code
+      const contextInfo = `
+Project Name: ${name}
+Description: ${description || 'No description provided'}
+Primary Language: ${language}
+Framework: ${framework}
+Tech Stack:
+${Object.entries(techStack).map(([key, value]) => `- ${key}: ${value}`).join('\n')}
+
+Recommendations:
+${recommendations.length > 0 ? recommendations.map(r => `- ${r}`).join('\n') : '- No specific recommendations'}
+
+Project Path: ${projectPath}
+`.trim();
+
+      // Execute Claude Code with /init prompt only
+      const result = await this.executor.execute(
+        `/init`,
+        {
+          workingDirectory: projectPath,
+          timeout: 180000, // 3 minutes
+          agentType: 'project-manager-claude-md',
+        }
+      );
+
+      if (result.success && result.output) {
+        return {
+          success: true,
+          content: result.output,
+          tokensUsed: result.tokensUsed || 0,
+        };
+      } else {
+        return {
+          success: false,
+          error: result.error || 'Claude Code execution failed',
+          tokensUsed: result.tokensUsed || 0,
+        };
+      }
+    } catch (error) {
+      console.error('Error generating CLAUDE.md with Claude Code:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        tokensUsed: 0,
+      };
+    }
   }
 }

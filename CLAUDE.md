@@ -44,14 +44,14 @@ CodeHive is a multi-agent software development platform where users provide feat
 **CodeHive Platform Commands:**
 
 ```bash
-# Install dependencies
-bun install
+# Quick Start - Two simple commands
+bun install              # Install dependencies (run first)
+bun run app              # Setup database, build, and start
 
-# Database operations
-bun run db:setup          # Initialize database and run migrations
-bun run db:migrate        # Run new migrations
-bun run db:generate       # Regenerate Prisma client
-bun run db:seed          # Seed database with demo data
+# Individual operations (if needed)
+bun run db:setup         # Initialize database and run migrations
+bun run db:migrate       # Run new migrations
+bun run db:generate      # Regenerate Prisma client
 
 # Development
 bun run dev              # Start development server (auto-detects available port)
