@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
 
 interface HolographicDisplayProps {
   title: string;
@@ -323,10 +324,10 @@ export default function HolographicDisplay({
       {phase === 'error' && (
         <div className="absolute top-4 right-4">
           <div
-            className="text-2xl animate-pulse"
+            className="animate-pulse"
             style={{ color: currentColors.primary }}
           >
-            ⚠️
+            <AlertTriangle className="w-6 h-6" />
           </div>
         </div>
       )}

@@ -2,6 +2,7 @@
 
 import { formatShortNumber } from '@/lib/utils';
 import { useEffect, useState } from 'react';
+import { Search, TestTube, BookOpen, FileText, ClipboardList, HardDrive, Bot, BarChart3 } from 'lucide-react';
 
 interface TokenStats {
   total: {
@@ -61,22 +62,22 @@ export default function TokenStatistics() {
     }
   };
 
-  const getAgentIcon = (agentType: string): string => {
+  const getAgentIcon = (agentType: string) => {
     switch (agentType) {
       case 'code-analyzer':
-        return '🔍';
+        return <Search className="w-4 h-4" />;
       case 'test-runner':
-        return '🧪';
+        return <TestTube className="w-4 h-4" />;
       case 'git-operations':
-        return '📚';
+        return <BookOpen className="w-4 h-4" />;
       case 'documentation':
-        return '📝';
+        return <FileText className="w-4 h-4" />;
       case 'project-manager-review':
-        return '📋';
+        return <ClipboardList className="w-4 h-4" />;
       case 'file-writer':
-        return '💾';
+        return <HardDrive className="w-4 h-4" />;
       default:
-        return '🤖';
+        return <Bot className="w-4 h-4" />;
     }
   };
 
@@ -181,7 +182,9 @@ export default function TokenStatistics() {
                 {stats.week.requests} 次請求
               </p>
             </div>
-            <div className="text-3xl text-green-500">📊</div>
+            <div className="text-green-500">
+              <BarChart3 className="w-8 h-8" />
+            </div>
           </div>
         </div>
       </div>

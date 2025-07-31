@@ -7,6 +7,7 @@ import DualRangeSlider from '@/components/ui/DualRangeSlider';
 import PercentageSlider from '@/components/ui/PercentageSlider';
 import TokenLimitSlider from '@/components/ui/TokenLimitSlider';
 import RateLimitSlider from '@/components/ui/RateLimitSlider';
+import { useToast } from '@/components/ui/ToastManager';
 
 interface ProjectBudget {
   projectId: string;
@@ -24,6 +25,8 @@ interface BudgetData {
 }
 
 export default function SettingsPage() {
+  const { showToast } = useToast();
+
   // Global settings (sliders - immediate save)
   const [globalSettings, setGlobalSettings] = useState({
     dailyTokenLimit: 100000000,
@@ -59,10 +62,6 @@ export default function SettingsPage() {
 
   const [loading, setLoading] = useState(true);
   const [budgetSaving, setBudgetSaving] = useState(false);
-  const [message, setMessage] = useState<{
-    type: 'success' | 'error';
-    text: string;
-  } | null>(null);
 
   // Combined saving state and change tracking
   const [combinedSaving, setCombinedSaving] = useState(false);
@@ -97,11 +96,11 @@ export default function SettingsPage() {
           rateLimitPerMinute: settings.rateLimitPerMinute,
         });
       } else {
-        setMessage({ type: 'error', text: '無法載入設定' });
+        showToast('無法載入設定', 'error');
       }
     } catch (error) {
       console.error('Error fetching settings:', error);
-      setMessage({ type: 'error', text: '無法載入設定' });
+      showToast('無法載入設定', 'error');
     } finally {
       setLoading(false);
     }
@@ -115,10 +114,11 @@ export default function SettingsPage() {
       if (data.success) {
         setBudgetData(data.data);
       } else {
-        console.error('無法載入預算資料：', data.error);
+        showToast('無法載入預算資料', 'error');
       }
     } catch (error) {
       console.error('Error fetching budget data:', error);
+      showToast('無法載入預算資料', 'error');
     }
   };
 
@@ -191,17 +191,20 @@ export default function SettingsPage() {
           status: 'success',
           message: `連接成功！Claude Code 版本: ${data.version || '未知'}`,
         });
+        showToast(`Claude Code 連接成功！版本: ${data.version || '未知'}`, 'success');
       } else {
         setConnectionStatus({
           status: 'error',
           message: data.error || '連接失敗',
         });
+        showToast(data.error || 'Claude Code 連接失敗', 'error');
       }
     } catch (error) {
       setConnectionStatus({
         status: 'error',
         message: '無法測試連接',
       });
+      showToast('無法測試 Claude Code 連接', 'error');
     } finally {
       setTestingConnection(false);
     }
@@ -227,9 +230,11 @@ export default function SettingsPage() {
 
       if (!response.ok) {
         console.error('Failed to save setting:', key);
+        showToast('設定保存失敗', 'error');
       }
     } catch (error) {
       console.error('Error saving setting:', error);
+      showToast('設定保存失敗', 'error');
     }
   };
 
@@ -252,9 +257,11 @@ export default function SettingsPage() {
 
       if (!response.ok) {
         console.error('Failed to save global settings');
+        showToast('全局設定保存失敗', 'error');
       }
     } catch (error) {
       console.error('Error saving global settings:', error);
+      showToast('全局設定保存失敗', 'error');
     }
   };
 
@@ -280,12 +287,13 @@ export default function SettingsPage() {
       if (data.success) {
         // Refresh budget data to show updated values
         await fetchBudgetData();
+        showToast('預算分配已更新', 'success');
       } else {
-        setMessage({ type: 'error', text: '更新預算分配失敗' });
+        showToast('更新預算分配失敗', 'error');
       }
     } catch (error) {
       console.error('Error updating budget allocations:', error);
-      setMessage({ type: 'error', text: '更新預算分配失敗' });
+      showToast('更新預算分配失敗', 'error');
     } finally {
       setBudgetSaving(false);
     }
@@ -323,17 +331,6 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {message && (
-            <div
-              className={`mb-6 p-4 rounded-md ${
-                message.type === 'success'
-                  ? 'bg-green-900 border border-green-700 text-green-300'
-                  : 'bg-red-900 border border-red-700 text-red-300'
-              }`}
-            >
-              {message.text}
-            </div>
-          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Global Settings */}

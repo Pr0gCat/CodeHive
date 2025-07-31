@@ -2,6 +2,8 @@
 
 import { formatShortNumber } from '@/lib/utils';
 import { useEffect, useState } from 'react';
+import { AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react';
+import { useToast } from '@/components/ui/ToastManager';
 
 interface MonitorData {
   global: {
@@ -33,6 +35,7 @@ interface MonitorData {
 }
 
 export default function TokenMonitor() {
+  const { showToast } = useToast();
   const [monitorData, setMonitorData] = useState<MonitorData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,10 +58,14 @@ export default function TokenMonitor() {
         setError(null);
         setLastUpdated(new Date());
       } else {
-        setError(data.error || 'Failed to fetch monitor data');
+        const errorMsg = data.error || '無法取得監控資料';
+        setError(errorMsg);
+        showToast(errorMsg, 'error');
       }
     } catch (err) {
-      setError('Failed to fetch monitor data');
+      const errorMsg = '無法取得監控資料';
+      setError(errorMsg);
+      showToast(errorMsg, 'error');
       console.error('Monitor fetch error:', err);
     } finally {
       setLoading(false);
@@ -79,11 +86,11 @@ export default function TokenMonitor() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'critical':
-        return '🚨';
+        return <AlertCircle className="w-4 h-4 text-red-500" />;
       case 'warning':
-        return '⚠️';
+        return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
       default:
-        return '✅';
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
     }
   };
 

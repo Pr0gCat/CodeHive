@@ -2,6 +2,7 @@
 
 import { ProjectSettings } from '@/lib/db';
 import { useEffect, useState } from 'react';
+import { Settings, Lock, Bot, Bell, Wrench } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/ToastManager';
 
@@ -140,11 +141,11 @@ export default function ProjectSettingsModal({
   if (!isOpen) return null;
 
   const tabs = [
-    { id: 'general', name: '一般設定', icon: '⚙️' },
-    { id: 'limits', name: '限制設定', icon: '🔒' },
-    { id: 'agents', name: '代理設定', icon: '🤖' },
-    { id: 'notifications', name: '通知設定', icon: '🔔' },
-    { id: 'advanced', name: '進階設定', icon: '🔧' },
+    { id: 'general', name: '一般設定', icon: Settings },
+    { id: 'limits', name: '限制設定', icon: Lock },
+    { id: 'agents', name: '代理設定', icon: Bot },
+    { id: 'notifications', name: '通知設定', icon: Bell },
+    { id: 'advanced', name: '進階設定', icon: Wrench },
   ];
 
   return (
@@ -193,7 +194,7 @@ export default function ProjectSettingsModal({
                         : 'text-primary-300 hover:bg-primary-800 hover:text-accent-50'
                     }`}
                   >
-                    <span className="mr-2">{tab.icon}</span>
+                    <tab.icon className="w-4 h-4 mr-2" />
                     {tab.name}
                   </button>
                 ))}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import ParticleSystem from './ParticleSystem';
 import NeuralNetworkProgress from './NeuralNetworkProgress';
 import HolographicDisplay from './HolographicDisplay';
@@ -242,8 +243,9 @@ export default function ProjectInitializationOverlay({
 
         {hasError && (
           <div className="mt-8 text-center">
-            <div className="text-red-400 text-2xl font-bold mb-2">
-              ⚠️ 初始化錯誤
+            <div className="text-red-400 text-2xl font-bold mb-2 flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6 mr-2" />
+              初始化錯誤
             </div>
             <div className="text-primary-300">請檢查日誌以獲取更多資訊</div>
           </div>

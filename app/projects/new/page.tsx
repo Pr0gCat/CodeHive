@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { FolderOpen, Link2, AlertTriangle, CheckCircle, Plus } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import HiveInitializationAnimation from '../../components/initialization/HiveInitializationAnimation';
 
@@ -150,7 +151,7 @@ export default function NewProjectPage() {
       {/* Initialization Overlay - Now using real-time progress */}
       <HiveInitializationAnimation
         isVisible={showInitialization}
-        taskId={taskId}
+        taskId={taskId || undefined}
         useRealTimeProgress={true}
         projectName={formData.name}
         onComplete={async () => {
@@ -282,8 +283,9 @@ export default function NewProjectPage() {
                             : 'border-primary-700 bg-primary-800 hover:border-primary-600'
                         }`}
                       >
-                        <div className="font-medium text-accent-50 mb-1">
-                          🆕 建立新專案
+                        <div className="font-medium text-accent-50 mb-1 flex items-center">
+                          <Plus className="w-4 h-4 mr-2" />
+                          建立新專案
                         </div>
                         <div className="text-sm text-primary-300">
                           建立全新的 Git 倉庫和專案結構
@@ -302,8 +304,9 @@ export default function NewProjectPage() {
                             : 'border-primary-700 bg-primary-800 hover:border-primary-600'
                         }`}
                       >
-                        <div className="font-medium text-accent-50 mb-1">
-                          📁 導入現有專案
+                        <div className="font-medium text-accent-50 mb-1 flex items-center">
+                          <FolderOpen className="w-4 h-4 mr-2" />
+                          導入現有專案
                         </div>
                         <div className="text-sm text-primary-300">
                           從現有的本地資料夾建立專案
@@ -368,7 +371,7 @@ export default function NewProjectPage() {
                         {availableRepos.map(repo => (
                           <option key={repo.path} value={repo.path}>
                             {repo.name} ({repo.projectType}){' '}
-                            {repo.hasGit ? '🔗' : '⚠️'}
+                            {repo.hasGit ? <Link2 className="inline w-3 h-3 ml-1" /> : <AlertTriangle className="inline w-3 h-3 ml-1" />}
                           </option>
                         ))}
                       </select>
@@ -398,12 +401,14 @@ export default function NewProjectPage() {
                           <div className="text-primary-300">
                             <span className="font-medium">Git：</span>{' '}
                             {selectedRepo.hasGit ? (
-                              <span className="text-green-400">
-                                ✓ 已偵測到 Git 倉庫
+                              <span className="text-green-400 flex items-center">
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                                已偵測到 Git 倉庫
                               </span>
                             ) : (
-                              <span className="text-yellow-400">
-                                ⚠️ 將初始化為 Git 倉庫
+                              <span className="text-yellow-400 flex items-center">
+                                <AlertTriangle className="w-4 h-4 mr-1" />
+                                將初始化為 Git 倉庫
                               </span>
                             )}
                           </div>

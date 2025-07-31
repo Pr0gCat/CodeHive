@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { AlertTriangle, Building2 } from 'lucide-react';
 import Slider from './Slider';
 
 interface ProjectBudget {
@@ -231,7 +232,8 @@ export default function BudgetAllocationSlider({
 
           {isOverAllocated && (
             <div className="mt-2 text-xs text-red-400">
-              ⚠️ 總分配超過 100%，請調整分配比例
+              <AlertTriangle className="inline w-4 h-4 mr-1" />
+              總分配超過 100%，請調整分配比例
             </div>
           )}
         </div>
@@ -305,7 +307,9 @@ export default function BudgetAllocationSlider({
 
       {projects.length === 0 && (
         <div className="text-center py-8 text-primary-400">
-          <div className="text-lg mb-2">🏗️</div>
+          <div className="text-lg mb-2">
+            <Building2 className="w-8 h-8 mx-auto text-primary-400" />
+          </div>
           <div>尚無專案需要分配預算</div>
           <div className="text-sm mt-1">建立專案後即可設定預算分配</div>
         </div>

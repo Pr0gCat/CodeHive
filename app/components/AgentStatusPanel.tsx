@@ -51,9 +51,11 @@ export default function AgentStatusPanel({ projectId }: AgentStatusPanelProps) {
         setError(null);
       } else {
         setError('無法載入佇列狀態');
+        showToast('無法載入佇列狀態', 'error');
       }
     } catch (err) {
       setError('無法載入佇列狀態');
+      showToast('無法載入佇列狀態', 'error');
     } finally {
       setLoading(false);
     }

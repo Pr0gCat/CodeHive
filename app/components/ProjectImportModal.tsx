@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import HiveInitializationAnimation from './initialization/HiveInitializationAnimation';
+import { useToast } from '@/components/ui/ToastManager';
 
 interface ProjectImportModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ export default function ProjectImportModal({
   onClose,
 }: ProjectImportModalProps) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showInitialization, setShowInitialization] = useState(false);
@@ -83,7 +85,9 @@ export default function ProjectImportModal({
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || '無法匯入專案');
+        const errorMsg = data.error || '無法匯入專案';
+        setError(errorMsg);
+        showToast(errorMsg, 'error');
         setShowInitialization(false);
         return;
       }
@@ -92,7 +96,9 @@ export default function ProjectImportModal({
       console.log(`✅ Import request successful for task: ${newTaskId}`);
     } catch (err) {
       console.error('Import request failed:', err);
-      setError('網路錯誤：無法匯入專案');
+      const errorMsg = '網路錯誤：無法匯入專案';
+      setError(errorMsg);
+      showToast(errorMsg, 'error');
       setShowInitialization(false);
     } finally {
       setIsImporting(false);
@@ -109,6 +115,7 @@ export default function ProjectImportModal({
   const handleImportError = (error: string) => {
     console.error('❌ Import failed:', error);
     setError(error);
+    showToast(error, 'error');
     setShowInitialization(false);
   };
 
@@ -120,7 +127,7 @@ export default function ProjectImportModal({
       <HiveInitializationAnimation
         isVisible={showInitialization}
         projectName={formData.projectName}
-        taskId={taskId}
+        taskId={taskId || undefined}
         useRealTimeProgress={true}
         onComplete={handleImportComplete}
         onError={handleImportError}

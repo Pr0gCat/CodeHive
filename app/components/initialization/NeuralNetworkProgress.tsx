@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Bot, Check } from 'lucide-react';
 
 interface NetworkNode {
   id: string;
@@ -77,7 +78,7 @@ export default function NeuralNetworkProgress({
       size: 20,
       active: true,
       completed: false,
-      label: '🤖 Project Manager',
+      label: 'Project Manager',
       connections: phaseLabels.map((_, index) => `phase-${index}`),
     });
 
@@ -212,9 +213,9 @@ export default function NeuralNetworkProgress({
             >
               {/* Node icon */}
               {node.id === 'central' ? (
-                <span className="text-white text-sm">🤖</span>
+                <Bot className="w-3 h-3 text-white" />
               ) : node.completed ? (
-                <span className="text-white text-xs">✓</span>
+                <Check className="w-3 h-3 text-white" />
               ) : node.active ? (
                 <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
               ) : (

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
 
 export interface InitializationPhase {
   id: string;
@@ -391,8 +392,9 @@ export default function HiveInitializationAnimation({
 
         {hasError && (
           <div className="text-center">
-            <div className="text-red-400 text-2xl font-bold mb-2">
-              ⚠️ 初始化錯誤
+            <div className="text-red-400 text-2xl font-bold mb-2 flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6 mr-2" />
+              初始化錯誤
             </div>
             <div className="text-primary-300">請檢查日誌以獲取更多資訊</div>
           </div>
