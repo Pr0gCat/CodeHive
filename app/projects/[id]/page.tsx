@@ -11,7 +11,7 @@ import HierarchicalProjectView from '../../components/HierarchicalProjectView';
 import ProjectLogsModal from '../../components/ProjectLogsModal';
 import ProjectSettingsModal from '../../components/ProjectSettingsModal';
 import TDDDashboard from '../../components/TDDDashboard';
-import { useToast } from '../../components/ui/ToastManager';
+import { useToast } from '@/components/ui/ToastManager';
 import UserQueriesPanel from '../../components/UserQueriesPanel';
 
 interface ProjectPageProps {
@@ -144,7 +144,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
   if (loading) {
     return (
-      <div className="h-screen bg-primary-950 flex items-center justify-center overflow-hidden">
+      <div className="min-h-screen bg-primary-950 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-primary-600">載入專案中...</p>
@@ -155,7 +155,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
   if (error || !project) {
     return (
-      <div className="h-screen bg-primary-950 flex items-center justify-center overflow-hidden">
+      <div className="min-h-screen bg-primary-950 flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-600 mb-4">
             <svg
@@ -185,7 +185,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   }
 
   return (
-    <div className="h-screen bg-primary-950 overflow-hidden">
+    <div className="min-h-screen bg-primary-950">
       {/* Header */}
       <div className="bg-primary-900 border-b border-primary-800">
         <div className="container mx-auto px-4 py-4">

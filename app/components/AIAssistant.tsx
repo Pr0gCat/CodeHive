@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useToast } from './ui/ToastManager';
+import { useToast } from '@/components/ui/ToastManager';
 
 interface AIAssistantProps {
   projectId: string;

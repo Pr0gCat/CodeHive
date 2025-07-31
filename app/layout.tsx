@@ -1,5 +1,5 @@
 import { Inter } from 'next/font/google';
-import ToastManager from './components/ui/ToastManager';
+import ToastManager from '@/components/ui/ToastManager';
 import { ThemeProvider } from './contexts/ThemeContext';
 import './globals.css';
 
@@ -17,7 +17,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full">
-      <body className={`${inter.className} h-full overflow-hidden`}>
+      <body className={`${inter.className} min-h-full`}>
         <ThemeProvider>
           <ToastManager>{children}</ToastManager>
         </ThemeProvider>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useToast } from './ui/ToastManager';
+import { useToast } from '@/components/ui/ToastManager';
 
 interface Test {
   id: string;

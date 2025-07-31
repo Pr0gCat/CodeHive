@@ -2,8 +2,8 @@
 
 import { ProjectSettings } from '@/lib/db';
 import { useEffect, useState } from 'react';
-import ConfirmDialog from './ui/ConfirmDialog';
-import { useToast } from './ui/ToastManager';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { useToast } from '@/components/ui/ToastManager';
 
 interface ProjectSettingsModalProps {
   projectId: string;

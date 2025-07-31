@@ -2,9 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import HiveInitializationAnimation, {
-  InitializationPhase,
-} from './initialization/HiveInitializationAnimation';
+import HiveInitializationAnimation from './initialization/HiveInitializationAnimation';
 
 interface ProjectImportModalProps {
   isOpen: boolean;
@@ -19,14 +17,16 @@ export default function ProjectImportModal({
   const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showInitialization, setShowInitialization] = useState(false);
-  const [initializationPhases, setInitializationPhases] = useState<any[]>([]);
-  const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
+  const [taskId, setTaskId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     gitUrl: '',
+    localPath: '',
     projectName: '',
     branch: '',
   });
+  
+  const [importMode, setImportMode] = useState<'remote' | 'local'>('remote');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -53,53 +53,8 @@ export default function ProjectImportModal({
     setError(null);
   };
 
-  const simulateInitializationPhases = (
-    projectName: string
-  ): InitializationPhase[] => [
-    {
-      id: 'cloning',
-      title: '克隆儲存庫',
-      description: `正在從 Git 儲存庫克隆 ${projectName}...`,
-      status: 'pending',
-      progress: 0,
-      details: ['建立本地連接', '下載儲存庫內容', '驗證完整性'],
-    },
-    {
-      id: 'analyzing',
-      title: '分析項目結構',
-      description: 'Claude Code 正在分析項目架構和技術棧...',
-      status: 'pending',
-      progress: 0,
-      details: ['掃描檔案結構', '識別框架和語言', '分析依賴關係'],
-    },
-    {
-      id: 'generating',
-      title: '生成 CLAUDE.md',
-      description: '為項目生成專用的 AI 上下文檔案...',
-      status: 'pending',
-      progress: 0,
-      details: ['生成項目描述', '建立開發指南', '配置 Agent 上下文'],
-    },
-    {
-      id: 'initializing',
-      title: '初始化項目管理',
-      description: '建立 Epic 和 Story 結構，準備 TDD 工作流程...',
-      status: 'pending',
-      progress: 0,
-      details: ['創建初始 Epic', '建立設置任務', '準備 Agent 系統'],
-    },
-  ];
-
-  const updatePhaseProgress = (
-    phaseId: string,
-    progress: number,
-    status: 'pending' | 'active' | 'completed' | 'error' = 'active'
-  ) => {
-    setInitializationPhases(phases =>
-      phases.map(phase =>
-        phase.id === phaseId ? { ...phase, progress, status } : phase
-      )
-    );
+  const generateTaskId = () => {
+    return `import-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -107,85 +62,54 @@ export default function ProjectImportModal({
     setError(null);
     setIsImporting(true);
 
-    // Initialize phases
-    const phases = simulateInitializationPhases(formData.projectName);
-    setInitializationPhases(phases);
+    // Generate unique task ID
+    const newTaskId = generateTaskId();
+    console.log('🚀 Generated task ID:', newTaskId);
+    setTaskId(newTaskId);
     setShowInitialization(true);
-    setCurrentPhaseIndex(0);
 
     try {
-      // Phase 1: Start import
-      updatePhaseProgress('cloning', 0, 'active');
-      setCurrentPhaseIndex(0);
-
-      // Simulate cloning progress
-      for (let i = 0; i <= 100; i += 20) {
-        updatePhaseProgress('cloning', i);
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
-      updatePhaseProgress('cloning', 100, 'completed');
-
-      // Phase 2: Actual API call
-      setCurrentPhaseIndex(1);
-      updatePhaseProgress('analyzing', 0, 'active');
-
+      console.log(`🚀 Starting import with task ID: ${newTaskId}`);
+      
       const response = await fetch('/api/projects/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          taskId: newTaskId,
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        updatePhaseProgress('analyzing', 50, 'error');
         setError(data.error || '無法匯入專案');
+        setShowInitialization(false);
         return;
       }
 
-      // Simulate analysis progress
-      for (let i = 0; i <= 100; i += 25) {
-        updatePhaseProgress('analyzing', i);
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
-      updatePhaseProgress('analyzing', 100, 'completed');
-
-      // Phase 3: Generate CLAUDE.md
-      setCurrentPhaseIndex(2);
-      updatePhaseProgress('generating', 0, 'active');
-
-      for (let i = 0; i <= 100; i += 33) {
-        updatePhaseProgress('generating', i);
-        await new Promise(resolve => setTimeout(resolve, 400));
-      }
-      updatePhaseProgress('generating', 100, 'completed');
-
-      // Phase 4: Initialize project management
-      setCurrentPhaseIndex(3);
-      updatePhaseProgress('initializing', 0, 'active');
-
-      for (let i = 0; i <= 100; i += 25) {
-        updatePhaseProgress('initializing', i);
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
-      updatePhaseProgress('initializing', 100, 'completed');
-
-      // Complete
-      setCurrentPhaseIndex(4);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      router.push(`/projects/${data.project.id}`);
-      onClose();
+      // Success will be handled by the SSE stream
+      console.log(`✅ Import request successful for task: ${newTaskId}`);
     } catch (err) {
-      updatePhaseProgress(
-        phases[currentPhaseIndex]?.id || 'cloning',
-        0,
-        'error'
-      );
+      console.error('Import request failed:', err);
       setError('網路錯誤：無法匯入專案');
+      setShowInitialization(false);
     } finally {
       setIsImporting(false);
     }
+  };
+
+  const handleImportComplete = () => {
+    console.log('🎉 Import completed, closing modal...');
+    // Close modal and initialization - redirect is handled by animation component
+    setShowInitialization(false);
+    onClose();
+  };
+
+  const handleImportError = (error: string) => {
+    console.error('❌ Import failed:', error);
+    setError(error);
+    setShowInitialization(false);
   };
 
   if (!isOpen) return null;
@@ -195,18 +119,11 @@ export default function ProjectImportModal({
       {/* Initialization Overlay */}
       <HiveInitializationAnimation
         isVisible={showInitialization}
-        phases={initializationPhases}
-        currentPhaseIndex={currentPhaseIndex}
         projectName={formData.projectName}
-        onComplete={() => {
-          setShowInitialization(false);
-          // Navigation is handled in handleSubmit
-        }}
-        onError={error => {
-          setShowInitialization(false);
-          setError(error);
-          setIsImporting(false);
-        }}
+        taskId={taskId}
+        useRealTimeProgress={true}
+        onComplete={handleImportComplete}
+        onError={handleImportError}
       />
 
       {/* Original Modal */}

@@ -228,10 +228,12 @@ Remember: Version control is critical - always prioritize safety and clarity ove
   private getGitRepositoryInfo(): string {
     return `
 GIT REPOSITORY INFO:
-- Repository URL: ${this.context.gitUrl || 'Local repository only'}
+- All CodeHive projects are Git-managed repositories
+- Repository URL: ${this.context.gitUrl || 'Local repository only (no remote configured)'}
 - Project Path: ${this.context.localPath}
 - Expected Branch: main/master (will be detected)
-- Conventional Commits: Recommended for this project
+- Conventional Commits: Required for all commits
+- Remote Repository: ${this.context.gitUrl ? 'Configured' : 'Optional - can be added later'}
     `.trim();
   }
 

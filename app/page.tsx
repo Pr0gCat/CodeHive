@@ -6,10 +6,10 @@ import TokenStatistics from './components/TokenStatistics';
 
 export default function Home() {
   return (
-    <main className="h-screen bg-primary-950 overflow-hidden">
+    <main className="min-h-screen bg-primary-950">
       <Navbar />
 
-      <div className="container mx-auto px-4 py-8 h-full overflow-y-auto">
+      <div className="container mx-auto px-4 py-8">
         {/* Header Section */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-6">

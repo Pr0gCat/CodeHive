@@ -143,8 +143,16 @@ export class ProjectManagerAgent {
       const claudeMdPath = `${project.localPath}/CLAUDE.md`;
 
       try {
-        // Write CLAUDE.md file directly using Node.js fs
-        await fs.writeFile(claudeMdPath, claudeMdContent, 'utf8');
+        // Check if CLAUDE.md already exists
+        const claudeMdExists = await fs.access(claudeMdPath).then(() => true).catch(() => false);
+        
+        if (claudeMdExists) {
+          console.log(`📋 CLAUDE.md already exists at ${claudeMdPath}, skipping generation`);
+        } else {
+          // Write CLAUDE.md file directly using Node.js fs
+          await fs.writeFile(claudeMdPath, claudeMdContent, 'utf8');
+          console.log(`✅ Created new CLAUDE.md at ${claudeMdPath}`);
+        }
 
         // Update project with generated summary
         await prisma.project.update({
@@ -290,7 +298,7 @@ Description:`;
 
       const result = await this.executor.execute(prompt, {
         workingDirectory: localPath,
-        timeout: 30000, // 30 second timeout
+        timeout: 120000, // 2 minutes timeout for project analysis
       });
 
       if (result.success && result.output) {
@@ -327,8 +335,39 @@ Description:`;
         'Error generating project summary with Claude Code:',
         error
       );
+      
+      // Provide a more intelligent fallback based on project structure
+      if (structure?.packageFiles?.length) {
+        const packageFile = structure.packageFiles[0];
+        if (packageFile.includes('package.json')) {
+          return 'Node.js application';
+        } else if (packageFile.includes('requirements.txt')) {
+          return 'Python application';
+        } else if (packageFile.includes('Cargo.toml')) {
+          return 'Rust application';
+        } else if (packageFile.includes('go.mod')) {
+          return 'Go application';
+        }
+      }
+      
+      // Check for common framework indicators
+      if (structure?.files?.some(f => f.path.includes('next.config'))) {
+        return 'Next.js application';
+      } else if (structure?.files?.some(f => f.path.includes('vue.config'))) {
+        return 'Vue.js application';
+      } else if (structure?.files?.some(f => f.path.includes('angular.json'))) {
+        return 'Angular application';
+      }
+      
       return 'Software project';
     }
+  }
+
+  /**
+   * Generate project summary from provided context (used during import/creation)
+   */
+  async generateProjectSummaryFromContext(context: ProjectContext): Promise<string> {
+    return this.generateProjectSummary(context);
   }
 
   private async generateClaudeMd(
@@ -547,18 +586,17 @@ When making changes to this codebase:
 
     const specs: AgentSpec[] = [];
 
-    // Always create core agents
+    // Always create core agents (all projects are Git-managed)
     specs.push(await this.specGenerator.generateCodeAnalyzer(projectContext));
     specs.push(await this.specGenerator.generateFileModifier(projectContext));
     specs.push(await this.specGenerator.generateTestRunner(projectContext));
+    
+    // Git operations agent is always needed since all projects are Git-managed
+    specs.push(
+      await this.specGenerator.generateGitOperationsAgent(projectContext)
+    );
 
-    // Conditional agents based on project type
-    if (projectContext.gitUrl) {
-      specs.push(
-        await this.specGenerator.generateGitOperationsAgent(projectContext)
-      );
-    }
-
+    // Framework-specific agents if applicable
     if (projectContext.framework) {
       specs.push(
         await this.specGenerator.generateFrameworkSpecialist(projectContext)
@@ -583,6 +621,27 @@ When making changes to this codebase:
     const hasTypeScript = projectContext.language === 'typescript';
     const hasPackageFile =
       projectContext.structure?.packageFiles.length || 0 > 0;
+    const hasRemote = !!projectContext.gitUrl;
+
+    // Git repository status check (always needed since all projects are Git-managed)
+    recommendations.push({
+      agentType: 'git-operations',
+      priority: 9,
+      reason: 'Check Git repository status and health',
+      suggestedCommand: 'Check git status and repository health',
+      estimatedDuration: 120, // 2 minutes
+    });
+
+    // Remote repository setup if not configured
+    if (!hasRemote) {
+      recommendations.push({
+        agentType: 'git-operations',
+        priority: 6,
+        reason: 'No remote repository configured - consider adding one',
+        suggestedCommand: 'Review Git repository and suggest remote setup if needed',  
+        estimatedDuration: 180, // 3 minutes
+      });
+    }
 
     // Code quality recommendations
     if (hasTypeScript) {
@@ -901,7 +960,7 @@ Guidelines:
 
       const result = await this.executor.execute(prompt, {
         workingDirectory: context.localPath,
-        timeout: 45000,
+        timeout: 120000, // 2 minutes timeout for feature analysis
       });
 
       if (!result.success || !result.output) {
@@ -1099,9 +1158,16 @@ Guidelines:
 
       // Write to project directory
       const claudeMdPath = `${project.localPath}/CLAUDE.md`;
-      await fs.writeFile(claudeMdPath, claudeMdContent, 'utf8');
-
-      console.log(`✅ Updated CLAUDE.md: ${claudeMdPath}`);
+      
+      // Check if CLAUDE.md already exists
+      const claudeMdExists = await fs.access(claudeMdPath).then(() => true).catch(() => false);
+      
+      if (claudeMdExists) {
+        console.log(`📋 CLAUDE.md already exists at ${claudeMdPath}, skipping update`);
+      } else {
+        await fs.writeFile(claudeMdPath, claudeMdContent, 'utf8');
+        console.log(`✅ Created new CLAUDE.md: ${claudeMdPath}`);
+      }
     } catch (error) {
       console.error('Error maintaining CLAUDE.md:', error);
       throw new Error(

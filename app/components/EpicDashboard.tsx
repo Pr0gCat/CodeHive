@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Epic, EpicPhase, EpicStatus, MVPPriority } from '@/lib/db';
-import { useToast } from './ui/ToastManager';
+import { useToast } from '@/components/ui/ToastManager';
 import EpicCreateModal from './EpicCreateModal';
 
 interface EpicWithProgress extends Epic {

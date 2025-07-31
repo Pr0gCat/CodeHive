@@ -42,6 +42,7 @@ model Project {
   queries     Query[]
   epics       Epic[]
   mvpPhases   MVPPhase[]
+  taskExecutions TaskExecution[]
 
   @@map("projects")
 }
@@ -248,6 +249,89 @@ model RoadmapMilestone {
   project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("roadmap_milestones")
+}
+
+// Real-time task tracking for actual progress monitoring
+model TaskExecution {
+  id            String    @id @default(cuid())
+  taskId        String    @unique // Unique identifier for the task
+  type          String    // "PROJECT_IMPORT", "PROJECT_CREATE", "ANALYSIS", etc.
+  status        String    @default("PENDING") // PENDING, RUNNING, COMPLETED, FAILED
+  progress      Float     @default(0) // 0-100 actual progress percentage
+  currentPhase  String?   // Current phase ID
+  totalPhases   Int       @default(1)
+  
+  // Metadata
+  projectId     String?
+  projectName   String?
+  initiatedBy   String?   // User or system identifier
+  
+  // Timing
+  startedAt     DateTime?
+  lastUpdatedAt DateTime  @default(now())
+  completedAt   DateTime?
+  
+  // Result data
+  result        String?   // Success result data (JSON string)
+  error         String?   // Error message if failed
+  
+  createdAt     DateTime  @default(now())
+
+  // Relations
+  project       Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phases        TaskPhase[]
+  events        TaskEvent[]
+
+  @@map("task_executions")
+}
+
+// Individual phases of a task with real progress tracking
+model TaskPhase {
+  id            String    @id @default(cuid())
+  taskId        String
+  phaseId       String    // "validation", "git_clone", "analysis", etc.
+  title         String
+  description   String
+  status        String    @default("PENDING") // PENDING, ACTIVE, COMPLETED, FAILED, SKIPPED
+  progress      Float     @default(0) // 0-100 actual progress
+  order         Int       // Execution order
+  
+  // Timing
+  startedAt     DateTime?
+  completedAt   DateTime?
+  duration      Int?      // Milliseconds
+  
+  // Details
+  details       String?   // Current step details, file counts, etc. (JSON string)
+  metrics       String?   // Performance metrics, file sizes, etc. (JSON string)
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  task          TaskExecution @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
+  events        TaskEvent[]
+
+  @@unique([taskId, phaseId])
+  @@map("task_phases")
+}
+
+// Granular events for detailed progress tracking
+model TaskEvent {
+  id          String    @id @default(cuid())
+  taskId      String
+  phaseId     String?
+  type        String    // "PHASE_START", "PHASE_PROGRESS", "PHASE_COMPLETE", "FILE_PROCESSED", "ERROR", etc.
+  message     String
+  details     String?   // Structured event data (JSON string)
+  progress    Float?    // Progress at time of event
+  timestamp   DateTime  @default(now())
+
+  // Relations
+  task        TaskExecution @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
+  phase       TaskPhase? @relation(fields: [taskId, phaseId], references: [taskId, phaseId], onDelete: Cascade)
+
+  @@map("task_events")
 }
 
 model QueuedTask {

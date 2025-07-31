@@ -16,11 +16,13 @@ const analyzeProjectSchema = z.object({
     'maintain-claude-md',
     'create-epic',
     'breakdown-stories',
+    'generate-summary',
   ]),
   cardId: z.string().optional(),
   featureRequest: z.string().optional(),
   epicAnalysis: z.any().optional(),
   storyBreakdowns: z.array(z.any()).optional(),
+  context: z.any().optional(),
 });
 
 // Global instances
@@ -234,6 +236,29 @@ export async function POST(request: NextRequest) {
             action: 'breakdown-stories',
             storyIds,
             message: `Created ${storyIds.length} stories`,
+          },
+        });
+      }
+
+      case 'generate-summary': {
+        if (!validatedData.context) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Project context is required for summary generation',
+            },
+            { status: 400 }
+          );
+        }
+
+        const summary = await manager.generateProjectSummaryFromContext(validatedData.context);
+        
+        return NextResponse.json({
+          success: true,
+          data: {
+            action: 'generate-summary',
+            summary,
+            message: 'Project summary generated successfully',
           },
         });
       }

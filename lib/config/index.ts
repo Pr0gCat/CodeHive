@@ -76,9 +76,9 @@ export const fallbackConfig: Config = {
   // Database - use environment variable
   databaseUrl: process.env.DATABASE_URL || 'file:./prisma/codehive.db',
 
-  // Claude Code - use environment variables
+  // Claude Code - fallback values (environment variables as optional override)
   claudeCodePath: process.env.CLAUDE_CODE_PATH || 'claude',
-  claudeDailyTokenLimit: 100000000, // 100M tokens (from database)
+  claudeDailyTokenLimit: 100000000, // 100M tokens
   claudeRateLimitPerMinute: parseInt(process.env.CLAUDE_RATE_LIMIT || '50'),
 
   // Application - use environment variables

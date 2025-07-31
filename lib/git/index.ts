@@ -1,12 +1,15 @@
 import { spawn } from 'child_process';
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { taskManager, TaskEvent } from '@/lib/tasks/task-manager';
 
 export interface GitCloneOptions {
   url: string;
   targetPath: string;
   branch?: string;
   depth?: number;
+  taskId?: string;       // For progress tracking
+  phaseId?: string;      // For progress tracking
 }
 
 export interface GitCommandResult {
@@ -28,7 +31,7 @@ export class GitClient {
   }
 
   async clone(options: GitCloneOptions): Promise<GitCommandResult> {
-    const { url, targetPath, branch, depth } = options;
+    const { url, targetPath, branch, depth, taskId, phaseId } = options;
 
     // Validate inputs
     if (!url || !targetPath) {
@@ -39,7 +42,7 @@ export class GitClient {
     }
 
     // Build git clone command
-    const args = ['clone'];
+    const args = ['clone', '--progress'];
 
     if (depth && depth > 0) {
       args.push('--depth', depth.toString());
@@ -51,7 +54,8 @@ export class GitClient {
 
     args.push(url, targetPath);
 
-    return this.executeGitCommand(args);
+    // Execute with real progress tracking
+    return this.executeGitCommandWithProgress(args, undefined, taskId, phaseId);
   }
 
   async pull(repoPath: string): Promise<GitCommandResult> {
@@ -90,6 +94,26 @@ export class GitClient {
       repoPath
     );
     return result.success ? result.output?.trim() || null : null;
+  }
+
+  async init(repoPath: string): Promise<GitCommandResult> {
+    // Ensure directory exists
+    if (!existsSync(repoPath)) {
+      mkdirSync(repoPath, { recursive: true });
+    }
+
+    return this.executeGitCommand(['init'], repoPath);
+  }
+
+  async initialCommit(repoPath: string, message: string = 'Initial commit'): Promise<GitCommandResult> {
+    // Add all files
+    const addResult = await this.executeGitCommand(['add', '.'], repoPath);
+    if (!addResult.success) {
+      return addResult;
+    }
+
+    // Create initial commit
+    return this.executeGitCommand(['commit', '-m', message], repoPath);
   }
 
   async isValidRepository(repoPath: string): Promise<boolean> {
@@ -152,6 +176,121 @@ export class GitClient {
 
       child.on('exit', code => {
         if (code === 0) {
+          resolve({
+            success: true,
+            output,
+            exitCode: code,
+          });
+        } else {
+          resolve({
+            success: false,
+            output,
+            error: errorOutput || `Git command failed with exit code ${code}`,
+            exitCode: code ?? undefined,
+          });
+        }
+      });
+
+      child.on('error', error => {
+        resolve({
+          success: false,
+          error: error.message,
+        });
+      });
+    });
+  }
+
+  /**
+   * Execute Git command with real progress tracking
+   */
+  private executeGitCommandWithProgress(
+    args: string[],
+    cwd: string = process.cwd(),
+    taskId?: string,
+    phaseId?: string
+  ): Promise<GitCommandResult> {
+    return new Promise(resolve => {
+      const child = spawn('git', args, {
+        cwd,
+        shell: false,
+        windowsHide: true,
+      });
+
+      let output = '';
+      let errorOutput = '';
+      let lastProgress = 0;
+
+      const updateProgress = async (progress: number, message: string, details?: any) => {
+        if (taskId && phaseId && progress !== lastProgress) {
+          lastProgress = progress;
+          await taskManager.updatePhaseProgress(taskId, phaseId, progress, {
+            type: 'PHASE_PROGRESS',
+            message,
+            details,
+          });
+        }
+      };
+
+      child.stdout?.on('data', data => {
+        output += data.toString();
+      });
+
+      child.stderr?.on('data', async (data) => {
+        const text = data.toString();
+        errorOutput += text;
+
+        // Parse Git progress output
+        // Git clone progress format: "Receiving objects: 50% (1234/2468)"
+        // Git clone progress format: "Resolving deltas: 75% (123/164)"
+        const progressMatch = text.match(/(Receiving objects|Resolving deltas|Checking out files):\s*(\d+)%/);
+        if (progressMatch) {
+          const [, stage, percent] = progressMatch;
+          const progress = parseInt(percent, 10);
+          
+          let adjustedProgress: number;
+          let message: string;
+          
+          if (stage === 'Receiving objects') {
+            // Receiving is 0-70% of the total process
+            adjustedProgress = Math.min(progress * 0.7, 70);
+            message = `下載儲存庫內容: ${progress}%`;
+          } else if (stage === 'Resolving deltas') {
+            // Resolving is 70-90% of the total process  
+            adjustedProgress = 70 + Math.min(progress * 0.2, 20);
+            message = `解析變更紀錄: ${progress}%`;
+          } else if (stage === 'Checking out files') {
+            // Checkout is 90-100% of the total process
+            adjustedProgress = 90 + Math.min(progress * 0.1, 10);
+            message = `檢出檔案: ${progress}%`;
+          } else {
+            adjustedProgress = progress;
+            message = `${stage}: ${progress}%`;
+          }
+
+          await updateProgress(adjustedProgress, message, { 
+            stage, 
+            rawProgress: progress,
+            rawText: text.trim(),
+          });
+        }
+
+        // Check for other Git status messages
+        if (text.includes('Cloning into')) {
+          await updateProgress(5, '開始克隆儲存庫...', { status: 'starting' });
+        } else if (text.includes('remote: Enumerating objects')) {
+          await updateProgress(10, '列舉遠程物件...', { status: 'enumerating' });
+        } else if (text.includes('remote: Counting objects')) {
+          await updateProgress(15, '計算物件數量...', { status: 'counting' });
+        } else if (text.includes('remote: Compressing objects')) {
+          await updateProgress(20, '壓縮物件...', { status: 'compressing' });
+        }
+      });
+
+      child.on('exit', async (code) => {
+        if (code === 0) {
+          // Ensure 100% progress on success
+          await updateProgress(100, '克隆完成', { status: 'completed' });
+          
           resolve({
             success: true,
             output,

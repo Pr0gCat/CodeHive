@@ -4,9 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Navbar from '../../components/Navbar';
-import HiveInitializationAnimation, {
-  InitializationPhase,
-} from '../../components/initialization/HiveInitializationAnimation';
+import HiveInitializationAnimation from '../../components/initialization/HiveInitializationAnimation';
 
 interface AvailableRepo {
   name: string;
@@ -26,14 +24,11 @@ export default function NewProjectPage() {
   const [loadingRepos, setLoadingRepos] = useState(true);
   const [selectedRepo, setSelectedRepo] = useState<AvailableRepo | null>(null);
   const [showInitialization, setShowInitialization] = useState(false);
-  const [initializationPhases, setInitializationPhases] = useState<
-    InitializationPhase[]
-  >([]);
-  const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
+  const [taskId, setTaskId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    gitUrl: '',
+    gitUrl: '', // Optional remote URL
     localPath: '',
     framework: '',
     language: '',
@@ -42,6 +37,8 @@ export default function NewProjectPage() {
     lintTool: '',
     buildTool: '',
   });
+  
+  const [creationMode, setCreationMode] = useState<'new' | 'existing'>('new');
 
   useEffect(() => {
     fetchAvailableRepos();
@@ -94,149 +91,93 @@ export default function NewProjectPage() {
     }
   };
 
-  const simulateInitializationPhases = (
-    projectName: string
-  ): InitializationPhase[] => [
-    {
-      id: 'setup',
-      title: '建立專案結構',
-      description: `正在初始化 ${projectName} 專案環境...`,
-      status: 'pending',
-      progress: 0,
-      details: ['建立資料庫記錄', '配置專案設定', '驗證儲存庫路徑'],
-    },
-    {
-      id: 'analyzing',
-      title: '分析技術堆疊',
-      description: 'Project Manager 正在分析項目技術架構...',
-      status: 'pending',
-      progress: 0,
-      details: ['掃描專案檔案', '識別開發工具', '建立技術檔案'],
-    },
-    {
-      id: 'generating',
-      title: '生成 CLAUDE.md',
-      description: '建立專案專用的 AI 上下文檔案...',
-      status: 'pending',
-      progress: 0,
-      details: ['生成項目描述', '建立開發指南', '配置 Agent 上下文'],
-    },
-    {
-      id: 'initializing',
-      title: '啟動 Agent 系統',
-      description: '初始化多 Agent 協作環境和 TDD 工作流程...',
-      status: 'pending',
-      progress: 0,
-      details: ['配置 Agent 能力', '建立任務佇列', '準備開發環境'],
-    },
-  ];
-
-  const updatePhaseProgress = (
-    phaseId: string,
-    progress: number,
-    status: 'pending' | 'active' | 'completed' | 'error' = 'active'
-  ) => {
-    setInitializationPhases(phases =>
-      phases.map(phase =>
-        phase.id === phaseId ? { ...phase, progress, status } : phase
-      )
-    );
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
-    // Initialize phases
-    const phases = simulateInitializationPhases(formData.name);
-    setInitializationPhases(phases);
+    // Generate task ID for real-time tracking
+    const newTaskId = `create-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    setTaskId(newTaskId);
+    
+    // Show initialization animation with real-time progress
     setShowInitialization(true);
-    setCurrentPhaseIndex(0);
 
     try {
-      // Phase 1: Project setup
-      updatePhaseProgress('setup', 0, 'active');
-      setCurrentPhaseIndex(0);
-
-      // Simulate setup progress
-      for (let i = 0; i <= 100; i += 25) {
-        updatePhaseProgress('setup', i);
-        await new Promise(resolve => setTimeout(resolve, 200));
+      // Prepare form data based on creation mode
+      const projectData = { ...formData, taskId: newTaskId };
+      
+      // If creating new project and no localPath specified, let the API generate it
+      if (creationMode === 'new' && !projectData.localPath.trim()) {
+        projectData.localPath = ''; // API will generate path based on project name
       }
-      updatePhaseProgress('setup', 100, 'completed');
 
-      // Phase 2: Create project (actual API call)
-      setCurrentPhaseIndex(1);
-      updatePhaseProgress('analyzing', 0, 'active');
-
-      const response = await fetch('/api/projects', {
+      const response = await fetch('/api/projects/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...projectData,
+          initializeGit: true, // Always initialize as Git repo
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        updatePhaseProgress('analyzing', 50, 'error');
         setError(data.error || '無法建立專案');
+        setShowInitialization(false);
         return;
       }
 
-      // Simulate tech stack analysis progress
-      for (let i = 0; i <= 100; i += 20) {
-        updatePhaseProgress('analyzing', i);
-        await new Promise(resolve => setTimeout(resolve, 250));
-      }
-      updatePhaseProgress('analyzing', 100, 'completed');
-
-      // Phase 3: Generate CLAUDE.md
-      setCurrentPhaseIndex(2);
-      updatePhaseProgress('generating', 0, 'active');
-
-      for (let i = 0; i <= 100; i += 33) {
-        updatePhaseProgress('generating', i);
-        await new Promise(resolve => setTimeout(resolve, 350));
-      }
-      updatePhaseProgress('generating', 100, 'completed');
-
-      // Phase 4: Initialize Agent system
-      setCurrentPhaseIndex(3);
-      updatePhaseProgress('initializing', 0, 'active');
-
-      for (let i = 0; i <= 100; i += 25) {
-        updatePhaseProgress('initializing', i);
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
-      updatePhaseProgress('initializing', 100, 'completed');
-
-      // Complete
-      setCurrentPhaseIndex(4);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      router.push(`/projects/${data.data.id}`);
+      // Success - the real-time progress tracking will handle the animation
+      // The onComplete callback will be triggered when the task is done
+      console.log('🎉 Project creation started with task ID:', data.data.taskId);
+      
+      // Don't set loading to false here - let the animation handle completion
+      // setLoading(false); // Removed - will be handled by onComplete
     } catch (err) {
-      updatePhaseProgress(phases[currentPhaseIndex]?.id || 'setup', 0, 'error');
       setError('網路錯誤：無法建立專案');
-    } finally {
+      setShowInitialization(false);
       setLoading(false);
     }
   };
 
   return (
     <>
-      {/* Initialization Overlay */}
+      {/* Initialization Overlay - Now using real-time progress */}
       <HiveInitializationAnimation
         isVisible={showInitialization}
-        phases={initializationPhases}
-        currentPhaseIndex={currentPhaseIndex}
+        taskId={taskId}
+        useRealTimeProgress={true}
         projectName={formData.name}
-        onComplete={() => {
+        onComplete={async () => {
           setShowInitialization(false);
-          // Navigation is handled in handleSubmit
+          setLoading(false); // Now set loading to false when animation completes
+          
+          // Get the created project info from the task result
+          try {
+            // Fetch the latest projects to find the newly created one
+            const response = await fetch('/api/projects');
+            const data = await response.json();
+            
+            if (data.success && data.data.length > 0) {
+              // Find the most recently created project (assuming it's the first one)
+              const newestProject = data.data[0];
+              if (newestProject.name === formData.name) {
+                // Navigate to the newly created project
+                router.push(`/projects/${newestProject.id}`);
+                return;
+              }
+            }
+          } catch (error) {
+            console.error('Failed to get project info:', error);
+          }
+          
+          // Fallback: navigate to projects list
+          router.push('/projects');
         }}
         onError={error => {
           setShowInitialization(false);
@@ -246,9 +187,9 @@ export default function NewProjectPage() {
       />
 
       {/* Main Page */}
-      <div className="h-screen bg-primary-950 overflow-hidden">
+      <div className="min-h-screen bg-primary-950">
         <Navbar />
-        <div className="container mx-auto px-4 py-8 h-full overflow-y-auto">
+        <div className="container mx-auto px-4 py-8">
           <div className="max-w-2xl mx-auto">
             <div className="mb-8">
               <h1 className="text-3xl font-bold text-accent-50 mb-2">
@@ -321,79 +262,160 @@ export default function NewProjectPage() {
                   />
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="repoSelect"
-                    className="block text-sm font-medium text-primary-300 mb-2"
-                  >
-                    選擇儲存庫 *
-                  </label>
-                  {loadingRepos ? (
-                    <div className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-md">
-                      <div className="text-primary-400 text-sm">
-                        載入可用儲存庫中...
-                      </div>
+                {/* Creation Mode Selection */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-primary-300 mb-3">
+                      專案建立方式 *
+                    </label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCreationMode('new');
+                          setSelectedRepo(null);
+                          setFormData(prev => ({ ...prev, localPath: '', gitUrl: '' }));
+                        }}
+                        className={`p-4 rounded-lg border-2 text-left transition-colors ${
+                          creationMode === 'new'
+                            ? 'border-accent-500 bg-accent-900/20'
+                            : 'border-primary-700 bg-primary-800 hover:border-primary-600'
+                        }`}
+                      >
+                        <div className="font-medium text-accent-50 mb-1">
+                          🆕 建立新專案
+                        </div>
+                        <div className="text-sm text-primary-300">
+                          建立全新的 Git 倉庫和專案結構
+                        </div>
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCreationMode('existing');
+                          setFormData(prev => ({ ...prev, localPath: '', gitUrl: '' }));
+                        }}
+                        className={`p-4 rounded-lg border-2 text-left transition-colors ${
+                          creationMode === 'existing'
+                            ? 'border-accent-500 bg-accent-900/20'
+                            : 'border-primary-700 bg-primary-800 hover:border-primary-600'
+                        }`}
+                      >
+                        <div className="font-medium text-accent-50 mb-1">
+                          📁 導入現有專案
+                        </div>
+                        <div className="text-sm text-primary-300">
+                          從現有的本地資料夾建立專案
+                        </div>
+                      </button>
                     </div>
-                  ) : availableRepos.length === 0 ? (
-                    <div className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-md">
-                      <div className="text-primary-400 text-sm">
-                        在 repos/ 目錄中找不到可用的儲存庫
-                      </div>
-                    </div>
-                  ) : (
-                    <select
-                      id="repoSelect"
-                      value={selectedRepo?.path || ''}
-                      onChange={handleRepoSelect}
-                      required
-                      className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
-                    >
-                      <option value="">選擇儲存庫資料夾...</option>
-                      {availableRepos.map(repo => (
-                        <option key={repo.path} value={repo.path}>
-                          {repo.name} ({repo.projectType}){' '}
-                          {repo.hasGit ? '🔗' : ''}
-                        </option>
-                      ))}
-                    </select>
-                  )}
+                  </div>
 
-                  {selectedRepo && (
-                    <div className="mt-2 p-3 bg-primary-800 border border-primary-700 rounded-md">
-                      <div className="text-sm space-y-1">
-                        <div className="text-primary-300">
-                          <span className="font-medium">路徑：</span>{' '}
-                          <span className="font-mono text-primary-400">
-                            {selectedRepo.path}
-                          </span>
+                {creationMode === 'new' ? (
+                  /* New Project Path */
+                  <div>
+                    <label
+                      htmlFor="localPath"
+                      className="block text-sm font-medium text-primary-300 mb-2"
+                    >
+                      專案資料夾路徑 *
+                    </label>
+                    <input
+                      type="text"
+                      id="localPath"
+                      name="localPath"
+                      required
+                      value={formData.localPath}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
+                      placeholder="例如：/Users/yourname/my-project 或留空自動生成"
+                    />
+                    <p className="mt-1 text-sm text-primary-400">
+                      留空將在 repos/ 目錄中自動建立資料夾。將初始化為 Git 倉庫。
+                    </p>
+                  </div>
+                ) : (
+                  /* Existing Repository Selection */
+                  <div>
+                    <label
+                      htmlFor="repoSelect"
+                      className="block text-sm font-medium text-primary-300 mb-2"
+                    >
+                      選擇現有資料夾 *
+                    </label>
+                    {loadingRepos ? (
+                      <div className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-md">
+                        <div className="text-primary-400 text-sm">
+                          載入可用資料夾中...
                         </div>
-                        <div className="text-primary-300">
-                          <span className="font-medium">類型：</span>{' '}
-                          <span className="text-accent-50">
-                            {selectedRepo.projectType}
-                          </span>
+                      </div>
+                    ) : availableRepos.length === 0 ? (
+                      <div className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-md">
+                        <div className="text-primary-400 text-sm">
+                          在 repos/ 目錄中找不到可用的資料夾
                         </div>
-                        <div className="text-primary-300">
-                          <span className="font-medium">檔案：</span>{' '}
-                          <span className="text-accent-50">
-                            {selectedRepo.fileCount}
-                          </span>
-                        </div>
-                        {selectedRepo.hasGit && (
+                      </div>
+                    ) : (
+                      <select
+                        id="repoSelect"
+                        value={selectedRepo?.path || ''}
+                        onChange={handleRepoSelect}
+                        required={creationMode === 'existing'}
+                        className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
+                      >
+                        <option value="">選擇資料夾...</option>
+                        {availableRepos.map(repo => (
+                          <option key={repo.path} value={repo.path}>
+                            {repo.name} ({repo.projectType}){' '}
+                            {repo.hasGit ? '🔗' : '⚠️'}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    {selectedRepo && (
+                      <div className="mt-2 p-3 bg-primary-800 border border-primary-700 rounded-md">
+                        <div className="text-sm space-y-1">
                           <div className="text-primary-300">
-                            <span className="font-medium">Git：</span>{' '}
-                            <span className="text-green-400">
-                              ✓ 已偵測到儲存庫
+                            <span className="font-medium">路徑：</span>{' '}
+                            <span className="font-mono text-primary-400">
+                              {selectedRepo.path}
                             </span>
                           </div>
-                        )}
+                          <div className="text-primary-300">
+                            <span className="font-medium">類型：</span>{' '}
+                            <span className="text-accent-50">
+                              {selectedRepo.projectType}
+                            </span>
+                          </div>
+                          <div className="text-primary-300">
+                            <span className="font-medium">檔案：</span>{' '}
+                            <span className="text-accent-50">
+                              {selectedRepo.fileCount}
+                            </span>
+                          </div>
+                          <div className="text-primary-300">
+                            <span className="font-medium">Git：</span>{' '}
+                            {selectedRepo.hasGit ? (
+                              <span className="text-green-400">
+                                ✓ 已偵測到 Git 倉庫
+                              </span>
+                            ) : (
+                              <span className="text-yellow-400">
+                                ⚠️ 將初始化為 Git 倉庫
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  <p className="mt-1 text-sm text-primary-400">
-                    從 repos/ 目錄中選擇尚未建立為專案的可用資料夾
-                  </p>
+                    <p className="mt-1 text-sm text-primary-400">
+                      選擇 repos/ 目錄中的資料夾。如果不是 Git 倉庫，將自動初始化。
+                    </p>
+                  </div>
+                )}
                 </div>
 
                 <div>
@@ -401,7 +423,7 @@ export default function NewProjectPage() {
                     htmlFor="gitUrl"
                     className="block text-sm font-medium text-primary-300 mb-2"
                   >
-                    Git 儲存庫網址
+                    遠端 Git 儲存庫網址
                   </label>
                   <input
                     type="url"
@@ -410,13 +432,13 @@ export default function NewProjectPage() {
                     value={formData.gitUrl}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
-                    placeholder="https://github.com/username/repository.git"
+                    placeholder="https://github.com/username/repository.git（選填）"
                     disabled={!!(selectedRepo?.hasGit && selectedRepo?.gitUrl)}
                   />
                   <p className="mt-1 text-sm text-primary-400">
                     {selectedRepo?.hasGit && selectedRepo?.gitUrl
-                      ? '已自動從儲存庫偵測到 Git 網址'
-                      : '選填：用於版本控制整合的 Git 儲存庫網址'}
+                      ? '已自動從現有倉庫偵測到遠端網址'
+                      : '選填：遠端 Git 倉庫網址，可以之後再設定。所有專案都會建立為本地 Git 倉庫。'}
                   </p>
                 </div>
 

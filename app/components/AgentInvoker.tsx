@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useToast } from './ui/ToastManager';
+import { useToast } from '@/components/ui/ToastManager';
+import PrioritySlider from '@/components/ui/PrioritySlider';
 
 interface AgentInvokerProps {
   cardId: string;
@@ -250,21 +251,13 @@ export default function AgentInvoker({
 
           <div>
             <label className="block text-sm font-medium text-primary-300 mb-2">
-              Priority (1-10)
+              Priority
             </label>
-            <input
-              type="range"
-              min="1"
-              max="10"
+            <PrioritySlider
               value={priority}
-              onChange={e => setPriority(parseInt(e.target.value))}
-              className="w-full"
+              onChange={setPriority}
+              disabled={isExecuting}
             />
-            <div className="flex justify-between text-xs text-primary-500 mt-1">
-              <span>Low (1)</span>
-              <span className="font-medium">Current: {priority}</span>
-              <span>High (10)</span>
-            </div>
           </div>
 
           <div className="flex items-center justify-end space-x-4 pt-4 border-t border-primary-800">

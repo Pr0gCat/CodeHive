@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { MVPPhase, Epic } from '@/lib/db';
-import { useToast } from './ui/ToastManager';
+import { useToast } from '@/components/ui/ToastManager';
 
 interface EpicInfo {
   id: string;

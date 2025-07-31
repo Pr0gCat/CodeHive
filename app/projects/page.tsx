@@ -65,7 +65,7 @@ export default function ProjectsPage() {
 
   if (loading) {
     return (
-      <div className="h-screen bg-primary-950 flex items-center justify-center overflow-hidden">
+      <div className="min-h-screen bg-primary-950 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-700 mx-auto mb-4"></div>
           <p className="text-primary-300">載入專案中...</p>
@@ -76,7 +76,7 @@ export default function ProjectsPage() {
 
   if (error) {
     return (
-      <div className="h-screen bg-primary-950 flex items-center justify-center overflow-hidden">
+      <div className="min-h-screen bg-primary-950 flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-400 mb-4">
             <svg
@@ -106,9 +106,9 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="h-screen bg-primary-950 overflow-hidden">
+    <div className="min-h-screen bg-primary-950">
       <Navbar />
-      <div className="container mx-auto px-4 py-8 h-full overflow-y-auto">
+      <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-accent-50 mb-2">專案</h1>

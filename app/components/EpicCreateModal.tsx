@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { EpicType, MVPPriority } from '@/lib/db';
-import { useToast } from './ui/ToastManager';
+import { useToast } from '@/components/ui/ToastManager';
 
 interface EpicCreateModalProps {
   isOpen: boolean;

@@ -2,7 +2,7 @@
 
 import { formatShortNumber } from '@/lib/utils';
 import { useEffect, useState } from 'react';
-import { useToast } from './ui/ToastManager';
+import { useToast } from '@/components/ui/ToastManager';
 
 interface AgentStatusPanelProps {
   projectId: string;
