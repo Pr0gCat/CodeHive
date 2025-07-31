@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { logProjectEvent } from '@/lib/logging/project-logger';
+import { addInitialProjectLogs } from '@/lib/logging/init-logs';
 import { z } from 'zod';
 
 const updateProjectSchema = z.object({
@@ -55,6 +56,9 @@ export async function GET(
         { status: 404 }
       );
     }
+
+    // Add initial project logs when accessed (server-side only)
+    addInitialProjectLogs(project.id, project.name);
 
     return NextResponse.json({
       success: true,

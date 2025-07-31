@@ -1,7 +1,6 @@
 'use client';
 
 import { Project, ProjectSettings } from '@/lib/db';
-import { addInitialProjectLogs } from '@/lib/logging/init-logs';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import AgentStatusPanel from '../../components/AgentStatusPanel';
@@ -58,8 +57,6 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
       if (data.success) {
         setProject(data.data);
-        // Add initial project logs for demonstration
-        addInitialProjectLogs(data.data.id, data.data.name);
       } else {
         setError(data.error || '無法載入專案');
       }
