@@ -2,6 +2,7 @@ import { createServer } from 'http';
 import { parse } from 'url';
 import next from 'next';
 import { initializeSocket } from './lib/socket/server';
+import { taskRecoveryService } from './lib/tasks/task-recovery';
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
@@ -11,7 +12,7 @@ const port = parseInt(process.env.PORT || '3000', 10);
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
-app.prepare().then(() => {
+app.prepare().then(async () => {
   // Create HTTP server
   const server = createServer(async (req, res) => {
     try {
@@ -27,6 +28,16 @@ app.prepare().then(() => {
   // Initialize Socket.IO
   const io = initializeSocket(server);
 
+  // Start task recovery process
+  console.log('🔄 Starting task recovery process...');
+  try {
+    await taskRecoveryService.recoverInterruptedTasks();
+    console.log('✅ Task recovery completed');
+  } catch (error) {
+    console.error('❌ Task recovery failed:', error);
+    // Don't prevent server startup due to recovery failure
+  }
+
   server
     .once('error', err => {
       console.error('Server error:', err);
@@ -35,6 +46,7 @@ app.prepare().then(() => {
     .listen(port, () => {
       console.log(`> Ready on http://${hostname}:${port}`);
       console.log(`> Socket.IO server initialized`);
+      console.log('> Task recovery system active');
     });
 
   // Graceful shutdown

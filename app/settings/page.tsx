@@ -9,6 +9,7 @@ import TokenLimitSlider from '@/components/ui/TokenLimitSlider';
 import RateLimitSlider from '@/components/ui/RateLimitSlider';
 import { useToast } from '@/components/ui/ToastManager';
 import SocketIOTest from '../components/SocketIOTest';
+import TaskRecoveryStatus from '../components/admin/TaskRecoveryStatus';
 
 interface ProjectBudget {
   projectId: string;
@@ -568,6 +569,11 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Task Recovery Status */}
+          <div className="mt-8">
+            <TaskRecoveryStatus />
           </div>
 
           {/* WebSocket Test */}
