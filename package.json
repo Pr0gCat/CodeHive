@@ -4,9 +4,9 @@
   "description": "A multi-agent software development platform that orchestrates Claude Code agents",
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "tsx server.ts",
     "build": "next build",
-    "start": "next start",
+    "start": "tsx server.ts",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",
@@ -29,7 +29,10 @@
     "prisma": "^6.13.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "tailwind-merge": "^3.3.1",
+    "ws": "^8.18.3",
     "zod": "^4.0.10"
   },
   "devDependencies": {
@@ -41,6 +44,7 @@
     "@types/node": "^20.0.0",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
+    "@types/ws": "^8.18.1",
     "autoprefixer": "^10.0.0",
     "eslint": "^8.0.0",
     "eslint-config-next": "^14.0.0",
@@ -50,6 +54,7 @@
     "postcss": "^8.0.0",
     "prettier": "^3.0.0",
     "tailwindcss": "^3.0.0",
+    "tsx": "^4.20.3",
     "typescript": "^5.0.0"
   },
   "engines": {

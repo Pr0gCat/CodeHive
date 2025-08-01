@@ -63,6 +63,21 @@ export default function ProjectsPage() {
     }
   };
 
+  const getProjectStatusColor = (status: string) => {
+    switch (status) {
+      case 'INITIALIZING':
+        return 'bg-blue-900 text-blue-300 border border-blue-700';
+      case 'ACTIVE':
+        return 'bg-green-900 text-green-300 border border-green-700';
+      case 'PAUSED':
+        return 'bg-yellow-900 text-yellow-300 border border-yellow-700';
+      case 'ARCHIVED':
+        return 'bg-gray-900 text-gray-300 border border-gray-700';
+      default:
+        return 'bg-primary-900 text-primary-400 border border-primary-800';
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-primary-950 flex items-center justify-center">
@@ -174,9 +189,16 @@ export default function ProjectsPage() {
                   <div className="bg-primary-900 rounded-lg shadow-sm border border-primary-800 p-6 hover:shadow-md hover:border-primary-700 transition-all">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-accent-50 group-hover:text-primary-400 transition-colors">
-                          {project.name}
-                        </h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-semibold text-accent-50 group-hover:text-primary-400 transition-colors">
+                            {project.name}
+                          </h3>
+                          {project.status === 'INITIALIZING' && (
+                            <div className="flex items-center">
+                              <div className="animate-spin rounded-full h-3 w-3 border border-blue-300 border-t-transparent"></div>
+                            </div>
+                          )}
+                        </div>
                         {project.summary && (
                           <p className="text-sm text-primary-200 mt-1 font-medium line-clamp-1">
                             {project.summary}

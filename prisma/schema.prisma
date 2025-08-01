@@ -17,7 +17,7 @@ model Project {
   summary     String?  // AI-generated project summary from review
   gitUrl      String?
   localPath   String   @unique
-  status      String @default("ACTIVE")
+  status      String @default("INITIALIZING")  // INITIALIZING, ACTIVE, PAUSED, COMPLETED, ARCHIVED
   
   // Tech Stack Configuration
   framework   String?  // e.g., "Next.js", "React", "Vue.js", "Angular"
@@ -626,7 +626,7 @@ model Artifact {
 
 // Note: SQLite doesn't support enums, so we use strings with default values
 // Valid values:
-// ProjectStatus: "ACTIVE", "PAUSED", "COMPLETED", "ARCHIVED"
+// ProjectStatus: "INITIALIZING", "ACTIVE", "PAUSED", "COMPLETED", "ARCHIVED"
 // CardStatus: "BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DONE"
 // TaskStatus: "PENDING", "RUNNING", "COMPLETED", "FAILED", "PAUSED"
 // MilestoneStatus: "PLANNED", "IN_PROGRESS", "COMPLETED"

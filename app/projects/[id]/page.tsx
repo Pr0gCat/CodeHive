@@ -33,6 +33,11 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   >('overview');
   const [devSubTab, setDevSubTab] = useState<'epics' | 'tdd'>('epics');
   const [claudeMdLastUpdate, setClaudeMdLastUpdate] = useState<Date | null>(null);
+  const [initializationProgress, setInitializationProgress] = useState<{
+    currentPhase?: string;
+    progress?: number;
+    message?: string;
+  } | null>(null);
 
   // Check URL parameters for tab selection
   useEffect(() => {
@@ -56,6 +61,11 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
       if (data.success) {
         setProject(data.data);
+        
+        // If project is initializing, try to fetch progress
+        if (data.data.status === 'INITIALIZING') {
+          fetchInitializationProgress();
+        }
       } else {
         setError(data.error || '無法載入專案');
       }
@@ -63,6 +73,25 @@ export default function ProjectPage({ params }: ProjectPageProps) {
       setError('無法載入專案');
     } finally {
       setLoading(false);
+    }
+  }, [params.id]);
+
+  const fetchInitializationProgress = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/projects/progress/${params.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data) {
+          setInitializationProgress({
+            currentPhase: data.data.currentPhase,
+            progress: data.data.progress,
+            message: data.data.message,
+          });
+        }
+      }
+    } catch (err) {
+      // Silently fail - progress is optional
+      console.warn('Failed to fetch initialization progress:', err);
     }
   }, [params.id]);
 
@@ -96,6 +125,30 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     fetchProject();
     fetchAgentStatus();
     fetchClaudeMdStatus();
+
+    // Set up polling for initialization progress
+    let initProgressInterval: NodeJS.Timeout | null = null;
+    
+    const startInitProgressPolling = () => {
+      // Poll every 2 seconds during initialization
+      initProgressInterval = setInterval(() => {
+        if (project?.status === 'INITIALIZING') {
+          fetchInitializationProgress();
+          fetchProject(); // Check if status changed
+        } else {
+          // Stop polling when not initializing
+          if (initProgressInterval) {
+            clearInterval(initProgressInterval);
+            initProgressInterval = null;
+          }
+        }
+      }, 2000);
+    };
+
+    // Start polling if project is initializing
+    if (project?.status === 'INITIALIZING') {
+      startInitProgressPolling();
+    }
 
     // Set up SSE connection for agent status updates
     let eventSource: EventSource | null = null;
@@ -173,6 +226,9 @@ export default function ProjectPage({ params }: ProjectPageProps) {
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
       }
+      if (initProgressInterval) {
+        clearInterval(initProgressInterval);
+      }
       eventSource?.close();
       clearInterval(claudeMdInterval);
     };
@@ -243,6 +299,64 @@ export default function ProjectPage({ params }: ProjectPageProps) {
           <Link
             href="/projects"
             className="mt-4 inline-block px-4 py-2 bg-accent-600 text-accent-50 rounded hover:bg-accent-700"
+          >
+            返回專案列表
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if project is still initializing
+  if (project.status === 'INITIALIZING') {
+    return (
+      <div className="min-h-screen bg-primary-950 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="mb-6">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-accent-400 border-t-transparent mx-auto mb-4"></div>
+            <h2 className="text-2xl font-bold text-accent-50 mb-2">
+              {project.name}
+            </h2>
+            <p className="text-accent-300 font-medium mb-4">專案正在初始化中...</p>
+            
+            {/* Progress Information */}
+            {initializationProgress && (
+              <div className="mb-4">
+                {initializationProgress.currentPhase && (
+                  <p className="text-sm text-accent-200 mb-2">
+                    當前階段：{initializationProgress.currentPhase}
+                  </p>
+                )}
+                {initializationProgress.progress !== undefined && (
+                  <div className="w-full bg-primary-700 rounded-full h-2 mb-2">
+                    <div 
+                      className="bg-accent-400 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${initializationProgress.progress}%` }}
+                    ></div>
+                  </div>
+                )}
+                {initializationProgress.message && (
+                  <p className="text-xs text-primary-300">
+                    {initializationProgress.message}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="text-sm text-primary-300 space-y-2">
+              <p>• 正在設置專案結構</p>
+              <p>• 正在初始化 Git 儲存庫</p>
+              <p>• 正在分析專案並生成配置</p>
+            </div>
+          </div>
+          <div className="bg-primary-900 border border-primary-700 rounded-lg p-4 mb-6">
+            <p className="text-sm text-primary-400">
+              初始化過程在背景進行，完成後您將能夠正常使用專案的所有功能。
+            </p>
+          </div>
+          <Link
+            href="/projects"
+            className="inline-block px-6 py-2 bg-accent-600 text-accent-50 rounded-lg hover:bg-accent-700 transition-colors font-medium"
           >
             返回專案列表
           </Link>

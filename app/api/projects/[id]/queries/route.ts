@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { checkProjectOperationAccess } from '@/lib/project-access-control';
 
 export async function GET(
   request: NextRequest,
@@ -87,6 +88,13 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Check if project can be operated on
+    const accessCheck = await checkProjectOperationAccess(params.id);
+    
+    if (!accessCheck.allowed) {
+      return accessCheck.response;
+    }
+
     const body = await request.json();
     const { type, title, question, context, urgency, priority, cycleId } = body;
 

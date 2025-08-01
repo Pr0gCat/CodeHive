@@ -8,6 +8,7 @@ import PercentageSlider from '@/components/ui/PercentageSlider';
 import TokenLimitSlider from '@/components/ui/TokenLimitSlider';
 import RateLimitSlider from '@/components/ui/RateLimitSlider';
 import { useToast } from '@/components/ui/ToastManager';
+import SocketIOTest from '../components/SocketIOTest';
 
 interface ProjectBudget {
   projectId: string;
@@ -555,6 +556,11 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* WebSocket Test */}
+          <div className="mt-8">
+            <SocketIOTest />
           </div>
         </div>
       </div>

@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import HiveInitializationAnimation from './initialization/HiveInitializationAnimation';
 import { useToast } from '@/components/ui/ToastManager';
 
 interface ProjectImportModalProps {
@@ -18,8 +17,6 @@ export default function ProjectImportModal({
   const { showToast } = useToast();
   const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showInitialization, setShowInitialization] = useState(false);
-  const [taskId, setTaskId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     gitUrl: '',
@@ -55,30 +52,17 @@ export default function ProjectImportModal({
     setError(null);
   };
 
-  const generateTaskId = () => {
-    return `import-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsImporting(true);
 
-    // Generate unique task ID
-    const newTaskId = generateTaskId();
-    console.log('🚀 Generated task ID:', newTaskId);
-    setTaskId(newTaskId);
-    setShowInitialization(true);
-
     try {
-      console.log(`🚀 Starting import with task ID: ${newTaskId}`);
-      
       const response = await fetch('/api/projects/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          taskId: newTaskId,
         }),
       });
 
@@ -88,52 +72,33 @@ export default function ProjectImportModal({
         const errorMsg = data.error || '無法匯入專案';
         setError(errorMsg);
         showToast(errorMsg, 'error');
-        setShowInitialization(false);
         return;
       }
 
-      // Success will be handled by the SSE stream
-      console.log(`✅ Import request successful for task: ${newTaskId}`);
+      // Success - project created immediately and import started
+      console.log('🎉 Project created immediately with ID:', data.data.projectId);
+      console.log('🚀 Background import started');
+      
+      showToast('專案匯入已開始，正在背景處理', 'success');
+      
+      // Navigate directly to the created project
+      router.push(`/projects/${data.data.projectId}`);
+      onClose();
     } catch (err) {
       console.error('Import request failed:', err);
       const errorMsg = '網路錯誤：無法匯入專案';
       setError(errorMsg);
       showToast(errorMsg, 'error');
-      setShowInitialization(false);
     } finally {
       setIsImporting(false);
     }
   };
 
-  const handleImportComplete = () => {
-    console.log('🎉 Import completed, closing modal...');
-    // Close modal and initialization - redirect is handled by animation component
-    setShowInitialization(false);
-    onClose();
-  };
-
-  const handleImportError = (error: string) => {
-    console.error('❌ Import failed:', error);
-    setError(error);
-    showToast(error, 'error');
-    setShowInitialization(false);
-  };
 
   if (!isOpen) return null;
 
   return (
     <>
-      {/* Initialization Overlay */}
-      <HiveInitializationAnimation
-        isVisible={showInitialization}
-        projectName={formData.projectName}
-        taskId={taskId || undefined}
-        useRealTimeProgress={true}
-        onComplete={handleImportComplete}
-        onError={handleImportError}
-      />
-
-      {/* Original Modal */}
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-primary-800 border border-primary-700 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
           <div className="flex justify-between items-center mb-6">

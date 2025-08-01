@@ -48,7 +48,7 @@ class ProjectLogger extends EventEmitter {
     if (this.filteredMessages.has(message)) return false;
     
     // Filter out messages that start with filtered phrases
-    for (const filteredMessage of this.filteredMessages) {
+    for (const filteredMessage of Array.from(this.filteredMessages)) {
       if (message.startsWith(filteredMessage)) return false;
     }
     

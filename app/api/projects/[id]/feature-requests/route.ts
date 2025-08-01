@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FeatureRequestProcessor } from '@/lib/feature-request/processor';
 import { z } from 'zod';
+import { checkProjectOperationAccess } from '@/lib/project-access-control';
 
 // Feature request schema
 const featureRequestSchema = z.object({
@@ -54,6 +55,13 @@ export async function POST(
   try {
     const projectId = params.id;
     const body = await request.json();
+
+    // Check if project can be operated on
+    const accessCheck = await checkProjectOperationAccess(projectId);
+    
+    if (!accessCheck.allowed) {
+      return accessCheck.response;
+    }
 
     // Validate input
     const validatedData = featureRequestSchema.parse(body);

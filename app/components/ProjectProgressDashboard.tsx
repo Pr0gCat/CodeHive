@@ -105,9 +105,9 @@ export default function ProjectProgressDashboard() {
   if (projects.length === 0) {
     return (
       <div className="bg-primary-900 border border-primary-800 rounded-lg p-6 text-center">
-        <div className="text-primary-400 mb-2">No active projects</div>
+        <div className="text-primary-400 mb-2">沒有活動的專案</div>
         <div className="text-sm text-primary-500">
-          Create a project to see progress tracking
+          建立專案以查看進度追蹤
         </div>
       </div>
     );
@@ -156,7 +156,7 @@ export default function ProjectProgressDashboard() {
             {/* Progress Bar */}
             <div className="mb-3">
               <div className="flex items-center justify-between text-sm mb-1">
-                <span className="text-primary-300">Progress</span>
+                <span className="text-primary-300">進度</span>
                 <span className="text-accent-50">
                   {project.progress.percentage}%
                 </span>
@@ -178,7 +178,7 @@ export default function ProjectProgressDashboard() {
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-primary-400">Todo</div>
+                <div className="text-primary-400">待辦</div>
                 <div className="font-medium text-blue-300">
                   {project.tasks.todo}
                 </div>
@@ -203,10 +203,10 @@ export default function ProjectProgressDashboard() {
               </div>
             </div>
 
-            {/* Token Usage Indicator */}
+            {/* Token 使用量指示器 */}
             <div className="mt-3 pt-3 border-t border-primary-700">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-primary-400">Token Usage Today</span>
+                <span className="text-primary-400">今日 Token 使用量</span>
                 <div className="flex items-center gap-1">
                   <span className="text-accent-50">
                     {formatShortNumber(project.tokenUsage.used)}

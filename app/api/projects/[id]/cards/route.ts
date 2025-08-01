@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { z } from 'zod';
+import { checkProjectOperationAccess } from '@/lib/project-access-control';
 
 const createCardSchema = z.object({
   title: z.string().min(1, 'Card title is required'),
@@ -75,19 +76,11 @@ export async function POST(
     const body = await request.json();
     const validatedData = createCardSchema.parse(body);
 
-    // Verify project exists
-    const project = await prisma.project.findUnique({
-      where: { id: params.id },
-    });
-
-    if (!project) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Project not found',
-        },
-        { status: 404 }
-      );
+    // Check if project can be operated on
+    const accessCheck = await checkProjectOperationAccess(params.id);
+    
+    if (!accessCheck.allowed) {
+      return accessCheck.response;
     }
 
     // Get the next position for the card

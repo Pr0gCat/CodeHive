@@ -6,6 +6,7 @@ import {
   CodeAnalysisDepth,
 } from '@/lib/db';
 import { z } from 'zod';
+import { checkProjectOperationAccess } from '@/lib/project-access-control';
 
 const projectSettingsSchema = z.object({
   // Token and Rate Limiting Settings
@@ -185,16 +186,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     // Validate input
     const validatedData = projectSettingsSchema.parse(body);
 
-    // Check if project exists
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-    });
-
-    if (!project) {
-      return NextResponse.json(
-        { success: false, error: 'Project not found' },
-        { status: 404 }
-      );
+    // Check if project can be operated on
+    const accessCheck = await checkProjectOperationAccess(projectId);
+    
+    if (!accessCheck.allowed) {
+      return accessCheck.response;
     }
 
     // Update or create project settings

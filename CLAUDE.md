@@ -46,7 +46,7 @@ CodeHive is a multi-agent software development platform where users provide feat
 ```bash
 # Quick Start - Two simple commands
 bun install              # Install dependencies (run first)
-bun run app              # Setup database, build, and start
+bun run app              # Setup database, build, and start with WebSocket server
 
 # Individual operations (if needed)
 bun run db:setup         # Initialize database and run migrations
@@ -54,9 +54,9 @@ bun run db:migrate       # Run new migrations
 bun run db:generate      # Regenerate Prisma client
 
 # Development
-bun run dev              # Start development server (auto-detects available port)
+bun run dev              # Start custom server with WebSocket support
 bun run build            # Build for production
-bun run start            # Start production server
+bun run start            # Start custom production server with WebSocket
 
 # Code quality
 bun run lint             # Run ESLint
@@ -80,7 +80,7 @@ bun test:ci             # Run tests in CI environment
 
 1. **Unified Task System**: Both project creation and import use the same TaskManager
 2. **Database Persistence**: TaskExecution, TaskPhase, TaskEvent models store real progress
-3. **Server-Sent Events**: Database-backed SSE provides real-time updates
+3. **WebSocket Events**: Real-time updates via Socket.IO for reliable communication
 4. **Genuine Operations**: Git clone, file scanning, project analysis all report actual progress
 
 ### Key Components
@@ -100,10 +100,10 @@ bun test:ci             # Run tests in CI environment
    - Reports progress based on actual files processed
    - Updates progress every N files processed
 
-4. **SSE Progress API** (`/app/api/projects/progress/[id]/route.ts`)
-   - Polls database for real task updates
-   - Streams live progress events to clients
-   - No in-memory storage, all database-backed
+4. **WebSocket Server** (`/lib/socket/server.ts`)
+   - Socket.IO server integrated with Next.js
+   - Real-time task progress broadcasting
+   - Database-backed event streaming
 
 ### Project Structure
 
@@ -119,9 +119,11 @@ bun test:ci             # Run tests in CI environment
   - `/lib/git` - Real Git operations and progress tracking
   - `/lib/tasks` - Task management and real progress tracking
   - `/lib/usage` - Token usage monitoring
+  - `/lib/socket` - WebSocket server and client utilities
 - `/repos` - Local storage for managed project git repositories
 - `/prisma` - Database schema, migrations, and seed data
 - `/docs` - Project documentation and guides
+- `/server.ts` - Custom Next.js server with Socket.IO integration
 
 ### Git Repository Management
 
@@ -268,6 +270,26 @@ await taskManager.completeTask(taskId, actualResult);
 - Test timeout: 10 seconds
 - Run single test: `bun test path/to/test.spec.ts`
 
+## WebSocket Implementation
+
+CodeHive uses **Socket.IO for real-time communication** instead of Server-Sent Events:
+
+- ✅ **Socket.IO Server**: Custom Next.js server with integrated Socket.IO
+- ✅ **WebSocket Client**: React hook for managing Socket.IO connections
+- ✅ **Real-time Progress**: Task progress tracking via WebSocket events
+- ✅ **Database-Backed**: All events still stored in TaskExecution/TaskPhase/TaskEvent models
+- ✅ **Reliable Connection**: Auto-reconnection and fallback to polling
+
+## Usage Limit Management
+
+CodeHive includes comprehensive usage limit management:
+
+- **Token Tracking**: Real-time monitoring of Claude Code API usage
+- **Project-Level Limits**: Configurable token and request limits per project  
+- **Rate Limiting**: Built-in exponential backoff and retry logic
+- **Usage Analytics**: Historical usage data and trend analysis
+- **Limit Enforcement**: Automatic throttling when approaching limits
+
 ## Memories
 
 - Update TASKS.md after finished tasks
@@ -276,5 +298,6 @@ await taskManager.completeTask(taskId, actualResult);
 - **CRITICAL**: All CodeHive projects MUST be Git repositories - verify Git status before any operations
 - **IMPORTANT**: Git Operations Agent is always enabled - include Git recommendations in all agent coordination
 - **NO FAKE PROGRESS**: All progress tracking must reflect real operations - no setTimeout delays or simulated progress
-- **REAL SSE**: All Server-Sent Events must come from database state, not in-memory simulations
+- **WEBSOCKET EVENTS**: All real-time events use Socket.IO WebSockets for reliable communication
 - **GENUINE OPERATIONS**: Git clones, file scanning, and project analysis must report actual progress
+- **SOCKET.IO ONLY**: Server-Sent Events have been replaced with Socket.IO - use WebSocket for all real-time features

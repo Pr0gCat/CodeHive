@@ -173,7 +173,7 @@ export default function TokenMonitor() {
           </div>
         </div>
 
-        {/* Global Usage Status */}
+        {/* 全域使用狀態 */}
         <div
           className={`p-4 rounded-lg border mb-6 ${getStatusColor(global.status)}`}
         >
@@ -205,7 +205,7 @@ export default function TokenMonitor() {
             </div>
           </div>
 
-          {/* Progress Bar */}
+          {/* 進度條 */}
           <div className="w-full bg-primary-700 rounded-full h-3 mb-2">
             <div
               className={`h-3 rounded-full transition-all duration-500 ${getProgressBarColor(global.status)}`}

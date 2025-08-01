@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { TDDCycleEngine, FeatureRequest } from '@/lib/tdd/cycle-engine';
+import { checkProjectOperationAccess } from '@/lib/project-access-control';
 
 // GET /api/projects/[id]/cycles - List project TDD cycles
 export async function GET(
@@ -68,17 +69,18 @@ export async function POST(
       );
     }
 
-    // Get project details
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-    });
+    // Check if project can be operated on
+    const accessCheck = await checkProjectOperationAccess(projectId);
+    
+    if (!accessCheck.allowed) {
+      return accessCheck.response;
+    }
 
+    const project = accessCheck.project;
+    
     if (!project) {
       return NextResponse.json(
-        {
-          success: false,
-          error: 'Project not found',
-        },
+        { success: false, error: 'Project not found' },
         { status: 404 }
       );
     }
@@ -93,7 +95,7 @@ export async function POST(
     };
 
     // Initialize TDD engine and start cycle
-    const tddEngine = new TDDCycleEngine(projectId, project.localPath);
+    const tddEngine = new TDDCycleEngine(projectId, project.localPath || '');
     const cycle = await tddEngine.startCycle(featureRequest);
 
     return NextResponse.json({

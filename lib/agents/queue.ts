@@ -67,7 +67,7 @@ export class TaskQueue {
     // Emit task queued event and trigger processing
     queueEventEmitter.emitTaskQueued(queuedTask.taskId, {
       projectId: task.projectId,
-      agentType: task.agentType || task.agent,
+      agentType: task.agentType || 'unknown',
       priority,
     });
     

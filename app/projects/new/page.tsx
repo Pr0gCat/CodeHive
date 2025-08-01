@@ -3,9 +3,8 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { FolderOpen, Link2, AlertTriangle, CheckCircle, Plus } from 'lucide-react';
+import { FolderOpen, AlertTriangle, CheckCircle, Plus } from 'lucide-react';
 import Navbar from '../../components/Navbar';
-import HiveInitializationAnimation from '../../components/initialization/HiveInitializationAnimation';
 
 interface AvailableRepo {
   name: string;
@@ -24,8 +23,6 @@ export default function NewProjectPage() {
   const [availableRepos, setAvailableRepos] = useState<AvailableRepo[]>([]);
   const [loadingRepos, setLoadingRepos] = useState(true);
   const [selectedRepo, setSelectedRepo] = useState<AvailableRepo | null>(null);
-  const [showInitialization, setShowInitialization] = useState(false);
-  const [taskId, setTaskId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -105,16 +102,9 @@ export default function NewProjectPage() {
 
     setLoading(true);
 
-    // Generate task ID for real-time tracking
-    const newTaskId = `create-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    setTaskId(newTaskId);
-    
-    // Show initialization animation with real-time progress
-    setShowInitialization(true);
-
     try {
       // Prepare form data based on creation mode
-      const projectData = { ...formData, taskId: newTaskId };
+      const projectData = { ...formData };
       
       // If creating new project and no localPath specified, let the API generate it
       if (creationMode === 'new' && !projectData.localPath.trim()) {
@@ -128,6 +118,7 @@ export default function NewProjectPage() {
         },
         body: JSON.stringify({
           ...projectData,
+          gitUrl: projectData.gitUrl.trim() || undefined, // 確保空字符串變為 undefined
           initializeGit: true, // Always initialize as Git repo
         }),
       });
@@ -136,65 +127,24 @@ export default function NewProjectPage() {
 
       if (!response.ok) {
         setError(data.error || '無法建立專案');
-        setShowInitialization(false);
+        setLoading(false);
         return;
       }
 
-      // Success - the real-time progress tracking will handle the animation
-      // The onComplete callback will be triggered when the task is done
-      console.log('🎉 Project creation started with task ID:', data.data.taskId);
+      // Success - project created and initialization started in background
+      console.log('🎉 Project created immediately with ID:', data.data.projectId);
+      console.log('🚀 Background initialization started with task ID:', data.data.taskId);
       
-      // Don't set loading to false here - let the animation handle completion
-      // setLoading(false); // Removed - will be handled by onComplete
+      // Navigate directly to the created project
+      router.push(`/projects/${data.data.projectId}`);
     } catch (err) {
       setError('網路錯誤：無法建立專案');
-      setShowInitialization(false);
       setLoading(false);
     }
   };
 
   return (
     <>
-      {/* Initialization Overlay - Now using real-time progress */}
-      <HiveInitializationAnimation
-        isVisible={showInitialization}
-        taskId={taskId || undefined}
-        useRealTimeProgress={true}
-        projectName={formData.name}
-        onComplete={async () => {
-          setShowInitialization(false);
-          setLoading(false); // Now set loading to false when animation completes
-          
-          // Get the created project info from the task result
-          try {
-            // Fetch the latest projects to find the newly created one
-            const response = await fetch('/api/projects');
-            const data = await response.json();
-            
-            if (data.success && data.data.length > 0) {
-              // Find the most recently created project (assuming it's the first one)
-              const newestProject = data.data[0];
-              if (newestProject.name === formData.name) {
-                // Navigate to the newly created project
-                router.push(`/projects/${newestProject.id}`);
-                return;
-              }
-            }
-          } catch (error) {
-            console.error('Failed to get project info:', error);
-          }
-          
-          // Fallback: navigate to projects list
-          router.push('/projects');
-        }}
-        onError={error => {
-          setShowInitialization(false);
-          setError(error);
-          setLoading(false);
-        }}
-      />
-
-      {/* Main Page */}
       <div className="min-h-screen bg-primary-950">
         <Navbar />
         <div className="container mx-auto px-4 py-8">
@@ -378,8 +328,7 @@ export default function NewProjectPage() {
                         <option value="">選擇資料夾...</option>
                         {availableRepos.map(repo => (
                           <option key={repo.path} value={repo.path}>
-                            {repo.name} ({repo.projectType}){' '}
-                            {repo.hasGit ? <Link2 className="inline w-3 h-3 ml-1" /> : <AlertTriangle className="inline w-3 h-3 ml-1" />}
+                            {repo.name} ({repo.projectType}) {repo.hasGit ? '🔗' : '⚠️'}
                           </option>
                         ))}
                       </select>
