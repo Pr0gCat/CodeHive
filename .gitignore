@@ -204,3 +204,30 @@ claude-code.exe
 # Temporary files
 *.tmp
 *.temp
+
+# Additional cache and temporary files
+.cache/
+*.log.*
+*.lock
+!bun.lock
+!package-lock.json
+!yarn.lock
+!uv.lock
+
+# IDE and editor files
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store?
+.Spotlight-V100
+.Trashes
+Icon?
+ehthumbs.db
+Thumbs.db
+
+# Test coverage
+coverage/
+.nyc_output/
