@@ -144,7 +144,7 @@ export default function ProjectLogsModal({
       const response = await fetch(`/api/projects/${projectId}/logs`, {
         method: 'DELETE',
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setLogs([]);

@@ -30,7 +30,7 @@ export default function HiveInitializationAnimationSocket({
 }: HiveInitializationAnimationSocketProps) {
   const [showContent, setShowContent] = useState(false);
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
-  
+
   // Use WebSocket hook
   const {
     connected,
@@ -43,8 +43,10 @@ export default function HiveInitializationAnimationSocket({
   } = useSocket(taskId);
 
   const currentPhase = phases[currentPhaseIndex];
-  const isComplete = phases.length > 0 && phases.every(phase => phase.status === 'completed');
-  const hasError = phases.some(phase => phase.status === 'error') || !!socketError;
+  const isComplete =
+    phases.length > 0 && phases.every(phase => phase.status === 'completed');
+  const hasError =
+    phases.some(phase => phase.status === 'error') || !!socketError;
 
   // Debug log
   console.log('🎯 HiveInitializationAnimationSocket:', {
@@ -70,7 +72,9 @@ export default function HiveInitializationAnimationSocket({
 
   // Update current phase index when phases change
   useEffect(() => {
-    const activePhaseIndex = phases.findIndex(phase => phase.status === 'active');
+    const activePhaseIndex = phases.findIndex(
+      phase => phase.status === 'active'
+    );
     if (activePhaseIndex >= 0) {
       console.log('🎯 Setting active phase index:', activePhaseIndex);
       setCurrentPhaseIndex(activePhaseIndex);
@@ -79,11 +83,11 @@ export default function HiveInitializationAnimationSocket({
 
   // Handle completion
   useEffect(() => {
-    console.log('⚡ Completion check:', { 
-      isComplete, 
-      hasError, 
+    console.log('⚡ Completion check:', {
+      isComplete,
+      hasError,
       phasesLength: phases.length,
-      phases: phases.map(p => `${p.id}:${p.status}`)
+      phases: phases.map(p => `${p.id}:${p.status}`),
     });
     if (isComplete && !hasError) {
       console.log('🎯 Task completed, calling onComplete in 2 seconds...');
@@ -99,7 +103,10 @@ export default function HiveInitializationAnimationSocket({
   useEffect(() => {
     if (hasError) {
       const errorPhase = phases.find(phase => phase.status === 'error');
-      const errorMessage = errorPhase?.details.join(', ') || socketError || 'Unknown error occurred';
+      const errorMessage =
+        errorPhase?.details.join(', ') ||
+        socketError ||
+        'Unknown error occurred';
       console.error('❌ Error in initialization:', errorMessage);
       onError?.(errorMessage);
     }
@@ -126,21 +133,22 @@ export default function HiveInitializationAnimationSocket({
       console.log('📊 No phases available for progress calculation');
       return 0;
     }
-    
+
     const completedPhases = phases.filter(
       phase => phase.status === 'completed'
     ).length;
     const currentProgress = currentPhase?.progress || 0;
-    const totalProgress = ((completedPhases + currentProgress / 100) / phases.length) * 100;
-    
+    const totalProgress =
+      ((completedPhases + currentProgress / 100) / phases.length) * 100;
+
     console.log('📊 Progress calculation:', {
       totalPhases: phases.length,
       completedPhases,
       currentPhaseProgress: currentProgress,
       totalProgress: Math.round(totalProgress),
-      currentPhaseId: currentPhase?.id
+      currentPhaseId: currentPhase?.id,
     });
-    
+
     return isNaN(totalProgress) ? 0 : Math.min(100, Math.max(0, totalProgress));
   };
 
@@ -179,7 +187,9 @@ export default function HiveInitializationAnimationSocket({
           {/* CodeHive Logo */}
           <div className="mb-8">
             <div className="relative inline-block">
-              <h1 className="text-4xl font-bold text-accent-50 mb-2">CodeHive</h1>
+              <h1 className="text-4xl font-bold text-accent-50 mb-2">
+                CodeHive
+              </h1>
               <p className="text-lg text-primary-300 mb-4">
                 AI 原生專案管理 (WebSocket)
               </p>
@@ -200,7 +210,9 @@ export default function HiveInitializationAnimationSocket({
               <h3 className="text-xl font-semibold text-accent-50 mb-2">
                 {currentPhase.title}
               </h3>
-              <p className="text-primary-300 mb-4">{currentPhase.description}</p>
+              <p className="text-primary-300 mb-4">
+                {currentPhase.description}
+              </p>
 
               {/* Progress Bar */}
               <div className="w-full bg-primary-800 rounded-full h-3 mb-4">

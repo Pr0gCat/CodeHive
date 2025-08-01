@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
-// This endpoint now serves as a simple status check since real-time updates 
+// This endpoint now serves as a simple status check since real-time updates
 // are handled via WebSocket connections
 export async function GET(
   request: NextRequest,
@@ -11,13 +11,13 @@ export async function GET(
 
   try {
     console.log(`📊 REST API request for task status: ${taskId}`);
-    
+
     // Get current task state
     const task = await prisma.taskExecution.findUnique({
       where: { taskId },
       include: {
         phases: { orderBy: { order: 'asc' } },
-        events: { 
+        events: {
           orderBy: { timestamp: 'desc' },
           take: 10, // Get last 10 events
         },
@@ -25,10 +25,7 @@ export async function GET(
     });
 
     if (!task) {
-      return NextResponse.json(
-        { error: 'Task not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
     return NextResponse.json({

@@ -64,33 +64,35 @@ export default function TDDDashboard({ projectId }: TDDDashboardProps) {
 
   useEffect(() => {
     fetchCycles();
-    
+
     // Set up SSE connection for real-time updates
     if (!projectId) return;
-    
+
     let eventSource: EventSource | null = null;
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 3;
     let reconnectTimeout: NodeJS.Timeout | null = null;
-    
+
     const connectSSE = () => {
       if (eventSource) {
         eventSource.close();
       }
-      
+
       console.log(`🔗 Connecting to TDD Cycles SSE for project: ${projectId}`);
       eventSource = new EventSource(`/api/projects/${projectId}/cycles/live`);
-      
-      eventSource.onmessage = (event) => {
+
+      eventSource.onmessage = event => {
         try {
           const data = JSON.parse(event.data);
           console.log('📡 TDD Cycles SSE Event received:', data);
-          
+
           // Reset reconnect attempts on successful message
           reconnectAttempts = 0;
-          
+
           if (data.type === 'connected') {
-            console.log(`✅ Connected to TDD cycles stream for project: ${data.projectId}`);
+            console.log(
+              `✅ Connected to TDD cycles stream for project: ${data.projectId}`
+            );
           } else if (data.type === 'cycles_state') {
             // Handle initial cycles state
             setCycles(data.cycles || []);
@@ -102,39 +104,48 @@ export default function TDDDashboard({ projectId }: TDDDashboardProps) {
           console.error('Error parsing TDD cycles SSE event:', error);
         }
       };
-      
-      eventSource.onerror = (error) => {
+
+      eventSource.onerror = error => {
         const eventSourceState = eventSource?.readyState;
-        
+
         // Only log error if it's not a normal close (readyState 2)
         if (eventSourceState !== EventSource.CLOSED) {
-          console.warn('TDD Cycles SSE connection interrupted, attempting to reconnect...');
+          console.warn(
+            'TDD Cycles SSE connection interrupted, attempting to reconnect...'
+          );
         }
-        
+
         // Close current connection
         eventSource?.close();
-        
+
         // Attempt to reconnect if under limit
         if (reconnectAttempts < maxReconnectAttempts) {
           reconnectAttempts++;
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000);
-          
-          console.log(`🔄 Reconnecting TDD Cycles SSE in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
-          
+          const delay = Math.min(
+            1000 * Math.pow(2, reconnectAttempts - 1),
+            10000
+          );
+
+          console.log(
+            `🔄 Reconnecting TDD Cycles SSE in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`
+          );
+
           reconnectTimeout = setTimeout(() => {
             connectSSE();
           }, delay);
         } else {
-          console.error('TDD Cycles SSE max reconnection attempts reached, falling back to polling');
+          console.error(
+            'TDD Cycles SSE max reconnection attempts reached, falling back to polling'
+          );
           // Fallback to manual fetch on persistent error
           setTimeout(fetchCycles, 5000);
         }
       };
     };
-    
+
     // Initial connection
     connectSSE();
-    
+
     return () => {
       console.log('🔌 Closing TDD Cycles SSE connection');
       if (reconnectTimeout) {

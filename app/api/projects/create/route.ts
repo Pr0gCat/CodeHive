@@ -9,17 +9,20 @@ import path from 'path';
 const createProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required'),
   description: z.string().optional(),
-  gitUrl: z.string().optional().refine((val) => {
-    // 允許空字符串或未定義
-    if (!val || val.trim() === '') return true;
-    // 如果有值，驗證 URL 格式
-    try {
-      new URL(val);
-      return true;
-    } catch {
-      return false;
-    }
-  }, 'Invalid URL format'),
+  gitUrl: z
+    .string()
+    .optional()
+    .refine(val => {
+      // 允許空字符串或未定義
+      if (!val || val.trim() === '') return true;
+      // 如果有值，驗證 URL 格式
+      try {
+        new URL(val);
+        return true;
+      } catch {
+        return false;
+      }
+    }, 'Invalid URL format'),
   localPath: z.string().optional(),
   initializeGit: z.boolean().default(true),
   // Tech stack fields
@@ -35,11 +38,23 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const validatedData = createProjectSchema.parse(body);
-    const { name, description, gitUrl, initializeGit, framework, language, packageManager, testFramework, lintTool, buildTool } = validatedData;
-    
+    const {
+      name,
+      description,
+      gitUrl,
+      initializeGit,
+      framework,
+      language,
+      packageManager,
+      testFramework,
+      lintTool,
+      buildTool,
+    } = validatedData;
+
     // Generate localPath if not provided
-    const localPath = validatedData.localPath?.trim() || gitClient.generateProjectPath(name);
-    
+    const localPath =
+      validatedData.localPath?.trim() || gitClient.generateProjectPath(name);
+
     // Check if project already exists
     const existingProject = await prisma.project.findFirst({
       where: { name },
@@ -75,16 +90,41 @@ export async function POST(request: NextRequest) {
 
     // Define phases for project creation
     const phases = [
-      { phaseId: 'validation', title: '驗證專案資訊', description: '檢查專案名稱和路徑', order: 0 },
-      { phaseId: 'setup', title: '建立專案結構', description: '建立專案目錄和初始檔案', order: 1 },
-      { phaseId: 'git_init', title: '初始化 Git', description: '建立 Git 儲存庫和初始提交', order: 2 },
-      { phaseId: 'claude_md_generation', title: '生成 CLAUDE.md', description: '分析專案並使用 Claude Code 生成專案指南', order: 3 },
-      { phaseId: 'completion', title: '完成設定', description: '更新專案狀態為已完成', order: 4 },
+      {
+        phaseId: 'validation',
+        title: '驗證專案資訊',
+        description: '檢查專案名稱和路徑',
+        order: 0,
+      },
+      {
+        phaseId: 'setup',
+        title: '建立專案結構',
+        description: '建立專案目錄和初始檔案',
+        order: 1,
+      },
+      {
+        phaseId: 'git_init',
+        title: '初始化 Git',
+        description: '建立 Git 儲存庫和初始提交',
+        order: 2,
+      },
+      {
+        phaseId: 'claude_md_generation',
+        title: '生成 CLAUDE.md',
+        description: '分析專案並使用 Claude Code 生成專案指南',
+        order: 3,
+      },
+      {
+        phaseId: 'completion',
+        title: '完成設定',
+        description: '更新專案狀態為已完成',
+        order: 4,
+      },
     ];
 
     // Create task for project creation
     const taskId = `create-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
+
     await taskManager.createTask(taskId, 'PROJECT_CREATE', phases, {
       projectName: name,
       projectId: project.id, // Now we have the project ID
@@ -106,12 +146,12 @@ export async function POST(request: NextRequest) {
       testFramework,
       lintTool,
       buildTool,
-    }).catch(async (error) => {
+    }).catch(async error => {
       console.error('Project creation failed:', error);
       // Update project status to failed
       await prisma.project.update({
         where: { id: project.id },
-        data: { 
+        data: {
           status: 'ARCHIVED',
           description: `初始化失敗: ${error instanceof Error ? error.message : 'Unknown error'}`,
         },
@@ -138,7 +178,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error creating project:', error);
-    
+
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         {
@@ -160,7 +200,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-
 async function createProjectAsync(
   taskId: string,
   projectId: string,
@@ -178,7 +217,19 @@ async function createProjectAsync(
     buildTool?: string;
   }
 ) {
-  const { name, description, gitUrl, localPath, initializeGit, framework, language, packageManager, testFramework, lintTool, buildTool } = data;
+  const {
+    name,
+    description,
+    gitUrl,
+    localPath,
+    initializeGit,
+    framework,
+    language,
+    packageManager,
+    testFramework,
+    lintTool,
+    buildTool,
+  } = data;
 
   try {
     // Phase 1: Validation
@@ -196,12 +247,12 @@ async function createProjectAsync(
 
     // Ensure directory exists
     await fs.mkdir(path.dirname(localPath), { recursive: true });
-    
+
     await taskManager.updatePhaseProgress(taskId, validationPhaseId, 70, {
       type: 'PHASE_PROGRESS',
       message: 'Validating project path',
     });
-    
+
     await taskManager.updatePhaseProgress(taskId, validationPhaseId, 100, {
       type: 'PHASE_COMPLETE',
       message: 'Validation completed',
@@ -221,12 +272,12 @@ async function createProjectAsync(
 
     // Create project directory
     await fs.mkdir(localPath, { recursive: true });
-    
+
     await taskManager.updatePhaseProgress(taskId, setupPhaseId, 50, {
       type: 'PHASE_PROGRESS',
       message: 'Generating README.md',
     });
-    
+
     // Create README
     const readmePath = path.join(localPath, 'README.md');
     const readmeContent = `# ${name}
@@ -250,12 +301,12 @@ ${gitUrl ? `- **Repository**: ${gitUrl}` : ''}
 `;
 
     await fs.writeFile(readmePath, readmeContent, 'utf8');
-    
+
     await taskManager.updatePhaseProgress(taskId, setupPhaseId, 80, {
       type: 'PHASE_PROGRESS',
       message: 'Creating initial project files',
     });
-    
+
     await taskManager.updatePhaseProgress(taskId, setupPhaseId, 100, {
       type: 'PHASE_COMPLETE',
       message: 'Project structure created',
@@ -270,10 +321,10 @@ ${gitUrl ? `- **Repository**: ${gitUrl}` : ''}
 
     if (initializeGit) {
       const isExistingRepo = await gitClient.isValidRepository(localPath);
-      
+
       if (!isExistingRepo) {
         const initResult = await gitClient.init(localPath);
-        
+
         if (!initResult.success) {
           throw new Error(`Failed to initialize Git: ${initResult.error}`);
         }
@@ -283,7 +334,7 @@ ${gitUrl ? `- **Repository**: ${gitUrl}` : ''}
           localPath,
           'Initial commit - CodeHive project setup'
         );
-        
+
         if (!commitResult.success) {
           console.warn('Failed to create initial commit:', commitResult.error);
         }
@@ -309,7 +360,9 @@ ${gitUrl ? `- **Repository**: ${gitUrl}` : ''}
         message: 'Analyzing project structure...',
       });
 
-      const { projectAnalyzer } = await import('@/lib/analysis/project-analyzer');
+      const { projectAnalyzer } = await import(
+        '@/lib/analysis/project-analyzer'
+      );
       // 不傳遞 phaseId，避免內部進度更新干擾 claude_md_generation 階段
       const analysisResult = await projectAnalyzer.analyzeProject(localPath);
 
@@ -333,7 +386,11 @@ Project Analysis Results:
 - Detected Test Framework: ${analysisResult.detectedTestFramework || 'None'}
 
 File Types Distribution:
-${Object.entries(analysisResult.filesByType).map(([type, count]) => `- ${type}: ${count} files`).join('\n') || '- No files categorized yet'}
+${
+  Object.entries(analysisResult.filesByType)
+    .map(([type, count]) => `- ${type}: ${count} files`)
+    .join('\n') || '- No files categorized yet'
+}
 
 ${analysisResult.detectedLanguage ? `Primary Language: ${analysisResult.detectedLanguage}` : ''}
 ${analysisResult.dependencies?.length ? `Dependencies: ${analysisResult.dependencies.slice(0, 10).join(', ')}${analysisResult.dependencies.length > 10 ? '...' : ''}` : ''}
@@ -358,17 +415,23 @@ Please write the CLAUDE.md file directly to the current directory.
       });
 
       if (claudeResult.success) {
-        console.log(`✅ CLAUDE.md generated successfully using Claude Code with project analysis context`);
+        console.log(
+          `✅ CLAUDE.md generated successfully using Claude Code with project analysis context`
+        );
         await taskManager.updatePhaseProgress(taskId, claudeMdPhaseId, 100, {
           type: 'PHASE_COMPLETE',
           message: 'CLAUDE.md 生成成功',
         });
       } else {
-        throw new Error(`Claude Code CLAUDE.md generation failed: ${claudeResult.error}`);
+        throw new Error(
+          `Claude Code CLAUDE.md generation failed: ${claudeResult.error}`
+        );
       }
     } catch (claudeMdError) {
       console.error(`❌ Error generating CLAUDE.md:`, claudeMdError);
-      throw new Error(`Failed to generate CLAUDE.md: ${claudeMdError instanceof Error ? claudeMdError.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to generate CLAUDE.md: ${claudeMdError instanceof Error ? claudeMdError.message : 'Unknown error'}`
+      );
     }
 
     // Phase 5: Create project in database first (needed for description generation)
@@ -397,7 +460,9 @@ Please write the CLAUDE.md file directly to the current directory.
     // Generate intelligent project description using Claude Code
     let finalDescription = description || 'Software project';
     try {
-      console.log(`🤖 Generating project description using Claude Code for: ${name}...`);
+      console.log(
+        `🤖 Generating project description using Claude Code for: ${name}...`
+      );
 
       await taskManager.updatePhaseProgress(taskId, completionPhaseId, 50, {
         type: 'PHASE_PROGRESS',
@@ -438,11 +503,16 @@ Please write the CLAUDE.md file directly to the current directory.
         const summaryResult = await summaryResponse.json();
         if (summaryResult.success && summaryResult.data?.summary) {
           finalDescription = summaryResult.data.summary;
-          console.log(`✅ Generated intelligent description: "${finalDescription}"`);
+          console.log(
+            `✅ Generated intelligent description: "${finalDescription}"`
+          );
         }
       }
     } catch (descriptionError) {
-      console.error(`⚠️ Failed to generate project description for ${name}:`, descriptionError);
+      console.error(
+        `⚠️ Failed to generate project description for ${name}:`,
+        descriptionError
+      );
       // Continue with default description
     }
 
@@ -454,9 +524,9 @@ Please write the CLAUDE.md file directly to the current directory.
     // Update project with generated description and ACTIVE status
     await prisma.project.update({
       where: { id: projectId },
-      data: { 
+      data: {
         description: finalDescription,
-        status: 'ACTIVE' // Change status to ACTIVE
+        status: 'ACTIVE', // Change status to ACTIVE
       },
     });
 
@@ -473,7 +543,6 @@ Please write the CLAUDE.md file directly to the current directory.
         localPath: localPath,
       },
     });
-
   } catch (error) {
     console.error('Error in createProjectAsync:', error);
     await taskManager.updatePhaseProgress(taskId, 'complete', 100, {

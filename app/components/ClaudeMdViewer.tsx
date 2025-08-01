@@ -16,7 +16,10 @@ interface ClaudeMdData {
   message?: string;
 }
 
-export default function ClaudeMdViewer({ projectId, onClaudeMdUpdate }: ClaudeMdViewerProps) {
+export default function ClaudeMdViewer({
+  projectId,
+  onClaudeMdUpdate,
+}: ClaudeMdViewerProps) {
   const { showToast } = useToast();
   const [claudeMdData, setClaudeMdData] = useState<ClaudeMdData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,7 +72,7 @@ export default function ClaudeMdViewer({ projectId, onClaudeMdUpdate }: ClaudeMd
         method: 'POST',
         signal: controller.signal,
       });
-      
+
       clearTimeout(timeoutId);
       const data = await response.json();
 
@@ -95,55 +98,65 @@ export default function ClaudeMdViewer({ projectId, onClaudeMdUpdate }: ClaudeMd
   const renderMarkdown = (content: string) => {
     // Simple markdown rendering for basic formatting
     // For a production app, you might want to use a proper markdown parser like 'react-markdown'
-    return content
-      .split('\n')
-      .map((line, index) => {
-        if (line.startsWith('# ')) {
-          return (
-            <h1 key={index} className="text-2xl font-bold text-accent-50 mb-4 mt-6">
-              {line.substring(2)}
-            </h1>
-          );
-        } else if (line.startsWith('## ')) {
-          return (
-            <h2 key={index} className="text-xl font-semibold text-accent-50 mb-3 mt-5">
-              {line.substring(3)}
-            </h2>
-          );
-        } else if (line.startsWith('### ')) {
-          return (
-            <h3 key={index} className="text-lg font-medium text-accent-50 mb-2 mt-4">
-              {line.substring(4)}
-            </h3>
-          );
-        } else if (line.startsWith('**') && line.endsWith('**')) {
-          return (
-            <p key={index} className="text-primary-200 mb-2 font-semibold">
-              {line.substring(2, line.length - 2)}
-            </p>
-          );
-        } else if (line.startsWith('- ')) {
-          return (
-            <li key={index} className="text-primary-300 mb-1 ml-4">
-              {line.substring(2)}
-            </li>
-          );
-        } else if (line.startsWith('```')) {
-          return (
-            <div key={index} className="bg-primary-800 rounded p-3 my-2 font-mono text-sm text-primary-200">
-              Code block
-            </div>
-          );
-        } else if (line.trim() === '') {
-          return <br key={index} />;
-        } else {
-          return (
-            <p key={index} className="text-primary-300 mb-2">
-              {line}
-            </p>
-          );
-        }
-      });
+    return content.split('\n').map((line, index) => {
+      if (line.startsWith('# ')) {
+        return (
+          <h1
+            key={index}
+            className="text-2xl font-bold text-accent-50 mb-4 mt-6"
+          >
+            {line.substring(2)}
+          </h1>
+        );
+      } else if (line.startsWith('## ')) {
+        return (
+          <h2
+            key={index}
+            className="text-xl font-semibold text-accent-50 mb-3 mt-5"
+          >
+            {line.substring(3)}
+          </h2>
+        );
+      } else if (line.startsWith('### ')) {
+        return (
+          <h3
+            key={index}
+            className="text-lg font-medium text-accent-50 mb-2 mt-4"
+          >
+            {line.substring(4)}
+          </h3>
+        );
+      } else if (line.startsWith('**') && line.endsWith('**')) {
+        return (
+          <p key={index} className="text-primary-200 mb-2 font-semibold">
+            {line.substring(2, line.length - 2)}
+          </p>
+        );
+      } else if (line.startsWith('- ')) {
+        return (
+          <li key={index} className="text-primary-300 mb-1 ml-4">
+            {line.substring(2)}
+          </li>
+        );
+      } else if (line.startsWith('```')) {
+        return (
+          <div
+            key={index}
+            className="bg-primary-800 rounded p-3 my-2 font-mono text-sm text-primary-200"
+          >
+            Code block
+          </div>
+        );
+      } else if (line.trim() === '') {
+        return <br key={index} />;
+      } else {
+        return (
+          <p key={index} className="text-primary-300 mb-2">
+            {line}
+          </p>
+        );
+      }
+    });
   };
 
   useEffect(() => {
@@ -198,11 +211,17 @@ export default function ClaudeMdViewer({ projectId, onClaudeMdUpdate }: ClaudeMd
         <div className="flex items-center space-x-2">
           {/* View Mode Toggle */}
           <button
-            onClick={() => setViewMode(viewMode === 'rendered' ? 'raw' : 'rendered')}
+            onClick={() =>
+              setViewMode(viewMode === 'rendered' ? 'raw' : 'rendered')
+            }
             className="p-2 text-primary-400 hover:text-accent-50 hover:bg-primary-800 rounded transition-colors"
             title={viewMode === 'rendered' ? '顯示原始文本' : '顯示渲染內容'}
           >
-            {viewMode === 'rendered' ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            {viewMode === 'rendered' ? (
+              <EyeOff className="w-4 h-4" />
+            ) : (
+              <Eye className="w-4 h-4" />
+            )}
           </button>
 
           {/* Update Button */}
@@ -211,7 +230,9 @@ export default function ClaudeMdViewer({ projectId, onClaudeMdUpdate }: ClaudeMd
             disabled={isUpdating}
             className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-primary-300 border border-primary-600 rounded hover:bg-primary-800 hover:text-accent-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <RefreshCw className={`w-4 h-4 ${isUpdating ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`w-4 h-4 ${isUpdating ? 'animate-spin' : ''}`}
+            />
             <span>{isUpdating ? '載入中...' : '重新載入'}</span>
           </button>
 
@@ -221,7 +242,9 @@ export default function ClaudeMdViewer({ projectId, onClaudeMdUpdate }: ClaudeMd
             disabled={isRegenerating}
             className="flex items-center space-x-2 px-3 py-2 text-sm font-medium text-accent-50 bg-accent-600 rounded hover:bg-accent-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <Settings className={`w-4 h-4 ${isRegenerating ? 'animate-spin' : ''}`} />
+            <Settings
+              className={`w-4 h-4 ${isRegenerating ? 'animate-spin' : ''}`}
+            />
             <span>{isRegenerating ? '重新生成中...' : '重新生成'}</span>
           </button>
         </div>
@@ -256,7 +279,9 @@ export default function ClaudeMdViewer({ projectId, onClaudeMdUpdate }: ClaudeMd
                 disabled={isRegenerating}
                 className="flex items-center space-x-2 px-4 py-2 bg-accent-600 text-accent-50 rounded hover:bg-accent-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                <Settings className={`w-4 h-4 ${isRegenerating ? 'animate-spin' : ''}`} />
+                <Settings
+                  className={`w-4 h-4 ${isRegenerating ? 'animate-spin' : ''}`}
+                />
                 <span>{isRegenerating ? '生成中...' : '生成 CLAUDE.md'}</span>
               </button>
             </div>

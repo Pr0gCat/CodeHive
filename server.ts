@@ -26,9 +26,9 @@ app.prepare().then(() => {
 
   // Initialize Socket.IO
   const io = initializeSocket(server);
-  
+
   server
-    .once('error', (err) => {
+    .once('error', err => {
       console.error('Server error:', err);
       process.exit(1);
     })

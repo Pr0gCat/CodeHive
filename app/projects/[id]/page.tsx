@@ -32,7 +32,9 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     'overview' | 'development' | 'queries' | 'claude-md'
   >('overview');
   const [devSubTab, setDevSubTab] = useState<'epics' | 'tdd'>('epics');
-  const [claudeMdLastUpdate, setClaudeMdLastUpdate] = useState<Date | null>(null);
+  const [claudeMdLastUpdate, setClaudeMdLastUpdate] = useState<Date | null>(
+    null
+  );
   const [initializationProgress, setInitializationProgress] = useState<{
     currentPhase?: string;
     progress?: number;
@@ -61,7 +63,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
       if (data.success) {
         setProject(data.data);
-        
+
         // If project is initializing, try to fetch progress
         if (data.data.status === 'INITIALIZING') {
           fetchInitializationProgress();
@@ -128,7 +130,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
     // Set up polling for initialization progress
     let initProgressInterval: NodeJS.Timeout | null = null;
-    
+
     const startInitProgressPolling = () => {
       // Poll every 2 seconds during initialization
       initProgressInterval = setInterval(() => {
@@ -155,23 +157,23 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     let reconnectAttempts = 0;
     const maxReconnectAttempts = 3;
     let reconnectTimeout: NodeJS.Timeout | null = null;
-    
+
     const connectAgentSSE = () => {
       if (eventSource) {
         eventSource.close();
       }
-      
+
       console.log(`🔗 Connecting to Agent Queue SSE`);
       eventSource = new EventSource('/api/agents/queue/live');
-      
-      eventSource.onmessage = (event) => {
+
+      eventSource.onmessage = event => {
         try {
           const data = JSON.parse(event.data);
           console.log('📡 Agent Queue SSE Event received:', data);
-          
+
           // Reset reconnect attempts on successful message
           reconnectAttempts = 0;
-          
+
           if (data.type === 'connected') {
             console.log(`✅ Connected to agent queue stream`);
           } else if (data.type === 'queue_status') {
@@ -185,42 +187,51 @@ export default function ProjectPage({ params }: ProjectPageProps) {
           console.error('Error parsing agent queue SSE event:', error);
         }
       };
-      
-      eventSource.onerror = (error) => {
+
+      eventSource.onerror = error => {
         const eventSourceState = eventSource?.readyState;
-        
+
         // Only log error if it's not a normal close (readyState 2)
         if (eventSourceState !== EventSource.CLOSED) {
-          console.warn('Agent Queue SSE connection interrupted, attempting to reconnect...');
+          console.warn(
+            'Agent Queue SSE connection interrupted, attempting to reconnect...'
+          );
         }
-        
+
         // Close current connection
         eventSource?.close();
-        
+
         // Attempt to reconnect if under limit
         if (reconnectAttempts < maxReconnectAttempts) {
           reconnectAttempts++;
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000);
-          
-          console.log(`🔄 Reconnecting Agent Queue SSE in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`);
-          
+          const delay = Math.min(
+            1000 * Math.pow(2, reconnectAttempts - 1),
+            10000
+          );
+
+          console.log(
+            `🔄 Reconnecting Agent Queue SSE in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`
+          );
+
           reconnectTimeout = setTimeout(() => {
             connectAgentSSE();
           }, delay);
         } else {
-          console.error('Agent Queue SSE max reconnection attempts reached, falling back to polling');
+          console.error(
+            'Agent Queue SSE max reconnection attempts reached, falling back to polling'
+          );
           // Fallback to manual fetch on persistent error
           setTimeout(fetchAgentStatus, 10000);
         }
       };
     };
-    
+
     // Initial connection
     connectAgentSSE();
 
     // CLAUDE.md doesn't need frequent updates - only check every 2 minutes
     const claudeMdInterval = setInterval(fetchClaudeMdStatus, 120000);
-    
+
     return () => {
       console.log('🔌 Closing Agent Queue SSE connection');
       if (reconnectTimeout) {
@@ -233,7 +244,6 @@ export default function ProjectPage({ params }: ProjectPageProps) {
       clearInterval(claudeMdInterval);
     };
   }, [fetchProject, fetchAgentStatus, fetchClaudeMdStatus]);
-
 
   const handleSettingsUpdate = (settings: ProjectSettings) => {
     setProjectSettings(settings);
@@ -317,8 +327,10 @@ export default function ProjectPage({ params }: ProjectPageProps) {
             <h2 className="text-2xl font-bold text-accent-50 mb-2">
               {project.name}
             </h2>
-            <p className="text-accent-300 font-medium mb-4">專案正在初始化中...</p>
-            
+            <p className="text-accent-300 font-medium mb-4">
+              專案正在初始化中...
+            </p>
+
             {/* Progress Information */}
             {initializationProgress && (
               <div className="mb-4">
@@ -329,7 +341,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                 )}
                 {initializationProgress.progress !== undefined && (
                   <div className="w-full bg-primary-700 rounded-full h-2 mb-2">
-                    <div 
+                    <div
                       className="bg-accent-400 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${initializationProgress.progress}%` }}
                     ></div>
@@ -589,7 +601,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                         month: 'short',
                         day: 'numeric',
                         hour: '2-digit',
-                        minute: '2-digit'
+                        minute: '2-digit',
                       })}
                     </span>
                   )}
@@ -674,8 +686,8 @@ export default function ProjectPage({ params }: ProjectPageProps) {
             <div
               className={`h-full ${activeTab === 'claude-md' ? 'block' : 'hidden'}`}
             >
-              <ClaudeMdViewer 
-                projectId={project.id} 
+              <ClaudeMdViewer
+                projectId={project.id}
                 onClaudeMdUpdate={fetchClaudeMdStatus}
               />
             </div>

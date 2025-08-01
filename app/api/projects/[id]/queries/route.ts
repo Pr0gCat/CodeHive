@@ -90,7 +90,7 @@ export async function POST(
   try {
     // Check if project can be operated on
     const accessCheck = await checkProjectOperationAccess(params.id);
-    
+
     if (!accessCheck.allowed) {
       return accessCheck.response;
     }

@@ -70,7 +70,7 @@ export class TaskQueue {
       agentType: task.agentType || 'unknown',
       priority,
     });
-    
+
     // Trigger immediate processing instead of waiting for poll
     queueEventEmitter.triggerProcessing();
 
@@ -171,7 +171,7 @@ export class TaskQueue {
     }
 
     this.isProcessing = true;
-    
+
     try {
       // Check rate limits
       const canProceed = await this.rateLimiter.canProceed();
@@ -289,20 +289,19 @@ export class TaskQueue {
       console.log(
         `Task ${queuedTask.taskId} ${result.success ? 'completed' : 'failed'}`
       );
-      
+
       // Check if there are more tasks and trigger processing
       const remainingTasks = await prisma.queuedTask.count({
         where: { status: 'PENDING' },
       });
-      
+
       if (remainingTasks > 0) {
         // Trigger processing for next task
         setTimeout(() => queueEventEmitter.triggerProcessing(), 100);
       }
-      
     } catch (error) {
       console.error('Error processing task:', error);
-      
+
       // Try to trigger processing again in case there are other tasks
       setTimeout(() => queueEventEmitter.triggerProcessing(), 1000);
     } finally {

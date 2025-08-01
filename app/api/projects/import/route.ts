@@ -61,7 +61,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate the final local path
-    const finalLocalPath = localPath || gitClient.generateProjectPath(projectName);
+    const finalLocalPath =
+      localPath || gitClient.generateProjectPath(projectName);
 
     // IMMEDIATELY CREATE PROJECT RECORD IN DATABASE
     const project = await prisma.project.create({
@@ -82,10 +83,10 @@ export async function POST(request: NextRequest) {
 
     // Generate task ID for background import
     const taskId = `import-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
+
     // Run asynchronously with real progress tracking
     runImportAsync(project.id, taskId);
-    
+
     return NextResponse.json({
       success: true,
       data: {
@@ -108,7 +109,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-
   async function runImportAsync(projectId: string, taskId: string) {
     try {
       console.log(`🚀 Starting real import task: ${taskId}`);
@@ -118,7 +118,9 @@ export async function POST(request: NextRequest) {
         {
           phaseId: 'git_clone',
           title: gitUrl ? '克隆儲存庫' : '驗證本地儲存庫',
-          description: gitUrl ? `從 ${gitUrl} 克隆儲存庫` : '驗證本地 Git 儲存庫',
+          description: gitUrl
+            ? `從 ${gitUrl} 克隆儲存庫`
+            : '驗證本地 Git 儲存庫',
           order: 1,
         },
         {
@@ -152,25 +154,30 @@ export async function POST(request: NextRequest) {
       await taskManager.startTask(taskId);
 
       // Get the final local path
-      const finalLocalPath = localPath || gitClient.generateProjectPath(projectName);
+      const finalLocalPath =
+        localPath || gitClient.generateProjectPath(projectName);
 
       // Phase 1: Git Repository
       await taskManager.startPhase(taskId, 'git_clone');
-      
+
       let needsClone = false;
 
       if (localPath) {
         // Importing existing local repository
-        
+
         await taskManager.updatePhaseProgress(taskId, 'git_clone', 30, {
           type: 'PHASE_PROGRESS',
           message: '檢查本地儲存庫',
         });
-        
+
         // Verify it's a valid Git repository
         const isValid = await gitClient.isValidRepository(finalLocalPath);
         if (!isValid) {
-          await taskManager.failPhase(taskId, 'git_clone', 'Path is not a valid Git repository');
+          await taskManager.failPhase(
+            taskId,
+            'git_clone',
+            'Path is not a valid Git repository'
+          );
           return;
         }
 
@@ -185,12 +192,18 @@ export async function POST(request: NextRequest) {
         // Check if directory already exists
         const repoExists = await gitClient.isValidRepository(finalLocalPath);
         if (repoExists) {
-          await taskManager.failPhase(taskId, 'git_clone', 'Repository already exists at this location');
+          await taskManager.failPhase(
+            taskId,
+            'git_clone',
+            'Repository already exists at this location'
+          );
           return;
         }
 
         // Clone the repository with real progress tracking
-        console.log(`Cloning repository from ${gitUrl} to ${finalLocalPath}...`);
+        console.log(
+          `Cloning repository from ${gitUrl} to ${finalLocalPath}...`
+        );
         const cloneResult = await gitClient.clone({
           url: gitUrl!,
           targetPath: finalLocalPath,
@@ -201,14 +214,22 @@ export async function POST(request: NextRequest) {
         });
 
         if (!cloneResult.success) {
-          await taskManager.failPhase(taskId, 'git_clone', 'Failed to clone repository: ' + cloneResult.error);
+          await taskManager.failPhase(
+            taskId,
+            'git_clone',
+            'Failed to clone repository: ' + cloneResult.error
+          );
           return;
         }
 
         // Verify the clone was successful
         const isValid = await gitClient.isValidRepository(finalLocalPath);
         if (!isValid) {
-          await taskManager.failPhase(taskId, 'git_clone', 'Repository clone verification failed');
+          await taskManager.failPhase(
+            taskId,
+            'git_clone',
+            'Repository clone verification failed'
+          );
           return;
         }
 
@@ -222,7 +243,7 @@ export async function POST(request: NextRequest) {
 
       // Phase 3: Project Analysis - WITH REAL PROGRESS
       await taskManager.startPhase(taskId, 'analysis');
-      
+
       // Run real project analysis with progress tracking
       const analysisResult = await projectAnalyzer.analyzeProject(
         finalLocalPath,
@@ -232,7 +253,8 @@ export async function POST(request: NextRequest) {
 
       // Get additional repository metadata
       const currentBranch = await gitClient.getCurrentBranch(finalLocalPath);
-      const actualRemoteUrl = gitUrl || await gitClient.getRemoteUrl(finalLocalPath);
+      const actualRemoteUrl =
+        gitUrl || (await gitClient.getRemoteUrl(finalLocalPath));
 
       await taskManager.completePhase(taskId, 'analysis', {
         filesAnalyzed: analysisResult.totalFiles,
@@ -247,52 +269,86 @@ export async function POST(request: NextRequest) {
 
       // Phase 3.5: Generate CLAUDE.md BEFORE database creation
       await taskManager.startPhase(taskId, 'claude_md_generation');
-      
+
       try {
         console.log(`📝 Generating CLAUDE.md for project: ${projectName}...`);
 
-        await taskManager.updatePhaseProgress(taskId, 'claude_md_generation', 30, {
-          type: 'PHASE_PROGRESS',
-          message: '生成專案 CLAUDE.md 文件',
-        });
+        await taskManager.updatePhaseProgress(
+          taskId,
+          'claude_md_generation',
+          30,
+          {
+            type: 'PHASE_PROGRESS',
+            message: '生成專案 CLAUDE.md 文件',
+          }
+        );
 
         // Check if CLAUDE.md already exists
         const claudeMdPath = `${finalLocalPath}/CLAUDE.md`;
         const { promises: fs } = await import('fs');
-        const claudeMdExists = await fs.access(claudeMdPath).then(() => true).catch(() => false);
-        
+        const claudeMdExists = await fs
+          .access(claudeMdPath)
+          .then(() => true)
+          .catch(() => false);
+
         if (claudeMdExists) {
-          console.log(`📋 CLAUDE.md already exists at ${claudeMdPath}, skipping generation`);
-          await taskManager.updatePhaseProgress(taskId, 'claude_md_generation', 100, {
-            type: 'PHASE_PROGRESS',
-            message: 'CLAUDE.md 已存在，跳過生成',
-          });
+          console.log(
+            `📋 CLAUDE.md already exists at ${claudeMdPath}, skipping generation`
+          );
+          await taskManager.updatePhaseProgress(
+            taskId,
+            'claude_md_generation',
+            100,
+            {
+              type: 'PHASE_PROGRESS',
+              message: 'CLAUDE.md 已存在，跳過生成',
+            }
+          );
         } else {
           // Use Claude Code /init to generate CLAUDE.md
-          await taskManager.updatePhaseProgress(taskId, 'claude_md_generation', 60, {
-            type: 'PHASE_PROGRESS',
-            message: '使用 Claude Code 生成 CLAUDE.md',
-          });
+          await taskManager.updatePhaseProgress(
+            taskId,
+            'claude_md_generation',
+            60,
+            {
+              type: 'PHASE_PROGRESS',
+              message: '使用 Claude Code 生成 CLAUDE.md',
+            }
+          );
 
           const { claudeCode } = await import('@/lib/claude-code');
-          
+
           const claudeResult = await claudeCode.execute('/init', {
             workingDirectory: finalLocalPath,
             timeout: 180000, // 3 minutes
           });
 
           if (claudeResult.success) {
-            console.log(`✅ CLAUDE.md generated successfully using Claude Code`);
-            await taskManager.updatePhaseProgress(taskId, 'claude_md_generation', 100, {
-              type: 'PHASE_PROGRESS',
-              message: 'CLAUDE.md 生成成功',
-            });
+            console.log(
+              `✅ CLAUDE.md generated successfully using Claude Code`
+            );
+            await taskManager.updatePhaseProgress(
+              taskId,
+              'claude_md_generation',
+              100,
+              {
+                type: 'PHASE_PROGRESS',
+                message: 'CLAUDE.md 生成成功',
+              }
+            );
           } else {
-            console.log(`⚠️ Claude Code generation failed: ${claudeResult.error}`);
-            await taskManager.updatePhaseProgress(taskId, 'claude_md_generation', 100, {
-              type: 'PHASE_PROGRESS',
-              message: 'CLAUDE.md 生成失敗，將繼續匯入',
-            });
+            console.log(
+              `⚠️ Claude Code generation failed: ${claudeResult.error}`
+            );
+            await taskManager.updatePhaseProgress(
+              taskId,
+              'claude_md_generation',
+              100,
+              {
+                type: 'PHASE_PROGRESS',
+                message: 'CLAUDE.md 生成失敗，將繼續匯入',
+              }
+            );
           }
         }
 
@@ -300,21 +356,31 @@ export async function POST(request: NextRequest) {
           claudeMdExists: claudeMdExists,
           generated: !claudeMdExists,
         });
-
       } catch (claudeMdError) {
-        console.error(`❌ Error generating CLAUDE.md for ${projectName}:`, claudeMdError);
-        await taskManager.updatePhaseProgress(taskId, 'claude_md_generation', 100, {
-          type: 'ERROR',
-          message: `CLAUDE.md 生成錯誤: ${claudeMdError instanceof Error ? claudeMdError.message : 'Unknown error'}`,
-        });
+        console.error(
+          `❌ Error generating CLAUDE.md for ${projectName}:`,
+          claudeMdError
+        );
+        await taskManager.updatePhaseProgress(
+          taskId,
+          'claude_md_generation',
+          100,
+          {
+            type: 'ERROR',
+            message: `CLAUDE.md 生成錯誤: ${claudeMdError instanceof Error ? claudeMdError.message : 'Unknown error'}`,
+          }
+        );
         await taskManager.completePhase(taskId, 'claude_md_generation', {
-          error: claudeMdError instanceof Error ? claudeMdError.message : 'Unknown error',
+          error:
+            claudeMdError instanceof Error
+              ? claudeMdError.message
+              : 'Unknown error',
         });
       }
 
       // Phase 4: Completion - Update project status
       await taskManager.startPhase(taskId, 'completion');
-      
+
       await taskManager.updatePhaseProgress(taskId, 'completion', 20, {
         type: 'PHASE_PROGRESS',
         message: '更新專案資訊',
@@ -324,13 +390,16 @@ export async function POST(request: NextRequest) {
       await prisma.project.update({
         where: { id: projectId },
         data: {
-          description: gitUrl ? `Imported from ${gitUrl}` : `Imported from local repository at ${finalLocalPath}`,
+          description: gitUrl
+            ? `Imported from ${gitUrl}`
+            : `Imported from local repository at ${finalLocalPath}`,
           gitUrl: actualRemoteUrl,
           localPath: finalLocalPath,
           status: 'ACTIVE', // Change status to ACTIVE
           framework: framework || analysisResult.detectedFramework,
           language: language || analysisResult.detectedLanguage,
-          packageManager: packageManager || analysisResult.detectedPackageManager,
+          packageManager:
+            packageManager || analysisResult.detectedPackageManager,
           testFramework: testFramework || analysisResult.detectedTestFramework,
           lintTool,
           buildTool,
@@ -377,9 +446,13 @@ export async function POST(request: NextRequest) {
       });
 
       // Generate project description using Claude Code
-      let projectDescription = gitUrl ? `Imported from ${gitUrl}` : `Imported from local repository at ${finalLocalPath}`;
+      let projectDescription = gitUrl
+        ? `Imported from ${gitUrl}`
+        : `Imported from local repository at ${finalLocalPath}`;
       try {
-        console.log(`🤖 Generating project description using Claude Code for: ${projectName}...`);
+        console.log(
+          `🤖 Generating project description using Claude Code for: ${projectName}...`
+        );
 
         await taskManager.updatePhaseProgress(taskId, 'completion', 85, {
           type: 'PHASE_PROGRESS',
@@ -426,19 +499,30 @@ export async function POST(request: NextRequest) {
           const summaryResult = await summaryResponse.json();
           if (summaryResult.success && summaryResult.data?.summary) {
             projectDescription = summaryResult.data.summary;
-            console.log(`✅ Generated intelligent description: "${projectDescription}"`);
+            console.log(
+              `✅ Generated intelligent description: "${projectDescription}"`
+            );
           }
         }
       } catch (descriptionError) {
-        console.error(`⚠️ Failed to generate project description for ${projectName}:`, descriptionError);
-        
+        console.error(
+          `⚠️ Failed to generate project description for ${projectName}:`,
+          descriptionError
+        );
+
         // Try to generate a basic description based on analysis results
-        if (analysisResult?.detectedFramework && analysisResult.detectedFramework !== 'None specified') {
+        if (
+          analysisResult?.detectedFramework &&
+          analysisResult.detectedFramework !== 'None specified'
+        ) {
           projectDescription = `${analysisResult.detectedFramework} application`;
-        } else if (analysisResult?.detectedLanguage && analysisResult.detectedLanguage !== 'None specified') {
+        } else if (
+          analysisResult?.detectedLanguage &&
+          analysisResult.detectedLanguage !== 'None specified'
+        ) {
           projectDescription = `${analysisResult.detectedLanguage} project`;
         }
-        
+
         console.log(`📝 Using fallback description: "${projectDescription}"`);
       }
 
@@ -482,18 +566,23 @@ export async function POST(request: NextRequest) {
       console.log(`🎉 Import task ${taskId} completed successfully`);
     } catch (error) {
       console.error('Import task failed:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+
       // Update project status to failed
       await prisma.project.update({
         where: { id: projectId },
-        data: { 
+        data: {
           status: 'ARCHIVED',
           description: `導入失敗: ${errorMessage}`,
         },
       });
-      
-      await taskManager.failPhase(taskId, 'unknown', `Failed to import project: ${errorMessage}`);
+
+      await taskManager.failPhase(
+        taskId,
+        'unknown',
+        `Failed to import project: ${errorMessage}`
+      );
     }
   }
 }

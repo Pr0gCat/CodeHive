@@ -8,8 +8,8 @@ export interface GitCloneOptions {
   targetPath: string;
   branch?: string;
   depth?: number;
-  taskId?: string;       // For progress tracking
-  phaseId?: string;      // For progress tracking
+  taskId?: string; // For progress tracking
+  phaseId?: string; // For progress tracking
 }
 
 export interface GitCommandResult {
@@ -105,7 +105,10 @@ export class GitClient {
     return this.executeGitCommand(['init'], repoPath);
   }
 
-  async initialCommit(repoPath: string, message: string = 'Initial commit'): Promise<GitCommandResult> {
+  async initialCommit(
+    repoPath: string,
+    message: string = 'Initial commit'
+  ): Promise<GitCommandResult> {
     // Add all files
     const addResult = await this.executeGitCommand(['add', '.'], repoPath);
     if (!addResult.success) {
@@ -220,7 +223,11 @@ export class GitClient {
       let errorOutput = '';
       let lastProgress = 0;
 
-      const updateProgress = async (progress: number, message: string, details?: any) => {
+      const updateProgress = async (
+        progress: number,
+        message: string,
+        details?: any
+      ) => {
         if (taskId && phaseId && progress !== lastProgress) {
           lastProgress = progress;
           await taskManager.updatePhaseProgress(taskId, phaseId, progress, {
@@ -235,27 +242,29 @@ export class GitClient {
         output += data.toString();
       });
 
-      child.stderr?.on('data', async (data) => {
+      child.stderr?.on('data', async data => {
         const text = data.toString();
         errorOutput += text;
 
         // Parse Git progress output
         // Git clone progress format: "Receiving objects: 50% (1234/2468)"
         // Git clone progress format: "Resolving deltas: 75% (123/164)"
-        const progressMatch = text.match(/(Receiving objects|Resolving deltas|Checking out files):\s*(\d+)%/);
+        const progressMatch = text.match(
+          /(Receiving objects|Resolving deltas|Checking out files):\s*(\d+)%/
+        );
         if (progressMatch) {
           const [, stage, percent] = progressMatch;
           const progress = parseInt(percent, 10);
-          
+
           let adjustedProgress: number;
           let message: string;
-          
+
           if (stage === 'Receiving objects') {
             // Receiving is 0-70% of the total process
             adjustedProgress = Math.min(progress * 0.7, 70);
             message = `下載儲存庫內容: ${progress}%`;
           } else if (stage === 'Resolving deltas') {
-            // Resolving is 70-90% of the total process  
+            // Resolving is 70-90% of the total process
             adjustedProgress = 70 + Math.min(progress * 0.2, 20);
             message = `解析變更紀錄: ${progress}%`;
           } else if (stage === 'Checking out files') {
@@ -267,8 +276,8 @@ export class GitClient {
             message = `${stage}: ${progress}%`;
           }
 
-          await updateProgress(adjustedProgress, message, { 
-            stage, 
+          await updateProgress(adjustedProgress, message, {
+            stage,
             rawProgress: progress,
             rawText: text.trim(),
           });
@@ -278,7 +287,9 @@ export class GitClient {
         if (text.includes('Cloning into')) {
           await updateProgress(5, '開始克隆儲存庫...', { status: 'starting' });
         } else if (text.includes('remote: Enumerating objects')) {
-          await updateProgress(10, '列舉遠程物件...', { status: 'enumerating' });
+          await updateProgress(10, '列舉遠程物件...', {
+            status: 'enumerating',
+          });
         } else if (text.includes('remote: Counting objects')) {
           await updateProgress(15, '計算物件數量...', { status: 'counting' });
         } else if (text.includes('remote: Compressing objects')) {
@@ -286,11 +297,11 @@ export class GitClient {
         }
       });
 
-      child.on('exit', async (code) => {
+      child.on('exit', async code => {
         if (code === 0) {
           // Ensure 100% progress on success
           await updateProgress(100, '克隆完成', { status: 'completed' });
-          
+
           resolve({
             success: true,
             output,

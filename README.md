@@ -102,7 +102,7 @@ CodeHive/
 
 ## 📖 Usage
 
-1. **Install dependencies**: `bun install`  
+1. **Install dependencies**: `bun install`
 2. **Start the application**: `bun run app`
 3. **Open**: http://localhost:3000
 4. **Configure**: Visit `/settings` to adjust configuration

@@ -17,8 +17,8 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-24">
           <div className="flex items-center space-x-8">
             <Link href="/">
-              <CodeHiveLogo 
-                size={40} 
+              <CodeHiveLogo
+                size={40}
                 showText={true}
                 className="hover:opacity-80 transition-opacity"
               />

@@ -71,13 +71,13 @@ export async function POST(
 
     // Check if project can be operated on
     const accessCheck = await checkProjectOperationAccess(projectId);
-    
+
     if (!accessCheck.allowed) {
       return accessCheck.response;
     }
 
     const project = accessCheck.project;
-    
+
     if (!project) {
       return NextResponse.json(
         { success: false, error: 'Project not found' },

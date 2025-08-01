@@ -106,9 +106,7 @@ export default function ProjectProgressDashboard() {
     return (
       <div className="bg-primary-900 border border-primary-800 rounded-lg p-6 text-center">
         <div className="text-primary-400 mb-2">沒有活動的專案</div>
-        <div className="text-sm text-primary-500">
-          建立專案以查看進度追蹤
-        </div>
+        <div className="text-sm text-primary-500">建立專案以查看進度追蹤</div>
       </div>
     );
   }

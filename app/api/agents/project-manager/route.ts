@@ -251,8 +251,10 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        const summary = await manager.generateProjectSummaryFromContext(validatedData.context);
-        
+        const summary = await manager.generateProjectSummaryFromContext(
+          validatedData.context
+        );
+
         return NextResponse.json({
           success: true,
           data: {

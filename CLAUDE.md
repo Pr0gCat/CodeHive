@@ -285,7 +285,7 @@ CodeHive uses **Socket.IO for real-time communication** instead of Server-Sent E
 CodeHive includes comprehensive usage limit management:
 
 - **Token Tracking**: Real-time monitoring of Claude Code API usage
-- **Project-Level Limits**: Configurable token and request limits per project  
+- **Project-Level Limits**: Configurable token and request limits per project
 - **Rate Limiting**: Built-in exponential backoff and retry logic
 - **Usage Analytics**: Historical usage data and trend analysis
 - **Limit Enforcement**: Automatic throttling when approaching limits

@@ -111,9 +111,10 @@ export class AgentExecutor {
             agentType,
             workingDirectory,
             attempt,
-            promptPreview: prompt.length > 200 ? 
-              prompt.substring(0, 200) + '...[truncated]' : 
-              prompt,
+            promptPreview:
+              prompt.length > 200
+                ? prompt.substring(0, 200) + '...[truncated]'
+                : prompt,
             fullPrompt: prompt.length <= 500 ? prompt : '[too long to display]',
             promptLength: prompt.length,
           });
@@ -146,9 +147,10 @@ export class AgentExecutor {
             executionTime: `${executionTime}ms`,
             tokensUsed: totalTokensUsed,
             outputLength: result.output?.length || 0,
-            outputPreview: result.output && result.output.length > 300 ? 
-              result.output.substring(0, 300) + '...[truncated]' : 
-              result.output,
+            outputPreview:
+              result.output && result.output.length > 300
+                ? result.output.substring(0, 300) + '...[truncated]'
+                : result.output,
             error: result.error || null,
           });
         }
@@ -186,16 +188,19 @@ export class AgentExecutor {
         }
       } catch (error) {
         lastError = error as Error;
-        
+
         // Log error in development environment
         if (process.env.NODE_ENV === 'development') {
-          console.error(`❌ [Claude Code Executor] Attempt ${attempt} failed:`, {
-            error: error instanceof Error ? error.message : String(error),
-            projectId,
-            agentType,
-            workingDirectory,
-            promptLength: prompt.length,
-          });
+          console.error(
+            `❌ [Claude Code Executor] Attempt ${attempt} failed:`,
+            {
+              error: error instanceof Error ? error.message : String(error),
+              projectId,
+              agentType,
+              workingDirectory,
+              promptLength: prompt.length,
+            }
+          );
         }
 
         console.error(`Agent execution attempt ${attempt} failed:`, error);

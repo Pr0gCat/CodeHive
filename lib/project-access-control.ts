@@ -22,15 +22,16 @@ export async function checkProjectOperationAccess(projectId: string) {
       return {
         allowed: false,
         response: NextResponse.json(
-          { 
-            success: false, 
-            error: 'Project is still initializing. Please wait for initialization to complete.',
+          {
+            success: false,
+            error:
+              'Project is still initializing. Please wait for initialization to complete.',
             code: 'PROJECT_INITIALIZING',
             project: {
               id: project.id,
               name: project.name,
               status: project.status,
-            }
+            },
           },
           { status: 423 } // 423 Locked
         ),
@@ -41,15 +42,15 @@ export async function checkProjectOperationAccess(projectId: string) {
       return {
         allowed: false,
         response: NextResponse.json(
-          { 
-            success: false, 
+          {
+            success: false,
             error: 'Project is archived and cannot be modified.',
             code: 'PROJECT_ARCHIVED',
             project: {
               id: project.id,
               name: project.name,
               status: project.status,
-            }
+            },
           },
           { status: 423 } // 423 Locked
         ),
@@ -74,10 +75,10 @@ export async function checkProjectOperationAccess(projectId: string) {
 
 export async function requireActiveProject(projectId: string) {
   const accessCheck = await checkProjectOperationAccess(projectId);
-  
+
   if (!accessCheck.allowed) {
     throw new Error('Project access denied');
   }
-  
+
   return accessCheck.project;
 }

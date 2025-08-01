@@ -2,7 +2,13 @@ import { EventEmitter } from 'events';
 
 export interface TaskEventData {
   taskId: string;
-  type: 'task_created' | 'task_started' | 'task_completed' | 'task_failed' | 'phase_updated' | 'event_created';
+  type:
+    | 'task_created'
+    | 'task_started'
+    | 'task_completed'
+    | 'task_failed'
+    | 'phase_updated'
+    | 'event_created';
   timestamp: Date;
   data?: any;
 }
@@ -70,7 +76,13 @@ class TaskEventEmitter extends EventEmitter {
   }
 
   // Phase progress events
-  emitPhaseUpdated(taskId: string, phaseId: string, progress: number, message?: string, details?: any) {
+  emitPhaseUpdated(
+    taskId: string,
+    phaseId: string,
+    progress: number,
+    message?: string,
+    details?: any
+  ) {
     this.emit('phase_updated', {
       taskId,
       type: 'phase_updated',
@@ -85,7 +97,12 @@ class TaskEventEmitter extends EventEmitter {
   }
 
   // Task event creation
-  emitTaskEvent(taskId: string, eventType: string, message: string, details?: any) {
+  emitTaskEvent(
+    taskId: string,
+    eventType: string,
+    message: string,
+    details?: any
+  ) {
     this.emit('event_created', {
       taskId,
       type: 'event_created',

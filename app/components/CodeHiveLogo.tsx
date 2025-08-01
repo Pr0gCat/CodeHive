@@ -18,7 +18,9 @@ export default function CodeHiveLogo({
 }: CodeHiveLogoProps) {
   // 如果使用 SVG 版本
   if (useSVG) {
-    return <CodeHiveLogoSVG className={className} size={size} showText={showText} />;
+    return (
+      <CodeHiveLogoSVG className={className} size={size} showText={showText} />
+    );
   }
 
   // 使用 PNG 版本 - 簡化的輪廓效果

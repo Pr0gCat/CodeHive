@@ -20,44 +20,49 @@ class ProjectLogger extends EventEmitter {
 
   // Sources and messages to filter out from project logs
   private filteredSources = new Set([
-    'api' // Filter out generic API request logs
+    'api', // Filter out generic API request logs
   ]);
 
   private filteredMessages = new Set([
     'Fetching logs',
-    'Client connected to log stream', 
+    'Client connected to log stream',
     'Client disconnected from log stream',
-    'Cleared logs from database'
+    'Cleared logs from database',
   ]);
 
   // Only log important project events, not internal system operations
-  private shouldLogEntry(source: string, message: string, level: LogLevel, projectId: string): boolean {
+  private shouldLogEntry(
+    source: string,
+    message: string,
+    level: LogLevel,
+    projectId: string
+  ): boolean {
     // Filter out system-level logs (not specific to any project)
     if (projectId === 'system') return false;
-    
+
     // Always log errors regardless of source (except system logs)
     if (level === 'error' && projectId !== 'system') return true;
-    
+
     // Filter out ALL API operations at debug level
     if (source === 'api' && level === 'debug') return false;
-    
+
     // Filter out internal API operations completely
     if (this.filteredSources.has(source)) return false;
-    
+
     // Filter out specific unwanted messages (exact match and partial match)
     if (this.filteredMessages.has(message)) return false;
-    
+
     // Filter out messages that start with filtered phrases
     for (const filteredMessage of Array.from(this.filteredMessages)) {
       if (message.startsWith(filteredMessage)) return false;
     }
-    
+
     // Filter out log-related operations to prevent self-referencing
     if (message.toLowerCase().includes('log') && source === 'api') return false;
-    
+
     // Filter out stream connection messages
     if (message.includes('stream') && source === 'api') return false;
-    
+
     // Allow important project events
     return true;
   }
@@ -217,7 +222,7 @@ class ProjectLogger extends EventEmitter {
   // Clear logs for a project
   async clearProjectLogs(projectId: string): Promise<number> {
     let deletedCount = 0;
-    
+
     try {
       // Clear from database
       const result = await prisma.projectLog.deleteMany({
@@ -232,7 +237,7 @@ class ProjectLogger extends EventEmitter {
     // Clear from memory cache
     this.logs.delete(projectId);
     this.emit(`clear:${projectId}`);
-    
+
     return deletedCount;
   }
 

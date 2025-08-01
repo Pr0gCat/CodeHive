@@ -24,7 +24,7 @@ export default function ProjectImportModal({
     projectName: '',
     branch: '',
   });
-  
+
   const [importMode, setImportMode] = useState<'remote' | 'local'>('remote');
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,11 +76,14 @@ export default function ProjectImportModal({
       }
 
       // Success - project created immediately and import started
-      console.log('🎉 Project created immediately with ID:', data.data.projectId);
+      console.log(
+        '🎉 Project created immediately with ID:',
+        data.data.projectId
+      );
       console.log('🚀 Background import started');
-      
+
       showToast('專案匯入已開始，正在背景處理', 'success');
-      
+
       // Navigate directly to the created project
       router.push(`/projects/${data.data.projectId}`);
       onClose();
@@ -93,7 +96,6 @@ export default function ProjectImportModal({
       setIsImporting(false);
     }
   };
-
 
   if (!isOpen) return null;
 

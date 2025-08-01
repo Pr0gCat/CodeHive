@@ -1,6 +1,9 @@
 import { Server as HttpServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
-import { taskEventEmitter, TaskEventData } from '@/lib/events/task-event-emitter';
+import {
+  taskEventEmitter,
+  TaskEventData,
+} from '@/lib/events/task-event-emitter';
 import { prisma } from '@/lib/db';
 
 let io: SocketIOServer | null = null;
@@ -13,22 +16,23 @@ export function initializeSocket(server: HttpServer) {
 
   io = new SocketIOServer(server, {
     cors: {
-      origin: process.env.NODE_ENV === 'production' 
-        ? process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-        : '*',
+      origin:
+        process.env.NODE_ENV === 'production'
+          ? process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+          : '*',
       methods: ['GET', 'POST'],
       credentials: true,
     },
     transports: ['polling', 'websocket'], // 優先使用 polling 以確保相容性
   });
 
-  io.on('connection', (socket) => {
+  io.on('connection', socket => {
     console.log(`🔗 Client connected: ${socket.id}`);
 
     // Handle task progress subscription
     socket.on('subscribe_task', async (taskId: string) => {
       console.log(`📡 Client ${socket.id} subscribing to task: ${taskId}`);
-      
+
       try {
         // Join room for this task
         socket.join(`task:${taskId}`);
@@ -39,7 +43,7 @@ export function initializeSocket(server: HttpServer) {
           where: { taskId },
           include: {
             phases: { orderBy: { order: 'asc' } },
-            events: { 
+            events: {
               orderBy: { timestamp: 'desc' },
               take: 1,
             },
@@ -90,11 +94,11 @@ export function initializeSocket(server: HttpServer) {
       socket.emit('unsubscribed', { taskId });
     });
 
-    socket.on('disconnect', (reason) => {
+    socket.on('disconnect', reason => {
       console.log(`🔌 Client disconnected: ${socket.id}, reason: ${reason}`);
     });
 
-    socket.on('error', (error) => {
+    socket.on('error', error => {
       console.error(`❌ Socket error for client ${socket.id}:`, error);
     });
   });
@@ -104,7 +108,7 @@ export function initializeSocket(server: HttpServer) {
     if (!io) return;
 
     console.log(`📡 Broadcasting event for task ${event.taskId}:`, event.type);
-    
+
     // Broadcast to all clients subscribed to this task
     io.to(`task:${event.taskId}`).emit('task_event', {
       type: event.type,
@@ -161,7 +165,7 @@ export function emitToTask(taskId: string, event: string, data: any) {
     console.warn('🚨 Socket.IO not initialized, cannot emit event');
     return;
   }
-  
+
   console.log(`📡 Emitting to task ${taskId}:`, event);
   io.to(`task:${taskId}`).emit(event, data);
 }

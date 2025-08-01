@@ -35,7 +35,7 @@ export default function NewProjectPage() {
     lintTool: '',
     buildTool: '',
   });
-  
+
   const [creationMode, setCreationMode] = useState<'new' | 'existing'>('new');
 
   useEffect(() => {
@@ -89,7 +89,6 @@ export default function NewProjectPage() {
     }
   };
 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -105,7 +104,7 @@ export default function NewProjectPage() {
     try {
       // Prepare form data based on creation mode
       const projectData = { ...formData };
-      
+
       // If creating new project and no localPath specified, let the API generate it
       if (creationMode === 'new' && !projectData.localPath.trim()) {
         projectData.localPath = ''; // API will generate path based on project name
@@ -132,9 +131,15 @@ export default function NewProjectPage() {
       }
 
       // Success - project created and initialization started in background
-      console.log('🎉 Project created immediately with ID:', data.data.projectId);
-      console.log('🚀 Background initialization started with task ID:', data.data.taskId);
-      
+      console.log(
+        '🎉 Project created immediately with ID:',
+        data.data.projectId
+      );
+      console.log(
+        '🚀 Background initialization started with task ID:',
+        data.data.taskId
+      );
+
       // Navigate directly to the created project
       router.push(`/projects/${data.data.projectId}`);
     } catch (err) {
@@ -233,7 +238,11 @@ export default function NewProjectPage() {
                         onClick={() => {
                           setCreationMode('new');
                           setSelectedRepo(null);
-                          setFormData(prev => ({ ...prev, localPath: '', gitUrl: '' }));
+                          setFormData(prev => ({
+                            ...prev,
+                            localPath: '',
+                            gitUrl: '',
+                          }));
                         }}
                         className={`p-4 rounded-lg border-2 text-left transition-colors ${
                           creationMode === 'new'
@@ -249,12 +258,16 @@ export default function NewProjectPage() {
                           建立全新的 Git 倉庫和專案結構
                         </div>
                       </button>
-                      
+
                       <button
                         type="button"
                         onClick={() => {
                           setCreationMode('existing');
-                          setFormData(prev => ({ ...prev, localPath: '', gitUrl: '' }));
+                          setFormData(prev => ({
+                            ...prev,
+                            localPath: '',
+                            gitUrl: '',
+                          }));
                         }}
                         className={`p-4 rounded-lg border-2 text-left transition-colors ${
                           creationMode === 'existing'
@@ -273,111 +286,114 @@ export default function NewProjectPage() {
                     </div>
                   </div>
 
-                {creationMode === 'new' ? (
-                  /* New Project Path */
-                  <div>
-                    <label
-                      htmlFor="localPath"
-                      className="block text-sm font-medium text-primary-300 mb-2"
-                    >
-                      專案資料夾路徑 *
-                    </label>
-                    <input
-                      type="text"
-                      id="localPath"
-                      name="localPath"
-                      required
-                      value={formData.localPath}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
-                      placeholder="例如：/Users/yourname/my-project 或留空自動生成"
-                    />
-                    <p className="mt-1 text-sm text-primary-400">
-                      留空將在 repos/ 目錄中自動建立資料夾。將初始化為 Git 倉庫。
-                    </p>
-                  </div>
-                ) : (
-                  /* Existing Repository Selection */
-                  <div>
-                    <label
-                      htmlFor="repoSelect"
-                      className="block text-sm font-medium text-primary-300 mb-2"
-                    >
-                      選擇現有資料夾 *
-                    </label>
-                    {loadingRepos ? (
-                      <div className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-md">
-                        <div className="text-primary-400 text-sm">
-                          載入可用資料夾中...
-                        </div>
-                      </div>
-                    ) : availableRepos.length === 0 ? (
-                      <div className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-md">
-                        <div className="text-primary-400 text-sm">
-                          在 repos/ 目錄中找不到可用的資料夾
-                        </div>
-                      </div>
-                    ) : (
-                      <select
-                        id="repoSelect"
-                        value={selectedRepo?.path || ''}
-                        onChange={handleRepoSelect}
-                        required={creationMode === 'existing'}
-                        className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
+                  {creationMode === 'new' ? (
+                    /* New Project Path */
+                    <div>
+                      <label
+                        htmlFor="localPath"
+                        className="block text-sm font-medium text-primary-300 mb-2"
                       >
-                        <option value="">選擇資料夾...</option>
-                        {availableRepos.map(repo => (
-                          <option key={repo.path} value={repo.path}>
-                            {repo.name} ({repo.projectType}) {repo.hasGit ? '🔗' : '⚠️'}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-
-                    {selectedRepo && (
-                      <div className="mt-2 p-3 bg-primary-800 border border-primary-700 rounded-md">
-                        <div className="text-sm space-y-1">
-                          <div className="text-primary-300">
-                            <span className="font-medium">路徑：</span>{' '}
-                            <span className="font-mono text-primary-400">
-                              {selectedRepo.path}
-                            </span>
-                          </div>
-                          <div className="text-primary-300">
-                            <span className="font-medium">類型：</span>{' '}
-                            <span className="text-accent-50">
-                              {selectedRepo.projectType}
-                            </span>
-                          </div>
-                          <div className="text-primary-300">
-                            <span className="font-medium">檔案：</span>{' '}
-                            <span className="text-accent-50">
-                              {selectedRepo.fileCount}
-                            </span>
-                          </div>
-                          <div className="text-primary-300">
-                            <span className="font-medium">Git：</span>{' '}
-                            {selectedRepo.hasGit ? (
-                              <span className="text-green-400 flex items-center">
-                                <CheckCircle className="w-4 h-4 mr-1" />
-                                已偵測到 Git 倉庫
-                              </span>
-                            ) : (
-                              <span className="text-yellow-400 flex items-center">
-                                <AlertTriangle className="w-4 h-4 mr-1" />
-                                將初始化為 Git 倉庫
-                              </span>
-                            )}
+                        專案資料夾路徑 *
+                      </label>
+                      <input
+                        type="text"
+                        id="localPath"
+                        name="localPath"
+                        required
+                        value={formData.localPath}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500 placeholder-primary-400"
+                        placeholder="例如：/Users/yourname/my-project 或留空自動生成"
+                      />
+                      <p className="mt-1 text-sm text-primary-400">
+                        留空將在 repos/ 目錄中自動建立資料夾。將初始化為 Git
+                        倉庫。
+                      </p>
+                    </div>
+                  ) : (
+                    /* Existing Repository Selection */
+                    <div>
+                      <label
+                        htmlFor="repoSelect"
+                        className="block text-sm font-medium text-primary-300 mb-2"
+                      >
+                        選擇現有資料夾 *
+                      </label>
+                      {loadingRepos ? (
+                        <div className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-md">
+                          <div className="text-primary-400 text-sm">
+                            載入可用資料夾中...
                           </div>
                         </div>
-                      </div>
-                    )}
+                      ) : availableRepos.length === 0 ? (
+                        <div className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-md">
+                          <div className="text-primary-400 text-sm">
+                            在 repos/ 目錄中找不到可用的資料夾
+                          </div>
+                        </div>
+                      ) : (
+                        <select
+                          id="repoSelect"
+                          value={selectedRepo?.path || ''}
+                          onChange={handleRepoSelect}
+                          required={creationMode === 'existing'}
+                          className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-accent-500"
+                        >
+                          <option value="">選擇資料夾...</option>
+                          {availableRepos.map(repo => (
+                            <option key={repo.path} value={repo.path}>
+                              {repo.name} ({repo.projectType}){' '}
+                              {repo.hasGit ? '🔗' : '⚠️'}
+                            </option>
+                          ))}
+                        </select>
+                      )}
 
-                    <p className="mt-1 text-sm text-primary-400">
-                      選擇 repos/ 目錄中的資料夾。如果不是 Git 倉庫，將自動初始化。
-                    </p>
-                  </div>
-                )}
+                      {selectedRepo && (
+                        <div className="mt-2 p-3 bg-primary-800 border border-primary-700 rounded-md">
+                          <div className="text-sm space-y-1">
+                            <div className="text-primary-300">
+                              <span className="font-medium">路徑：</span>{' '}
+                              <span className="font-mono text-primary-400">
+                                {selectedRepo.path}
+                              </span>
+                            </div>
+                            <div className="text-primary-300">
+                              <span className="font-medium">類型：</span>{' '}
+                              <span className="text-accent-50">
+                                {selectedRepo.projectType}
+                              </span>
+                            </div>
+                            <div className="text-primary-300">
+                              <span className="font-medium">檔案：</span>{' '}
+                              <span className="text-accent-50">
+                                {selectedRepo.fileCount}
+                              </span>
+                            </div>
+                            <div className="text-primary-300">
+                              <span className="font-medium">Git：</span>{' '}
+                              {selectedRepo.hasGit ? (
+                                <span className="text-green-400 flex items-center">
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                  已偵測到 Git 倉庫
+                                </span>
+                              ) : (
+                                <span className="text-yellow-400 flex items-center">
+                                  <AlertTriangle className="w-4 h-4 mr-1" />
+                                  將初始化為 Git 倉庫
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <p className="mt-1 text-sm text-primary-400">
+                        選擇 repos/ 目錄中的資料夾。如果不是 Git
+                        倉庫，將自動初始化。
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div>

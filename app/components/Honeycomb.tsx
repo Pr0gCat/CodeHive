@@ -1,16 +1,16 @@
-'use client'
+'use client';
 
-import React from 'react'
+import React from 'react';
 
 interface HoneycombProps {
-  size?: number
-  cellSize?: number
-  rows?: number
-  cols?: number
-  className?: string
-  fillColor?: string
-  strokeColor?: string
-  strokeWidth?: number
+  size?: number;
+  cellSize?: number;
+  rows?: number;
+  cols?: number;
+  className?: string;
+  fillColor?: string;
+  strokeColor?: string;
+  strokeWidth?: number;
 }
 
 export default function Honeycomb({
@@ -21,42 +21,43 @@ export default function Honeycomb({
   className = '',
   fillColor = '#fbbf24',
   strokeColor = '#d97706',
-  strokeWidth = 2
+  strokeWidth = 2,
 }: HoneycombProps) {
-  const hexHeight = cellSize * Math.sqrt(3)
-  const hexWidth = cellSize * 2
-  const vertSpacing = hexHeight * 0.75
+  const hexHeight = cellSize * Math.sqrt(3);
+  const hexWidth = cellSize * 2;
+  const vertSpacing = hexHeight * 0.75;
 
   const createHexagonPath = (centerX: number, centerY: number) => {
-    const points = []
+    const points = [];
     for (let i = 0; i < 6; i++) {
-      const angle = (i * Math.PI) / 3
-      const x = centerX + cellSize * Math.cos(angle)
-      const y = centerY + cellSize * Math.sin(angle)
-      points.push(`${x},${y}`)
+      const angle = (i * Math.PI) / 3;
+      const x = centerX + cellSize * Math.cos(angle);
+      const y = centerY + cellSize * Math.sin(angle);
+      points.push(`${x},${y}`);
     }
-    return `M ${points.join(' L ')} Z`
-  }
+    return `M ${points.join(' L ')} Z`;
+  };
 
-  const hexagons = []
-  
+  const hexagons = [];
+
   for (let row = 0; row < rows; row++) {
-    const isOddRow = row % 2 === 1
-    const hexsInRow = isOddRow ? cols - 1 : cols
-    
+    const isOddRow = row % 2 === 1;
+    const hexsInRow = isOddRow ? cols - 1 : cols;
+
     for (let col = 0; col < hexsInRow; col++) {
-      const x = col * hexWidth * 0.75 + (isOddRow ? hexWidth * 0.375 : 0) + cellSize
-      const y = row * vertSpacing + cellSize
-      
+      const x =
+        col * hexWidth * 0.75 + (isOddRow ? hexWidth * 0.375 : 0) + cellSize;
+      const y = row * vertSpacing + cellSize;
+
       hexagons.push({
         key: `${row}-${col}`,
-        path: createHexagonPath(x, y)
-      })
+        path: createHexagonPath(x, y),
+      });
     }
   }
 
-  const svgWidth = cols * hexWidth * 0.75 + hexWidth * 0.25
-  const svgHeight = (rows - 1) * vertSpacing + hexHeight
+  const svgWidth = cols * hexWidth * 0.75 + hexWidth * 0.25;
+  const svgHeight = (rows - 1) * vertSpacing + hexHeight;
 
   return (
     <div className={`flex items-center justify-center ${className}`}>
@@ -78,5 +79,5 @@ export default function Honeycomb({
         ))}
       </svg>
     </div>
-  )
+  );
 }

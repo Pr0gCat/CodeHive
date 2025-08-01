@@ -16,17 +16,17 @@ export default function CodeHiveLogoDark({
     <div className={`flex items-center ${className}`}>
       <div className="relative">
         {/* 發光效果背景 */}
-        <div 
+        <div
           className="absolute inset-0 bg-amber-400/20 blur-xl rounded-full"
-          style={{ 
-            width: size * 1.2, 
+          style={{
+            width: size * 1.2,
             height: size * 1.2,
             top: '50%',
             left: '50%',
-            transform: 'translate(-50%, -50%)'
+            transform: 'translate(-50%, -50%)',
           }}
         />
-        
+
         {/* 標誌本體 - 使用濾鏡增強對比度 */}
         <div className="relative">
           <Image
@@ -42,11 +42,9 @@ export default function CodeHiveLogoDark({
           />
         </div>
       </div>
-      
+
       {showText && (
-        <span className="ml-3 text-xl font-bold text-accent-50">
-          CodeHive
-        </span>
+        <span className="ml-3 text-xl font-bold text-accent-50">CodeHive</span>
       )}
     </div>
   );

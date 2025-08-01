@@ -10,7 +10,13 @@ export interface TaskPhase {
 }
 
 export interface TaskEvent {
-  type: 'PHASE_START' | 'PHASE_PROGRESS' | 'PHASE_COMPLETE' | 'FILE_PROCESSED' | 'ERROR' | 'INFO';
+  type:
+    | 'PHASE_START'
+    | 'PHASE_PROGRESS'
+    | 'PHASE_COMPLETE'
+    | 'FILE_PROCESSED'
+    | 'ERROR'
+    | 'INFO';
   message: string;
   details?: any;
   progress?: number;
@@ -63,7 +69,7 @@ export class TaskManager {
 
     // Create phase records
     await prisma.taskPhase.createMany({
-      data: phases.map((phase) => ({
+      data: phases.map(phase => ({
         taskId,
         phaseId: phase.phaseId,
         title: phase.title,
@@ -75,7 +81,11 @@ export class TaskManager {
     });
 
     // Emit task created event
-    taskEventEmitter.emitTaskCreated(taskId, { type, phases: phases.length, ...options });
+    taskEventEmitter.emitTaskCreated(taskId, {
+      type,
+      phases: phases.length,
+      ...options,
+    });
 
     console.log(`📝 Created task ${taskId} with ${phases.length} phases`);
   }
@@ -110,7 +120,7 @@ export class TaskManager {
    */
   async startPhase(taskId: string, phaseId: string) {
     const startTime = new Date();
-    
+
     await prisma.taskPhase.update({
       where: { taskId_phaseId: { taskId, phaseId } },
       data: {
@@ -149,7 +159,7 @@ export class TaskManager {
     details?: any
   ) {
     const updateTime = new Date();
-    
+
     // Update phase progress
     await prisma.taskPhase.update({
       where: { taskId_phaseId: { taskId, phaseId } },
@@ -165,7 +175,8 @@ export class TaskManager {
       orderBy: { order: 'asc' },
     });
 
-    const totalProgress = phases.reduce((sum, phase) => sum + phase.progress, 0) / phases.length;
+    const totalProgress =
+      phases.reduce((sum, phase) => sum + phase.progress, 0) / phases.length;
 
     // Update task progress
     await prisma.taskExecution.update({
@@ -177,14 +188,22 @@ export class TaskManager {
     });
 
     // Emit phase updated event
-    taskEventEmitter.emitPhaseUpdated(taskId, phaseId, progress, event.message, event.details);
+    taskEventEmitter.emitPhaseUpdated(
+      taskId,
+      phaseId,
+      progress,
+      event.message,
+      event.details
+    );
 
     await this.emitEvent(taskId, phaseId, {
       ...event,
       progress,
     });
 
-    console.log(`📊 Updated ${phaseId} progress: ${progress}% (overall: ${totalProgress.toFixed(1)}%)`);
+    console.log(
+      `📊 Updated ${phaseId} progress: ${progress}% (overall: ${totalProgress.toFixed(1)}%)`
+    );
   }
 
   /**
@@ -192,13 +211,13 @@ export class TaskManager {
    */
   async completePhase(taskId: string, phaseId: string, metrics?: any) {
     const completionTime = new Date();
-    
+
     // Get phase start time to calculate duration
     const phase = await prisma.taskPhase.findUnique({
       where: { taskId_phaseId: { taskId, phaseId } },
     });
 
-    const duration = phase?.startedAt 
+    const duration = phase?.startedAt
       ? completionTime.getTime() - phase.startedAt.getTime()
       : null;
 
@@ -220,7 +239,9 @@ export class TaskManager {
       details: { duration, ...metrics },
     });
 
-    console.log(`✅ Completed phase ${phaseId} for task ${taskId} in ${duration}ms`);
+    console.log(
+      `✅ Completed phase ${phaseId} for task ${taskId} in ${duration}ms`
+    );
   }
 
   /**
@@ -261,7 +282,7 @@ export class TaskManager {
    */
   async completeTask(taskId: string, result?: any) {
     const completionTime = new Date();
-    
+
     await prisma.taskExecution.update({
       where: { taskId },
       data: {
@@ -334,7 +355,11 @@ export class TaskManager {
   /**
    * Emit event to subscribers and store in database
    */
-  private async emitEvent(taskId: string, phaseId: string | null, event: TaskEvent) {
+  private async emitEvent(
+    taskId: string,
+    phaseId: string | null,
+    event: TaskEvent
+  ) {
     // Store event in database
     await prisma.taskEvent.create({
       data: {
@@ -348,7 +373,12 @@ export class TaskManager {
     });
 
     // Emit to event emitter system
-    taskEventEmitter.emitTaskEvent(taskId, event.type, event.message, event.details);
+    taskEventEmitter.emitTaskEvent(
+      taskId,
+      event.type,
+      event.message,
+      event.details
+    );
 
     // Notify subscribers (legacy callback system)
     const callbacks = this.progressCallbacks.get(taskId);
@@ -368,7 +398,7 @@ export class TaskManager {
    */
   async cleanupOldTasks() {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    
+
     const deleted = await prisma.taskExecution.deleteMany({
       where: {
         status: { in: ['COMPLETED', 'FAILED'] },

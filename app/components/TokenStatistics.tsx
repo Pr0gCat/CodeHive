@@ -2,7 +2,16 @@
 
 import { formatShortNumber } from '@/lib/utils';
 import { useEffect, useState } from 'react';
-import { Search, TestTube, BookOpen, FileText, ClipboardList, HardDrive, Bot, BarChart3 } from 'lucide-react';
+import {
+  Search,
+  TestTube,
+  BookOpen,
+  FileText,
+  ClipboardList,
+  HardDrive,
+  Bot,
+  BarChart3,
+} from 'lucide-react';
 
 interface TokenStats {
   total: {

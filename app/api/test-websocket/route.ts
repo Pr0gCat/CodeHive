@@ -16,35 +16,60 @@ export async function POST(request: NextRequest) {
 
     // Simulate a sequence of task events
     setTimeout(() => {
-      taskEventEmitter.emitTaskCreated(taskId, { message: 'Test task created' });
+      taskEventEmitter.emitTaskCreated(taskId, {
+        message: 'Test task created',
+      });
     }, 100);
 
     setTimeout(() => {
-      taskEventEmitter.emitTaskStarted(taskId, { message: 'Test task started' });
+      taskEventEmitter.emitTaskStarted(taskId, {
+        message: 'Test task started',
+      });
     }, 500);
 
     setTimeout(() => {
-      taskEventEmitter.emitPhaseUpdated(taskId, 'test-phase-1', 25, 'Test phase 1 progress', {
-        details: ['Step 1 completed', 'Step 2 in progress']
-      });
+      taskEventEmitter.emitPhaseUpdated(
+        taskId,
+        'test-phase-1',
+        25,
+        'Test phase 1 progress',
+        {
+          details: ['Step 1 completed', 'Step 2 in progress'],
+        }
+      );
     }, 1000);
 
     setTimeout(() => {
-      taskEventEmitter.emitPhaseUpdated(taskId, 'test-phase-1', 75, 'Test phase 1 almost done');
+      taskEventEmitter.emitPhaseUpdated(
+        taskId,
+        'test-phase-1',
+        75,
+        'Test phase 1 almost done'
+      );
     }, 2000);
 
     setTimeout(() => {
-      taskEventEmitter.emitPhaseUpdated(taskId, 'test-phase-1', 100, 'Test phase 1 completed');
+      taskEventEmitter.emitPhaseUpdated(
+        taskId,
+        'test-phase-1',
+        100,
+        'Test phase 1 completed'
+      );
     }, 3000);
 
     setTimeout(() => {
-      taskEventEmitter.emitPhaseUpdated(taskId, 'test-phase-2', 50, 'Test phase 2 in progress');
+      taskEventEmitter.emitPhaseUpdated(
+        taskId,
+        'test-phase-2',
+        50,
+        'Test phase 2 in progress'
+      );
     }, 4000);
 
     setTimeout(() => {
-      taskEventEmitter.emitTaskCompleted(taskId, { 
+      taskEventEmitter.emitTaskCompleted(taskId, {
         message: 'Test task completed successfully',
-        result: { success: true, testData: 'Hello WebSocket!' }
+        result: { success: true, testData: 'Hello WebSocket!' },
       });
     }, 5000);
 

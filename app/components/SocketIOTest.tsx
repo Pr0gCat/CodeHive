@@ -48,11 +48,11 @@ export default function SocketIOTest() {
   return (
     <div className="bg-primary-900 rounded-lg p-6 space-y-4">
       <h2 className="text-xl font-bold text-accent-50">Socket.IO 測試</h2>
-      
+
       {/* Connection Status */}
       <div className="space-y-2">
         <div className="flex items-center space-x-2">
-          <div 
+          <div
             className={`w-3 h-3 rounded-full ${
               connected ? 'bg-green-500' : 'bg-red-500'
             }`}
@@ -61,11 +61,11 @@ export default function SocketIOTest() {
             狀態: {connected ? '已連接' : '未連接'}
           </span>
         </div>
-        
+
         {error && (
           <div className="bg-red-900/20 border border-red-700 rounded p-2">
             <span className="text-red-400 text-sm">錯誤: {error}</span>
-            <button 
+            <button
               onClick={clearError}
               className="ml-2 text-red-300 hover:text-red-100 text-xs underline"
             >
@@ -83,7 +83,7 @@ export default function SocketIOTest() {
         <input
           type="text"
           value={testTaskId}
-          onChange={(e) => setTestTaskId(e.target.value)}
+          onChange={e => setTestTaskId(e.target.value)}
           className="w-full px-3 py-2 bg-primary-800 border border-primary-700 text-accent-50 rounded-md focus:outline-none focus:ring-2 focus:ring-accent-500"
           placeholder="輸入任務 ID"
         />
@@ -123,7 +123,9 @@ export default function SocketIOTest() {
       {/* Task Status */}
       {taskStatus && (
         <div className="bg-primary-800 rounded p-3">
-          <h3 className="text-lg font-semibold text-accent-50 mb-2">任務狀態:</h3>
+          <h3 className="text-lg font-semibold text-accent-50 mb-2">
+            任務狀態:
+          </h3>
           <pre className="text-sm text-primary-300 overflow-auto">
             {JSON.stringify(taskStatus, null, 2)}
           </pre>
@@ -140,13 +142,20 @@ export default function SocketIOTest() {
             {phases.map((phase, index) => (
               <div key={phase.id} className="bg-primary-700 rounded p-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-accent-50 font-medium">{phase.title}</span>
-                  <span className={`px-2 py-1 rounded text-xs ${
-                    phase.status === 'completed' ? 'bg-green-600 text-white' :
-                    phase.status === 'active' ? 'bg-blue-600 text-white' :
-                    phase.status === 'error' ? 'bg-red-600 text-white' :
-                    'bg-gray-600 text-white'
-                  }`}>
+                  <span className="text-accent-50 font-medium">
+                    {phase.title}
+                  </span>
+                  <span
+                    className={`px-2 py-1 rounded text-xs ${
+                      phase.status === 'completed'
+                        ? 'bg-green-600 text-white'
+                        : phase.status === 'active'
+                          ? 'bg-blue-600 text-white'
+                          : phase.status === 'error'
+                            ? 'bg-red-600 text-white'
+                            : 'bg-gray-600 text-white'
+                    }`}
+                  >
                     {phase.status}
                   </span>
                 </div>
@@ -155,7 +164,7 @@ export default function SocketIOTest() {
                 </div>
                 <div className="mt-2">
                   <div className="bg-primary-600 rounded-full h-2">
-                    <div 
+                    <div
                       className="bg-accent-500 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${phase.progress}%` }}
                     />
@@ -179,21 +188,26 @@ export default function SocketIOTest() {
           <p className="text-primary-400 text-sm">尚無事件</p>
         ) : (
           <div className="space-y-2 max-h-64 overflow-y-auto">
-            {events.slice(-10).reverse().map((event, index) => (
-              <div key={index} className="bg-primary-700 rounded p-2">
-                <div className="flex justify-between items-start">
-                  <span className="text-accent-50 font-medium">{event.type}</span>
-                  <span className="text-xs text-primary-400">
-                    {new Date(event.timestamp).toLocaleTimeString()}
-                  </span>
+            {events
+              .slice(-10)
+              .reverse()
+              .map((event, index) => (
+                <div key={index} className="bg-primary-700 rounded p-2">
+                  <div className="flex justify-between items-start">
+                    <span className="text-accent-50 font-medium">
+                      {event.type}
+                    </span>
+                    <span className="text-xs text-primary-400">
+                      {new Date(event.timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  {event.data && (
+                    <pre className="text-xs text-primary-300 mt-1 overflow-auto">
+                      {JSON.stringify(event.data, null, 2)}
+                    </pre>
+                  )}
                 </div>
-                {event.data && (
-                  <pre className="text-xs text-primary-300 mt-1 overflow-auto">
-                    {JSON.stringify(event.data, null, 2)}
-                  </pre>
-                )}
-              </div>
-            ))}
+              ))}
           </div>
         )}
       </div>

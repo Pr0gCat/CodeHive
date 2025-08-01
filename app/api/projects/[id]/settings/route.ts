@@ -188,7 +188,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     // Check if project can be operated on
     const accessCheck = await checkProjectOperationAccess(projectId);
-    
+
     if (!accessCheck.allowed) {
       return accessCheck.response;
     }

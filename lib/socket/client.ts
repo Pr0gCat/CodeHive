@@ -32,7 +32,7 @@ export function useSocket(taskId?: string) {
     error: null,
     events: [],
   });
-  
+
   const socketRef = useRef<Socket | null>(null);
   const subscribedTasksRef = useRef<Set<string>>(new Set());
   const [taskStatus, setTaskStatus] = useState<any>(null);
@@ -58,48 +58,52 @@ export function useSocket(taskId?: string) {
         setState(prev => ({ ...prev, connected: true, error: null }));
       });
 
-      socket.on('disconnect', (reason) => {
+      socket.on('disconnect', reason => {
         console.log('🔌 Socket.IO disconnected:', reason);
         setState(prev => ({ ...prev, connected: false }));
       });
 
-      socket.on('connect_error', (error) => {
+      socket.on('connect_error', error => {
         console.error('❌ Socket.IO connection error:', error);
-        setState(prev => ({ 
-          ...prev, 
-          connected: false, 
-          error: error.message 
+        setState(prev => ({
+          ...prev,
+          connected: false,
+          error: error.message,
         }));
       });
 
-      socket.on('reconnect', (attemptNumber) => {
-        console.log('🔄 Socket.IO reconnected after', attemptNumber, 'attempts');
+      socket.on('reconnect', attemptNumber => {
+        console.log(
+          '🔄 Socket.IO reconnected after',
+          attemptNumber,
+          'attempts'
+        );
         setState(prev => ({ ...prev, connected: true, error: null }));
       });
 
-      socket.on('reconnect_attempt', (attemptNumber) => {
+      socket.on('reconnect_attempt', attemptNumber => {
         console.log('🔄 Socket.IO reconnect attempt:', attemptNumber);
       });
 
-      socket.on('reconnect_error', (error) => {
+      socket.on('reconnect_error', error => {
         console.error('❌ Socket.IO reconnect error:', error);
       });
 
       socket.on('reconnect_failed', () => {
         console.error('❌ Socket.IO reconnect failed');
-        setState(prev => ({ 
-          ...prev, 
-          connected: false, 
-          error: 'Failed to reconnect after multiple attempts' 
+        setState(prev => ({
+          ...prev,
+          connected: false,
+          error: 'Failed to reconnect after multiple attempts',
         }));
       });
 
       // Task-specific event listeners
-      socket.on('subscribed', (data) => {
+      socket.on('subscribed', data => {
         console.log('✅ Subscribed to task:', data.taskId);
       });
 
-      socket.on('unsubscribed', (data) => {
+      socket.on('unsubscribed', data => {
         console.log('❌ Unsubscribed from task:', data.taskId);
       });
 
@@ -111,21 +115,23 @@ export function useSocket(taskId?: string) {
       socket.on('phase_status', (data: PhaseStatus) => {
         console.log('🔄 Received phase status:', data);
         const phase = data.phase;
-        
+
         setPhases(prevPhases => {
           const phaseIndex = prevPhases.findIndex(p => p.id === phase.phaseId);
-          
+
           const phaseData = {
             id: phase.phaseId,
             title: phase.title,
             description: phase.description,
             status: phase.status.toLowerCase(),
             progress: phase.progress || 0,
-            details: phase.details ? 
-              (typeof phase.details === 'string' ? JSON.parse(phase.details) : phase.details) 
+            details: phase.details
+              ? typeof phase.details === 'string'
+                ? JSON.parse(phase.details)
+                : phase.details
               : [],
           };
-          
+
           if (phaseIndex >= 0) {
             const updatedPhases = [...prevPhases];
             updatedPhases[phaseIndex] = phaseData;
@@ -134,11 +140,11 @@ export function useSocket(taskId?: string) {
             const newPhases = [...prevPhases, phaseData];
             return newPhases.sort((a, b) => {
               const phaseOrder: { [key: string]: number } = {
-                'validation': 0,
-                'git_clone': 1,
-                'analysis': 2,
-                'setup': 3,
-                'completion': 4,
+                validation: 0,
+                git_clone: 1,
+                analysis: 2,
+                setup: 3,
+                completion: 4,
               };
               return (phaseOrder[a.id] || 999) - (phaseOrder[b.id] || 999);
             });
@@ -150,7 +156,7 @@ export function useSocket(taskId?: string) {
         console.log('📡 Received task event:', event);
         setState(prev => ({
           ...prev,
-          events: [...prev.events, event]
+          events: [...prev.events, event],
         }));
 
         // Update phase progress based on event
@@ -161,9 +167,14 @@ export function useSocket(taskId?: string) {
                 return {
                   ...phase,
                   progress: event.data.progress || phase.progress,
-                  status: event.type === 'phase_start' ? 'active' : 
-                         event.type === 'phase_complete' ? 'completed' : 
-                         event.type === 'error' ? 'error' : phase.status,
+                  status:
+                    event.type === 'phase_start'
+                      ? 'active'
+                      : event.type === 'phase_complete'
+                        ? 'completed'
+                        : event.type === 'error'
+                          ? 'error'
+                          : phase.status,
                 };
               }
               return phase;
@@ -172,34 +183,40 @@ export function useSocket(taskId?: string) {
         }
       });
 
-      socket.on('task_completed', (data) => {
+      socket.on('task_completed', data => {
         console.log('🎉 Task completed:', data);
         setState(prev => ({
           ...prev,
-          events: [...prev.events, {
-            type: 'task_completed',
-            taskId: data.taskId,
-            timestamp: new Date().toISOString(),
-            data: data.result,
-          }]
+          events: [
+            ...prev.events,
+            {
+              type: 'task_completed',
+              taskId: data.taskId,
+              timestamp: new Date().toISOString(),
+              data: data.result,
+            },
+          ],
         }));
       });
 
-      socket.on('task_error', (data) => {
+      socket.on('task_error', data => {
         console.error('❌ Task failed:', data);
         setState(prev => ({
           ...prev,
           error: data.error,
-          events: [...prev.events, {
-            type: 'task_error',
-            taskId: data.taskId,
-            timestamp: new Date().toISOString(),
-            data: data.error,
-          }]
+          events: [
+            ...prev.events,
+            {
+              type: 'task_error',
+              taskId: data.taskId,
+              timestamp: new Date().toISOString(),
+              data: data.error,
+            },
+          ],
         }));
       });
 
-      socket.on('phase_progress', (data) => {
+      socket.on('phase_progress', data => {
         console.log('📈 Phase progress:', data);
         setPhases(prevPhases => {
           return prevPhases.map(phase => {
@@ -214,7 +231,7 @@ export function useSocket(taskId?: string) {
         });
       });
 
-      socket.on('phase_start', (data) => {
+      socket.on('phase_start', data => {
         console.log('🚀 Phase started:', data);
         setPhases(prevPhases => {
           return prevPhases.map(phase => {
@@ -229,7 +246,7 @@ export function useSocket(taskId?: string) {
         });
       });
 
-      socket.on('phase_complete', (data) => {
+      socket.on('phase_complete', data => {
         console.log('✅ Phase completed:', data);
         setPhases(prevPhases => {
           return prevPhases.map(phase => {
@@ -245,7 +262,7 @@ export function useSocket(taskId?: string) {
         });
       });
 
-      socket.on('error', (error) => {
+      socket.on('error', error => {
         console.error('❌ Socket error:', error);
         setState(prev => ({ ...prev, error: error.message }));
       });
@@ -263,13 +280,22 @@ export function useSocket(taskId?: string) {
 
   // Subscribe to task when taskId changes
   useEffect(() => {
-    if (socketRef.current && taskId && state.connected && !subscribedTasksRef.current.has(taskId)) {
+    if (
+      socketRef.current &&
+      taskId &&
+      state.connected &&
+      !subscribedTasksRef.current.has(taskId)
+    ) {
       console.log(`📡 Subscribing to task: ${taskId}`);
       socketRef.current.emit('subscribe_task', taskId);
       subscribedTasksRef.current.add(taskId);
 
       return () => {
-        if (socketRef.current && socketRef.current.connected && subscribedTasksRef.current.has(taskId)) {
+        if (
+          socketRef.current &&
+          socketRef.current.connected &&
+          subscribedTasksRef.current.has(taskId)
+        ) {
           console.log(`📡 Unsubscribing from task: ${taskId}`);
           socketRef.current.emit('unsubscribe_task', taskId);
           subscribedTasksRef.current.delete(taskId);
@@ -279,7 +305,11 @@ export function useSocket(taskId?: string) {
   }, [taskId, state.connected]);
 
   const subscribeToTask = (id: string) => {
-    if (socketRef.current && state.connected && !subscribedTasksRef.current.has(id)) {
+    if (
+      socketRef.current &&
+      state.connected &&
+      !subscribedTasksRef.current.has(id)
+    ) {
       console.log(`📡 Manual subscribe to task: ${id}`);
       socketRef.current.emit('subscribe_task', id);
       subscribedTasksRef.current.add(id);

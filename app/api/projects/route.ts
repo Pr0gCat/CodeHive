@@ -52,9 +52,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createProjectSchema.parse(body);
     const { name, description, gitUrl, initializeGit } = validatedData;
-    
+
     // Generate localPath if not provided
-    const localPath = validatedData.localPath?.trim() || gitClient.generateProjectPath(name);
+    const localPath =
+      validatedData.localPath?.trim() || gitClient.generateProjectPath(name);
 
     // Check if project name already exists
     const existingProject = await prisma.project.findFirst({
@@ -80,12 +81,12 @@ export async function POST(request: NextRequest) {
 
     // Check if the directory is already a Git repository
     const isExistingRepo = await gitClient.isValidRepository(localPath);
-    
+
     if (!isExistingRepo && initializeGit) {
       // Initialize as Git repository if not already one
       console.log(`Initializing Git repository at ${localPath}...`);
       const initResult = await gitClient.init(localPath);
-      
+
       if (!initResult.success) {
         return NextResponse.json(
           {
@@ -110,7 +111,10 @@ export async function POST(request: NextRequest) {
         }
 
         // Create initial commit
-        const commitResult = await gitClient.initialCommit(localPath, 'Initial commit - CodeHive project setup');
+        const commitResult = await gitClient.initialCommit(
+          localPath,
+          'Initial commit - CodeHive project setup'
+        );
         if (!commitResult.success) {
           console.warn('Failed to create initial commit:', commitResult.error);
         }
@@ -134,7 +138,7 @@ export async function POST(request: NextRequest) {
 
     // Get current Git info
     const currentBranch = await gitClient.getCurrentBranch(localPath);
-    const actualRemoteUrl = gitUrl || await gitClient.getRemoteUrl(localPath);
+    const actualRemoteUrl = gitUrl || (await gitClient.getRemoteUrl(localPath));
 
     const project = await prisma.project.create({
       data: {
@@ -160,8 +164,10 @@ export async function POST(request: NextRequest) {
 
     // Trigger automatic project review for Git-managed projects
     try {
-      console.log(`🔍 Starting automatic project review for ${project.name}...`);
-      
+      console.log(
+        `🔍 Starting automatic project review for ${project.name}...`
+      );
+
       const reviewResponse = await fetch(
         `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/agents/project-manager`,
         {
@@ -178,12 +184,20 @@ export async function POST(request: NextRequest) {
 
       const reviewData = await reviewResponse.json();
       if (reviewData.success) {
-        console.log(`✅ Project review completed successfully for ${project.name}`);
+        console.log(
+          `✅ Project review completed successfully for ${project.name}`
+        );
       } else {
-        console.log(`⚠️ Project review failed for ${project.name}:`, reviewData.error);
+        console.log(
+          `⚠️ Project review failed for ${project.name}:`,
+          reviewData.error
+        );
       }
     } catch (reviewError) {
-      console.error(`❌ Error during automatic project review for ${project.name}:`, reviewError);
+      console.error(
+        `❌ Error during automatic project review for ${project.name}:`,
+        reviewError
+      );
       // Continue with project creation even if review fails
     }
 

@@ -35,7 +35,9 @@ export default function HiveInitializationAnimation({
 }: HiveInitializationAnimationProps) {
   const [showContent, setShowContent] = useState(false);
   const [phases, setPhases] = useState<InitializationPhase[]>(initialPhases);
-  const [currentPhaseIndex, setCurrentPhaseIndex] = useState(initialCurrentPhaseIndex);
+  const [currentPhaseIndex, setCurrentPhaseIndex] = useState(
+    initialCurrentPhaseIndex
+  );
   const [realTimeEvents, setRealTimeEvents] = useState<any[]>([]);
 
   // Update phases when initialPhases prop changes (for static mode)
@@ -60,11 +62,12 @@ export default function HiveInitializationAnimation({
     useRealTimeProgress,
     projectName,
     initialPhasesLength: initialPhases.length,
-    phasesInState: phases.length
+    phasesInState: phases.length,
   });
 
   const currentPhase = phases[currentPhaseIndex];
-  const isComplete = phases.length > 0 && phases.every(phase => phase.status === 'completed');
+  const isComplete =
+    phases.length > 0 && phases.every(phase => phase.status === 'completed');
   const hasError = phases.some(phase => phase.status === 'error');
 
   // Handle real-time progress connection
@@ -73,9 +76,9 @@ export default function HiveInitializationAnimation({
       useRealTimeProgress,
       taskId,
       isVisible,
-      shouldConnect: useRealTimeProgress && taskId && isVisible
+      shouldConnect: useRealTimeProgress && taskId && isVisible,
     });
-    
+
     if (!useRealTimeProgress || !taskId || !isVisible) {
       console.log('❌ SSE connection skipped due to missing conditions');
       return;
@@ -83,14 +86,16 @@ export default function HiveInitializationAnimation({
 
     console.log(`🔗 Connecting to SSE for task: ${taskId}`);
     const eventSource = new EventSource(`/api/projects/progress/${taskId}`);
-    
-    eventSource.onmessage = (event) => {
+
+    eventSource.onmessage = event => {
       try {
         const data = JSON.parse(event.data);
         console.log('📡 SSE Event received:', data);
-        
+
         if (data.type === 'connected') {
-          console.log(`✅ Connected to progress stream for task: ${data.taskId}`);
+          console.log(
+            `✅ Connected to progress stream for task: ${data.taskId}`
+          );
         } else if (data.type === 'task_status') {
           // Handle initial task status
           const task = data.task;
@@ -99,22 +104,28 @@ export default function HiveInitializationAnimation({
           // Handle individual phase status
           const phase = data.phase;
           console.log('🔄 Received phase status:', phase);
-          
+
           // Update or add phase
           setPhases(prevPhases => {
-            const phaseIndex = prevPhases.findIndex(p => p.id === phase.phaseId);
-            
+            const phaseIndex = prevPhases.findIndex(
+              p => p.id === phase.phaseId
+            );
+
             const phaseData = {
               id: phase.phaseId,
               title: phase.title,
               description: phase.description,
               status: phase.status.toLowerCase(), // Convert ACTIVE to active, etc.
               progress: phase.progress || 0,
-              details: phase.details ? (typeof phase.details === 'string' ? JSON.parse(phase.details) : phase.details) : [],
+              details: phase.details
+                ? typeof phase.details === 'string'
+                  ? JSON.parse(phase.details)
+                  : phase.details
+                : [],
             };
-            
+
             console.log('📝 Processing phase:', phaseData);
-            
+
             if (phaseIndex >= 0) {
               // Update existing phase
               const updatedPhases = [...prevPhases];
@@ -135,33 +146,51 @@ export default function HiveInitializationAnimation({
                   }
                   // Fallback to common ordering
                   const phaseOrder: { [key: string]: number } = {
-                    'validation': 0,
-                    'git_clone': 1,
-                    'analysis': 2,
-                    'setup': 3,
-                    'completion': 4,
+                    validation: 0,
+                    git_clone: 1,
+                    analysis: 2,
+                    setup: 3,
+                    completion: 4,
                   };
                   return phaseOrder[phaseId] || 999;
                 };
-                
+
                 const orderA = findPhaseOrder(a.id);
                 const orderB = findPhaseOrder(b.id);
                 return orderA - orderB;
               });
-              console.log('📝 Added new phase, total phases:', sortedPhases.length);
-              console.log('📝 Phase IDs:', sortedPhases.map(p => `${p.id}(${p.title})`));
+              console.log(
+                '📝 Added new phase, total phases:',
+                sortedPhases.length
+              );
+              console.log(
+                '📝 Phase IDs:',
+                sortedPhases.map(p => `${p.id}(${p.title})`)
+              );
               return sortedPhases;
             }
           });
-          
+
           // Update current phase index if this phase is active
           if (phase.status === 'ACTIVE') {
-            console.log('🎯 Phase is ACTIVE, updating current phase index for:', phase.phaseId);
+            console.log(
+              '🎯 Phase is ACTIVE, updating current phase index for:',
+              phase.phaseId
+            );
             // Use setTimeout to ensure phases state is updated first
             setTimeout(() => {
               setPhases(currentPhases => {
-                const newIndex = currentPhases.findIndex(p => p.id === phase.phaseId);
-                console.log('🎯 Found phase index:', newIndex, 'for phase:', phase.phaseId, 'in phases:', currentPhases.map(p => p.id));
+                const newIndex = currentPhases.findIndex(
+                  p => p.id === phase.phaseId
+                );
+                console.log(
+                  '🎯 Found phase index:',
+                  newIndex,
+                  'for phase:',
+                  phase.phaseId,
+                  'in phases:',
+                  currentPhases.map(p => p.id)
+                );
                 if (newIndex >= 0) {
                   setCurrentPhaseIndex(newIndex);
                   console.log('🎯 Set current phase index to:', newIndex);
@@ -174,7 +203,7 @@ export default function HiveInitializationAnimation({
           // Handle real-time events
           const event = data.event;
           console.log('📡 Received event:', event);
-          
+
           // Update phase progress based on event
           if (event.phaseId) {
             setPhases(prevPhases => {
@@ -183,16 +212,21 @@ export default function HiveInitializationAnimation({
                   return {
                     ...phase,
                     progress: event.progress || phase.progress,
-                    status: event.type === 'PHASE_START' ? 'active' : 
-                           event.type === 'PHASE_COMPLETE' ? 'completed' : 
-                           event.type === 'ERROR' ? 'error' : phase.status,
+                    status:
+                      event.type === 'PHASE_START'
+                        ? 'active'
+                        : event.type === 'PHASE_COMPLETE'
+                          ? 'completed'
+                          : event.type === 'ERROR'
+                            ? 'error'
+                            : phase.status,
                   };
                 }
                 return phase;
               });
             });
           }
-          
+
           setRealTimeEvents(prev => [...prev, event]);
         } else if (data.type === 'completed') {
           console.log('🎉 Task completed:', data.result);
@@ -210,7 +244,7 @@ export default function HiveInitializationAnimation({
       }
     };
 
-    eventSource.onerror = (error) => {
+    eventSource.onerror = error => {
       console.error('SSE connection error:', error);
       eventSource.close();
     };
@@ -233,11 +267,11 @@ export default function HiveInitializationAnimation({
 
   // Handle completion
   useEffect(() => {
-    console.log('⚡ Completion check:', { 
-      isComplete, 
-      hasError, 
+    console.log('⚡ Completion check:', {
+      isComplete,
+      hasError,
       phasesLength: phases.length,
-      phases: phases.map(p => `${p.id}:${p.status}`)
+      phases: phases.map(p => `${p.id}:${p.status}`),
     });
     if (isComplete && !hasError) {
       console.log('🎯 Task completed, calling onComplete in 2 seconds...');
@@ -259,27 +293,27 @@ export default function HiveInitializationAnimation({
     }
   }, [hasError, phases, onError]);
 
-
   const getOverallProgress = () => {
     if (!phases.length) {
       console.log('📊 No phases available for progress calculation');
       return 0;
     }
-    
+
     const completedPhases = phases.filter(
       phase => phase.status === 'completed'
     ).length;
     const currentProgress = currentPhase?.progress || 0;
-    const totalProgress = ((completedPhases + currentProgress / 100) / phases.length) * 100;
-    
+    const totalProgress =
+      ((completedPhases + currentProgress / 100) / phases.length) * 100;
+
     console.log('📊 Progress calculation:', {
       totalPhases: phases.length,
       completedPhases,
       currentPhaseProgress: currentProgress,
       totalProgress: Math.round(totalProgress),
-      currentPhaseId: currentPhase?.id
+      currentPhaseId: currentPhase?.id,
     });
-    
+
     // Ensure we return a valid number
     return isNaN(totalProgress) ? 0 : Math.min(100, Math.max(0, totalProgress));
   };
@@ -297,47 +331,50 @@ export default function HiveInitializationAnimation({
       {/* Main Content Container */}
       <div className="relative z-10 min-h-screen flex items-center justify-center py-8">
         <div className="max-w-3xl mx-auto px-6 text-center">
-        {/* CodeHive Logo with Hexagon */}
-        <div className="mb-8">
-          <div className="relative inline-block">
+          {/* CodeHive Logo with Hexagon */}
+          <div className="mb-8">
+            <div className="relative inline-block">
+              <h1 className="text-4xl font-bold text-accent-50 mb-2">
+                CodeHive
+              </h1>
+              <p className="text-lg text-primary-300 mb-4">
+                AI-Native Project Management
+              </p>
+            </div>
+          </div>
 
-            <h1 className="text-4xl font-bold text-accent-50 mb-2">CodeHive</h1>
-            <p className="text-lg text-primary-300 mb-4">
-              AI-Native Project Management
+          {/* Project Name */}
+          <div className="mb-8">
+            <p className="text-xl text-primary-400">正在初始化專案：</p>
+            <p className="text-2xl font-mono text-accent-400 mt-2">
+              {projectName}
             </p>
           </div>
-        </div>
 
-        {/* Project Name */}
-        <div className="mb-8">
-          <p className="text-xl text-primary-400">正在初始化專案：</p>
-          <p className="text-2xl font-mono text-accent-400 mt-2">
-            {projectName}
-          </p>
-        </div>
+          {/* Current Phase Status */}
+          {currentPhase && (
+            <div className="bg-primary-900/80 border border-primary-700 rounded-lg p-6 mb-6">
+              <h3 className="text-xl font-semibold text-accent-50 mb-2">
+                {currentPhase.title}
+              </h3>
+              <p className="text-primary-300 mb-4">
+                {currentPhase.description}
+              </p>
 
-        {/* Current Phase Status */}
-        {currentPhase && (
-          <div className="bg-primary-900/80 border border-primary-700 rounded-lg p-6 mb-6">
-            <h3 className="text-xl font-semibold text-accent-50 mb-2">
-              {currentPhase.title}
-            </h3>
-            <p className="text-primary-300 mb-4">{currentPhase.description}</p>
-
-            {/* Progress Bar */}
-            <div className="w-full bg-primary-800 rounded-full h-3 mb-4">
-              <div
-                className="bg-gradient-to-r from-accent-600 to-accent-400 h-3 rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${currentPhase.progress}%` }}
-              />
-            </div>
-
-            {/* Phase Details */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-              {currentPhase.details.map((detail, index) => (
+              {/* Progress Bar */}
+              <div className="w-full bg-primary-800 rounded-full h-3 mb-4">
                 <div
-                  key={index}
-                  className={`
+                  className="bg-gradient-to-r from-accent-600 to-accent-400 h-3 rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${currentPhase.progress}%` }}
+                />
+              </div>
+
+              {/* Phase Details */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
+                {currentPhase.details.map((detail, index) => (
+                  <div
+                    key={index}
+                    className={`
                     flex items-center space-x-2 p-2 rounded
                     ${
                       index <
@@ -349,57 +386,56 @@ export default function HiveInitializationAnimation({
                         : 'text-primary-400 bg-primary-800/50'
                     }
                   `}
-                >
-                  <span className="text-xs">
-                    {index <
-                    Math.floor(
-                      (currentPhase.progress / 100) *
-                        currentPhase.details.length
-                    )
-                      ? '✓'
-                      : '○'}
-                  </span>
-                  <span>{detail}</span>
-                </div>
-              ))}
+                  >
+                    <span className="text-xs">
+                      {index <
+                      Math.floor(
+                        (currentPhase.progress / 100) *
+                          currentPhase.details.length
+                      )
+                        ? '✓'
+                        : '○'}
+                    </span>
+                    <span>{detail}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Overall Progress */}
+          <div className="mb-6">
+            <div className="flex justify-between text-sm text-primary-400 mb-2">
+              <span>整體進度</span>
+              <span>{Math.round(getOverallProgress())}%</span>
+            </div>
+            <div className="w-full bg-primary-800 rounded-full h-4">
+              <div
+                className="bg-gradient-to-r from-accent-600 to-accent-400 h-4 rounded-full transition-all duration-1000 ease-out"
+                style={{ width: `${getOverallProgress()}%` }}
+              />
             </div>
           </div>
-        )}
 
-        {/* Overall Progress */}
-        <div className="mb-6">
-          <div className="flex justify-between text-sm text-primary-400 mb-2">
-            <span>整體進度</span>
-            <span>{Math.round(getOverallProgress())}%</span>
-          </div>
-          <div className="w-full bg-primary-800 rounded-full h-4">
-            <div
-              className="bg-gradient-to-r from-accent-600 to-accent-400 h-4 rounded-full transition-all duration-1000 ease-out"
-              style={{ width: `${getOverallProgress()}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Status Messages */}
-        {isComplete && !hasError && (
-          <div className="text-center">
-            <div className="text-accent-400 text-2xl font-bold mb-2">
-              🍯 初始化完成！
+          {/* Status Messages */}
+          {isComplete && !hasError && (
+            <div className="text-center">
+              <div className="text-accent-400 text-2xl font-bold mb-2">
+                🍯 初始化完成！
+              </div>
+              <div className="text-primary-300">正在導向您的專案...</div>
             </div>
-            <div className="text-primary-300">正在導向您的專案...</div>
-          </div>
-        )}
+          )}
 
-        {hasError && (
-          <div className="text-center">
-            <div className="text-red-400 text-2xl font-bold mb-2 flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6 mr-2" />
-              初始化錯誤
+          {hasError && (
+            <div className="text-center">
+              <div className="text-red-400 text-2xl font-bold mb-2 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 mr-2" />
+                初始化錯誤
+              </div>
+              <div className="text-primary-300">請檢查日誌以獲取更多資訊</div>
             </div>
-            <div className="text-primary-300">請檢查日誌以獲取更多資訊</div>
-          </div>
-        )}
-
+          )}
         </div>
       </div>
     </div>

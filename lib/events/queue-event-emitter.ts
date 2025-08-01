@@ -2,7 +2,12 @@ import { EventEmitter } from 'events';
 
 export interface QueueEventData {
   taskId: string;
-  type: 'task_queued' | 'task_started' | 'task_completed' | 'task_failed' | 'queue_status_changed';
+  type:
+    | 'task_queued'
+    | 'task_started'
+    | 'task_completed'
+    | 'task_failed'
+    | 'queue_status_changed';
   timestamp: Date;
   data?: any;
 }
@@ -115,7 +120,7 @@ class QueueEventEmitter extends EventEmitter {
   // Subscribe to processing triggers
   onProcessingTrigger(callback: () => void) {
     this.on('process_queue', callback);
-    
+
     return () => {
       this.off('process_queue', callback);
     };

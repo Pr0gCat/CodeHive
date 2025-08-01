@@ -179,7 +179,10 @@ export default function SettingsPage() {
   };
 
   // Handle Claude Code settings save (on drag end or input blur)
-  const handleClaudeSettingSave = async (key: string, value: string | number) => {
+  const handleClaudeSettingSave = async (
+    key: string,
+    value: string | number
+  ) => {
     await saveGlobalSetting(key, value);
   };
 
@@ -204,7 +207,10 @@ export default function SettingsPage() {
           status: 'success',
           message: `連接成功！Claude Code 版本: ${data.version || '未知'}`,
         });
-        showToast(`Claude Code 連接成功！版本: ${data.version || '未知'}`, 'success');
+        showToast(
+          `Claude Code 連接成功！版本: ${data.version || '未知'}`,
+          'success'
+        );
       } else {
         setConnectionStatus({
           status: 'error',
@@ -335,7 +341,6 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
-
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Global Settings */}
@@ -484,8 +489,8 @@ export default function SettingsPage() {
                       connectionStatus.status === 'testing'
                         ? 'bg-blue-900 border border-blue-700 text-blue-300'
                         : connectionStatus.status === 'success'
-                        ? 'bg-green-900 border border-green-700 text-green-300'
-                        : 'bg-red-900 border border-red-700 text-red-300'
+                          ? 'bg-green-900 border border-green-700 text-green-300'
+                          : 'bg-red-900 border border-red-700 text-red-300'
                     }`}
                   >
                     {connectionStatus.message}
@@ -502,16 +507,23 @@ export default function SettingsPage() {
                       type="text"
                       value={claudeSettings.claudeCodePath}
                       onChange={e =>
-                        handleClaudeSettingChange('claudeCodePath', e.target.value)
+                        handleClaudeSettingChange(
+                          'claudeCodePath',
+                          e.target.value
+                        )
                       }
                       onBlur={e =>
-                        handleClaudeSettingSave('claudeCodePath', e.target.value)
+                        handleClaudeSettingSave(
+                          'claudeCodePath',
+                          e.target.value
+                        )
                       }
                       className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-md text-primary-100 focus:outline-none focus:ring-2 focus:ring-accent-600 focus:border-accent-600"
                       placeholder="claude"
                     />
                     <p className="text-xs text-primary-500 mt-1">
-                      Claude Code CLI 的執行檔路徑。預設為 "claude"（需要在 PATH 中）
+                      Claude Code CLI 的執行檔路徑。預設為 "claude"（需要在 PATH
+                      中）
                     </p>
                   </div>
 
