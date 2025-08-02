@@ -7,7 +7,12 @@ import path from 'path';
 import { z } from 'zod';
 
 const createProjectSchema = z.object({
-  name: z.string().min(1, 'Project name is required'),
+  name: z
+    .string()
+    .min(1, 'Project name is required')
+    .max(100, 'Project name must be less than 100 characters')
+    .regex(/^[a-zA-Z0-9\s\-_\.]+$/, 'Project name can only contain letters, numbers, spaces, hyphens, underscores, and dots')
+    .refine(val => val.trim().length > 0, 'Project name cannot be empty or only whitespace'),
   description: z.string().optional(),
   gitUrl: z
     .string()
@@ -55,7 +60,7 @@ export async function POST(request: NextRequest) {
     const localPath =
       validatedData.localPath?.trim() || gitClient.generateProjectPath(name);
 
-    // Check if project already exists
+    // Check if project name already exists
     const existingProject = await prisma.project.findFirst({
       where: { name },
     });
@@ -68,6 +73,35 @@ export async function POST(request: NextRequest) {
         },
         { status: 409 }
       );
+    }
+
+    // Check if local path already exists in database
+    const existingPath = await prisma.project.findFirst({
+      where: { localPath },
+    });
+
+    if (existingPath) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `A project already exists at this location: ${localPath}`,
+        },
+        { status: 409 }
+      );
+    }
+
+    // Check if directory already exists on filesystem
+    try {
+      await fs.access(localPath);
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Directory already exists at: ${localPath}. Please choose a different location or name.`,
+        },
+        { status: 409 }
+      );
+    } catch {
+      // Directory doesn't exist, which is what we want for new project creation
     }
 
     // IMMEDIATELY CREATE PROJECT RECORD IN DATABASE

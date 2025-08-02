@@ -3,47 +3,60 @@ import { prisma } from '@/lib/db';
 import { gitClient } from '@/lib/git';
 import { taskManager, TaskPhase } from '@/lib/tasks/task-manager';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 
-interface ImportRequest {
-  gitUrl?: string; // Optional - can import existing local repos
-  localPath?: string; // For importing existing local Git repos
-  projectName: string;
-  branch?: string;
-  framework?: string;
-  language?: string;
-  packageManager?: string;
-  testFramework?: string;
-  lintTool?: string;
-  buildTool?: string;
-}
+const importProjectSchema = z.object({
+  gitUrl: z
+    .string()
+    .optional()
+    .refine(val => {
+      // Allow empty string or undefined
+      if (!val || val.trim() === '') return true;
+      // If has value, validate URL format
+      try {
+        new URL(val);
+        return true;
+      } catch {
+        return false;
+      }
+    }, 'Invalid URL format'),
+  localPath: z.string().optional(),
+  projectName: z
+    .string()
+    .min(1, 'Project name is required')
+    .max(100, 'Project name must be less than 100 characters')
+    .regex(/^[a-zA-Z0-9\s\-_\.]+$/, 'Project name can only contain letters, numbers, spaces, hyphens, underscores, and dots')
+    .refine(val => val.trim().length > 0, 'Project name cannot be empty or only whitespace'),
+  branch: z.string().optional(),
+  framework: z.string().optional(),
+  language: z.string().optional(),
+  packageManager: z.string().optional(),
+  testFramework: z.string().optional(),
+  lintTool: z.string().optional(),
+  buildTool: z.string().optional(),
+});
 
 export async function POST(request: NextRequest) {
-  const body: ImportRequest = await request.json();
-  const {
-    gitUrl,
-    localPath,
-    projectName,
-    branch,
-    framework,
-    language,
-    packageManager,
-    testFramework,
-    lintTool,
-    buildTool,
-  } = body;
-
   try {
+    const body = await request.json();
+    const validatedData = importProjectSchema.parse(body);
+    const {
+      gitUrl,
+      localPath,
+      projectName,
+      branch,
+      framework,
+      language,
+      packageManager,
+      testFramework,
+      lintTool,
+      buildTool,
+    } = validatedData;
+
     // Validate inputs first
     if (!gitUrl && !localPath) {
       return NextResponse.json(
         { success: false, error: 'Either Git URL or local path is required' },
-        { status: 400 }
-      );
-    }
-
-    if (!projectName) {
-      return NextResponse.json(
-        { success: false, error: 'Project name is required' },
         { status: 400 }
       );
     }
@@ -63,6 +76,37 @@ export async function POST(request: NextRequest) {
     // Generate the final local path
     const finalLocalPath =
       localPath || gitClient.generateProjectPath(projectName);
+
+    // Check if local path already exists in database
+    const existingPath = await prisma.project.findFirst({
+      where: { localPath: finalLocalPath },
+    });
+
+    if (existingPath) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: `A project already exists at this location: ${finalLocalPath}` 
+        },
+        { status: 409 }
+      );
+    }
+
+    // For local path imports, verify the directory exists
+    if (localPath) {
+      try {
+        const { promises: fs } = await import('fs');
+        await fs.access(localPath);
+      } catch {
+        return NextResponse.json(
+          { 
+            success: false, 
+            error: `Local directory does not exist: ${localPath}` 
+          },
+          { status: 400 }
+        );
+      }
+    }
 
     // IMMEDIATELY CREATE PROJECT RECORD IN DATABASE
     const project = await prisma.project.create({
@@ -556,5 +600,27 @@ export async function POST(request: NextRequest) {
         `Failed to import project: ${errorMessage}`
       );
     }
+  } catch (error) {
+    console.error('Error in import request:', error);
+
+    // Handle validation errors
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid input format',
+          details: error.issues,
+        },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to process import request',
+      },
+      { status: 500 }
+    );
   }
 }
