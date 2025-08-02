@@ -129,7 +129,19 @@ export async function POST(request: NextRequest) {
     const taskId = `import-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     // Run asynchronously with real progress tracking
-    runImportAsync(project.id, taskId);
+    runImportAsync(project.id, taskId, {
+      gitUrl,
+      localPath,
+      projectName,
+      branch,
+      framework,
+      language,
+      packageManager,
+      testFramework,
+      lintTool,
+      buildTool,
+      finalLocalPath,
+    });
 
     return NextResponse.json({
       success: true,
@@ -147,13 +159,59 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('Error in import setup:', error);
+
+    // Handle validation errors
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid input format',
+          details: error.issues,
+        },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
-      { success: false, error: 'Failed to start import' },
+      { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Failed to start import' 
+      },
       { status: 500 }
     );
   }
 
-  async function runImportAsync(projectId: string, taskId: string) {
+  async function runImportAsync(
+    projectId: string, 
+    taskId: string, 
+    params: {
+      gitUrl?: string;
+      localPath?: string;
+      projectName: string;
+      branch?: string;
+      framework?: string;
+      language?: string;
+      packageManager?: string;
+      testFramework?: string;
+      lintTool?: string;
+      buildTool?: string;
+      finalLocalPath: string;
+    }
+  ) {
+    const {
+      gitUrl,
+      localPath,
+      projectName,
+      branch,
+      framework,
+      language,
+      packageManager,
+      testFramework,
+      lintTool,
+      buildTool,
+      finalLocalPath,
+    } = params;
+
     try {
       console.log(`🚀 Starting real import task: ${taskId}`);
 
@@ -600,27 +658,5 @@ export async function POST(request: NextRequest) {
         `Failed to import project: ${errorMessage}`
       );
     }
-  } catch (error) {
-    console.error('Error in import request:', error);
-
-    // Handle validation errors
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid input format',
-          details: error.issues,
-        },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to process import request',
-      },
-      { status: 500 }
-    );
   }
 }
