@@ -267,7 +267,40 @@ export async function POST(request: NextRequest) {
         remoteUrl: actualRemoteUrl,
       });
 
-      // Phase 3.5: Sprint Setup - Create default first sprint
+      // Phase 3: Completion - Update project status first
+      await taskManager.startPhase(taskId, 'completion');
+
+      await taskManager.updatePhaseProgress(taskId, 'completion', 20, {
+        type: 'PHASE_PROGRESS',
+        message: 'Updating project information',
+      });
+
+      // Update project in database with analysis results and set status to ACTIVE
+      await prisma.project.update({
+        where: { id: projectId },
+        data: {
+          description: gitUrl
+            ? `Imported from ${gitUrl}`
+            : `Imported from local repository at ${finalLocalPath}`,
+          gitUrl: actualRemoteUrl,
+          localPath: finalLocalPath,
+          status: 'ACTIVE', // Change status to ACTIVE before sprint creation
+          framework: framework || analysisResult.detectedFramework,
+          language: language || analysisResult.detectedLanguage,
+          packageManager:
+            packageManager || analysisResult.detectedPackageManager,
+          testFramework: testFramework || analysisResult.detectedTestFramework,
+          lintTool,
+          buildTool,
+        },
+      });
+
+      await taskManager.updatePhaseProgress(taskId, 'completion', 40, {
+        type: 'PHASE_PROGRESS',
+        message: 'Project status updated to ACTIVE',
+      });
+
+      // Phase 4: Sprint Setup - Create default first sprint (now that project is ACTIVE)
       await taskManager.startPhase(taskId, 'sprint_setup');
 
       try {
@@ -345,37 +378,9 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Phase 4: Completion - Update project status
-      await taskManager.startPhase(taskId, 'completion');
-
-      await taskManager.updatePhaseProgress(taskId, 'completion', 20, {
+      await taskManager.updatePhaseProgress(taskId, 'completion', 70, {
         type: 'PHASE_PROGRESS',
-        message: '更新專案資訊',
-      });
-
-      // Update project in database with analysis results
-      await prisma.project.update({
-        where: { id: projectId },
-        data: {
-          description: gitUrl
-            ? `Imported from ${gitUrl}`
-            : `Imported from local repository at ${finalLocalPath}`,
-          gitUrl: actualRemoteUrl,
-          localPath: finalLocalPath,
-          status: 'ACTIVE', // Change status to ACTIVE
-          framework: framework || analysisResult.detectedFramework,
-          language: language || analysisResult.detectedLanguage,
-          packageManager:
-            packageManager || analysisResult.detectedPackageManager,
-          testFramework: testFramework || analysisResult.detectedTestFramework,
-          lintTool,
-          buildTool,
-        },
-      });
-
-      await taskManager.updatePhaseProgress(taskId, 'completion', 60, {
-        type: 'PHASE_PROGRESS',
-        message: '建立初始看板卡片',
+        message: 'Creating initial project cards',
       });
 
       // Create initial Kanban cards
