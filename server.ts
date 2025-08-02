@@ -51,33 +51,38 @@ app.prepare().then(async () => {
     });
 
   // Graceful shutdown
-  process.on('SIGTERM', () => {
-    logger.info('SIGTERM signal received: closing HTTP server', { module: 'server' });
+  let isShuttingDown = false;
+  
+  const gracefulShutdown = (signal: string) => {
+    if (isShuttingDown) {
+      logger.warn(`${signal} signal received again, forcing exit`, { module: 'server' });
+      process.exit(1);
+    }
+    
+    isShuttingDown = true;
+    logger.info(`${signal} signal received: closing HTTP server`, { module: 'server' });
+    
+    // Set a timeout to force exit if shutdown takes too long
+    const forceExitTimeout = setTimeout(() => {
+      logger.error('Shutdown timeout reached, forcing exit', { module: 'server' });
+      process.exit(1);
+    }, 5000);
+    
     server.close(() => {
       logger.info('HTTP server closed', { module: 'server' });
       if (io) {
         io.close(() => {
           logger.info('Socket.IO server closed', { module: 'server' });
+          clearTimeout(forceExitTimeout);
           process.exit(0);
         });
       } else {
+        clearTimeout(forceExitTimeout);
         process.exit(0);
       }
     });
-  });
+  };
 
-  process.on('SIGINT', () => {
-    logger.info('SIGINT signal received: closing HTTP server', { module: 'server' });
-    server.close(() => {
-      logger.info('HTTP server closed', { module: 'server' });
-      if (io) {
-        io.close(() => {
-          logger.info('Socket.IO server closed', { module: 'server' });
-          process.exit(0);
-        });
-      } else {
-        process.exit(0);
-      }
-    });
-  });
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 });

@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     // Get token usage data
     const tokenUsage = await prisma.tokenUsage.findMany({
       where: {
-        createdAt: {
+        timestamp: {
           gte: startDate
         }
       },
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
         project: true
       },
       orderBy: {
-        createdAt: 'asc'
+        timestamp: 'asc'
       }
     });
 
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Process daily token usage
-    const dailyUsage = [];
+    const dailyUsage: Array<{ date: string; used: number; projects: number }> = [];
     const dateMap = new Map();
 
     for (let i = 0; i < days; i++) {
@@ -64,10 +64,10 @@ export async function GET(request: NextRequest) {
     }
 
     tokenUsage.forEach(usage => {
-      const dateStr = usage.createdAt.toISOString().split('T')[0];
+      const dateStr = usage.timestamp.toISOString().split('T')[0];
       if (dateMap.has(dateStr)) {
         const day = dateMap.get(dateStr);
-        day.used += usage.tokensUsed;
+        day.used += usage.inputTokens + usage.outputTokens;
         day.projects.add(usage.projectId);
       }
     });
@@ -86,8 +86,8 @@ export async function GET(request: NextRequest) {
       if (!projectUsageMap.has(projectName)) {
         projectUsageMap.set(projectName, 0);
       }
-      projectUsageMap.set(projectName, projectUsageMap.get(projectName) + usage.tokensUsed);
-      totalTokens += usage.tokensUsed;
+      projectUsageMap.set(projectName, projectUsageMap.get(projectName) + usage.inputTokens + usage.outputTokens);
+      totalTokens += usage.inputTokens + usage.outputTokens;
     });
 
     const byProject = Array.from(projectUsageMap.entries())
@@ -105,11 +105,24 @@ export async function GET(request: NextRequest) {
     const previousAvg = previousUsage.reduce((sum, day) => sum + day.used, 0) / 7;
     const weeklyChange = previousAvg > 0 ? ((recentAvg - previousAvg) / previousAvg) * 100 : 0;
 
+    // Calculate real efficiency based on agent task success rates
+    const agentTasks = await prisma.agentTask.findMany({
+      where: {
+        createdAt: {
+          gte: startDate
+        }
+      }
+    });
+
+    const totalTasks = agentTasks.length;
+    const completedTasks = agentTasks.filter(task => task.status === 'COMPLETED').length;
+    const realEfficiency = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
     const trends = {
       weeklyChange: Math.round(weeklyChange),
       monthlyAverage: Math.round(dailyUsage.reduce((sum, day) => sum + day.used, 0) / dailyUsage.length),
       peakUsage: Math.max(...dailyUsage.map(day => day.used)),
-      efficiency: Math.round(Math.random() * 20 + 80) // Mock efficiency calculation
+      efficiency: realEfficiency
     };
 
     // Process project performance
@@ -157,44 +170,94 @@ export async function GET(request: NextRequest) {
         impact: '高'
       }));
 
-    // Mock agent performance data
+    // Calculate real agent performance data
+    const agentPerformanceMap = new Map();
+    
+    agentTasks.forEach(task => {
+      const agentType = task.agentType;
+      if (!agentPerformanceMap.has(agentType)) {
+        agentPerformanceMap.set(agentType, {
+          total: 0,
+          completed: 0,
+          totalHours: 0,
+          completedTasks: []
+        });
+      }
+      
+      const stats = agentPerformanceMap.get(agentType);
+      stats.total += 1;
+      
+      if (task.status === 'COMPLETED') {
+        stats.completed += 1;
+        if (task.startedAt && task.completedAt) {
+          const hours = (task.completedAt.getTime() - task.startedAt.getTime()) / (1000 * 60 * 60);
+          stats.totalHours += hours;
+          stats.completedTasks.push(task);
+        }
+      }
+    });
+
+    const successRates = Array.from(agentPerformanceMap.entries()).map(([agent, stats]) => ({
+      agent,
+      rate: stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0,
+      tasks: stats.total
+    }));
+
+    const usagePatterns = Array.from(agentPerformanceMap.entries()).map(([agent, stats]) => ({
+      agent,
+      hours: stats.completedTasks.length > 0 ? Math.round((stats.totalHours / stats.completedTasks.length) * 10) / 10 : 0,
+      efficiency: stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0
+    }));
+
     const agentPerformance = {
-      successRates: [
-        { agent: 'Project Manager', rate: 95, tasks: 142 },
-        { agent: 'TDD Developer', rate: 87, tasks: 89 },
-        { agent: 'Code Reviewer', rate: 92, tasks: 76 },
-        { agent: 'Git Operations', rate: 98, tasks: 234 },
-        { agent: 'Documentation', rate: 89, tasks: 45 }
-      ],
-      usagePatterns: [
-        { agent: 'Project Manager', hours: 24.5, efficiency: 94 },
-        { agent: 'TDD Developer', hours: 45.2, efficiency: 87 },
-        { agent: 'Code Reviewer', hours: 18.7, efficiency: 92 },
-        { agent: 'Git Operations', hours: 12.3, efficiency: 98 },
-        { agent: 'Documentation', hours: 8.9, efficiency: 89 }
-      ]
+      successRates,
+      usagePatterns
     };
 
-    // Mock time metrics
+    // Calculate real peak hours from token usage data
+    const hourlyActivity = Array.from({ length: 24 }, (_, hour) => ({ hour, activity: 0 }));
+    
+    tokenUsage.forEach(usage => {
+      const hour = usage.timestamp.getHours();
+      hourlyActivity[hour].activity += usage.inputTokens + usage.outputTokens;
+    });
+
     const timeMetrics = {
-      peakHours: Array.from({ length: 24 }, (_, hour) => ({
-        hour,
-        activity: Math.floor(Math.random() * 100)
-      })),
-      weeklyPatterns: [
-        { day: '週一', activity: 85 },
-        { day: '週二', activity: 92 },
-        { day: '週三', activity: 88 },
-        { day: '週四', activity: 95 },
-        { day: '週五', activity: 78 },
-        { day: '週六', activity: 32 },
-        { day: '週日', activity: 28 }
-      ],
-      responseTime: {
-        average: 245,
-        p95: 890,
-        p99: 1540
-      }
+      peakHours: hourlyActivity,
+      weeklyPatterns: (() => {
+        const weekdays = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+        const weeklyData = Array.from({ length: 7 }, (_, day) => ({ day: weekdays[day], activity: 0 }));
+        
+        tokenUsage.forEach(usage => {
+          const dayOfWeek = usage.timestamp.getDay(); // 0 = Sunday, 1 = Monday, etc.
+          weeklyData[dayOfWeek].activity += usage.inputTokens + usage.outputTokens;
+        });
+        
+        return weeklyData;
+      })(),
+      responseTime: (() => {
+        const completedTasksWithTiming = agentTasks.filter(task => 
+          task.status === 'COMPLETED' && task.startedAt && task.completedAt
+        );
+        
+        if (completedTasksWithTiming.length === 0) {
+          return { average: 0, p95: 0, p99: 0 };
+        }
+        
+        const responseTimes = completedTasksWithTiming.map(task => 
+          (task.completedAt!.getTime() - task.startedAt!.getTime()) / 1000 // Convert to seconds
+        ).sort((a, b) => a - b);
+        
+        const average = Math.round(responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length);
+        const p95Index = Math.floor(responseTimes.length * 0.95);
+        const p99Index = Math.floor(responseTimes.length * 0.99);
+        
+        return {
+          average,
+          p95: Math.round(responseTimes[p95Index] || 0),
+          p99: Math.round(responseTimes[p99Index] || 0)
+        };
+      })()
     };
 
     const analyticsData = {

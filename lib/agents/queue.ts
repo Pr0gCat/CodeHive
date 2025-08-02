@@ -9,7 +9,7 @@ import { ProjectManagerAgent } from './project-manager';
 import { RateLimiter } from './rate-limiter';
 import { AgentTask, QueueStatus } from './types';
 
-let projectManager: ProjectManagerAgent | null = null;
+const projectManager: ProjectManagerAgent | null = null;
 
 interface RateLimitStatus {
   dailyTokens: {

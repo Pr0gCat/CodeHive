@@ -27,7 +27,7 @@ const analyzeProjectSchema = z.object({
 
 // Global instances
 let projectManager: ProjectManagerAgent | null = null;
-let taskQueue: TaskQueue | null = null;
+const taskQueue: TaskQueue | null = null;
 
 function getProjectManager(): ProjectManagerAgent {
   if (!projectManager) {

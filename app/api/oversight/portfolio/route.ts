@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
         budget: true,
         tokenUsage: {
           where: {
-            createdAt: {
+            timestamp: {
               gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24 hours
             }
           }
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       totalTokensUsed: projects.reduce((sum, p) => sum + (p.budget?.usedTokens || 0), 0),
       totalTokensRemaining: projects.reduce((sum, p) => sum + (p.budget?.dailyTokenBudget || 0) - (p.budget?.usedTokens || 0), 0),
       dailyBurnRate: projects.reduce((sum, p) => {
-        const dailyUsage = p.tokenUsage.reduce((usage, tu) => usage + tu.tokensUsed, 0);
+        const dailyUsage = p.tokenUsage.reduce((usage, tu) => usage + tu.inputTokens + tu.outputTokens, 0);
         return sum + dailyUsage;
       }, 0),
       averageProgress: projects.length > 0 ? projects.reduce((sum, p) => {

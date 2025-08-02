@@ -12,8 +12,7 @@ export async function POST(
     
     console.log(`Running maintenance task: ${taskId}`);
 
-    // Simulate task execution time
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Execute maintenance task immediately
 
     // Mock task execution based on task ID
     let result;

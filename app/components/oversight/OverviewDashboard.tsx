@@ -118,7 +118,10 @@ export function OverviewDashboard() {
   }
 
   const tokenUsagePercentage = portfolioStats 
-    ? (portfolioStats.totalTokensUsed / (portfolioStats.totalTokensUsed + portfolioStats.totalTokensRemaining)) * 100 
+    ? (() => {
+        const total = portfolioStats.totalTokensUsed + portfolioStats.totalTokensRemaining;
+        return total > 0 ? (portfolioStats.totalTokensUsed / total) * 100 : 0;
+      })()
     : 0;
 
   return (
@@ -166,7 +169,10 @@ export function OverviewDashboard() {
               />
             </div>
             <p className="text-xs text-primary-400 mt-1">
-              {portfolioStats?.totalTokensUsed.toLocaleString()} / {(portfolioStats?.totalTokensUsed + portfolioStats?.totalTokensRemaining).toLocaleString()} tokens
+              {portfolioStats && (portfolioStats.totalTokensUsed + portfolioStats.totalTokensRemaining) > 0 
+                ? `${portfolioStats.totalTokensUsed.toLocaleString()} / ${(portfolioStats.totalTokensUsed + portfolioStats.totalTokensRemaining).toLocaleString()} tokens`
+                : '未設定 Token 限制'
+              }
             </p>
           </div>
         </div>

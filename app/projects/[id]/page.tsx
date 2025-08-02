@@ -4,7 +4,6 @@ import { Project, ProjectSettings } from '@/lib/db';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import AgentStatusPanel from '../../components/AgentStatusPanel';
-import AIAssistant from '../../components/AIAssistant';
 import ProjectLogsModal from '../../components/ProjectLogsModal';
 import ProjectSettingsModal from '../../components/ProjectSettingsModal';
 import { useToast } from '@/components/ui/ToastManager';
@@ -896,9 +895,6 @@ export default function ProjectPage({ params }: ProjectPageProps) {
         isOpen={logsModalOpen}
         onClose={() => setLogsModalOpen(false)}
       />
-
-      {/* AI Assistant */}
-      <AIAssistant projectId={project.id} />
     </div>
   );
 }
