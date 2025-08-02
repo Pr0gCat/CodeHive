@@ -19,7 +19,7 @@ export class SpecificationGenerator {
 
     const constraints = {
       maxFileSize: 1000000, // 1MB
-      timeout: 300, // 5 minutes
+      timeout: 1800, // 30 minutes
       excludePatterns: ['node_modules/**', 'dist/**', 'build/**'],
     };
 
@@ -75,7 +75,7 @@ Focus on critical issues first, then suggestions for optimization.
 
     const constraints = {
       maxFileSize: 500000, // 500KB
-      timeout: 240, // 4 minutes
+      timeout: 1800, // 30 minutes
       backupRequired: true,
       allowedExtensions: this.getAllowedExtensions(context.language),
     };
@@ -137,7 +137,7 @@ Safety Rules:
     const testFramework = this.detectTestFramework(context);
 
     const constraints = {
-      timeout: 600, // 10 minutes for full test suite
+      timeout: 1800, // 30 minutes for full test suite
       parallelExecution: true,
       coverageThreshold: 80,
     };
@@ -198,7 +198,7 @@ Always provide clear test results with pass/fail status and coverage metrics.
     const dependencies = ['git'];
 
     const constraints = {
-      timeout: 180, // 3 minutes
+      timeout: 1800, // 30 minutes
       requireCleanWorkingDirectory: false,
       autoCommitPatterns: ['package-lock.json', 'yarn.lock'],
     };
@@ -249,7 +249,7 @@ Git Workflow:
     const dependencies = this.getFrameworkDependencies(framework);
 
     const constraints = {
-      timeout: 300, // 5 minutes
+      timeout: 1800, // 30 minutes
       frameworkVersion: 'latest',
       bestPractices: true,
     };

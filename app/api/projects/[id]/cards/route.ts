@@ -11,6 +11,11 @@ const createCardSchema = z.object({
     .default('BACKLOG'),
   assignedAgent: z.string().optional(),
   position: z.number().optional(), // Frontend sends this but we calculate our own
+  epicId: z.string().cuid().optional(), // Link to epic
+  storyPoints: z.number().int().min(0).optional(),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).default('MEDIUM'),
+  tddEnabled: z.boolean().default(false),
+  acceptanceCriteria: z.string().optional(),
 });
 
 export async function GET(
@@ -99,6 +104,11 @@ export async function POST(
         assignedAgent: validatedData.assignedAgent,
         projectId: params.id,
         position: nextPosition,
+        epicId: validatedData.epicId,
+        storyPoints: validatedData.storyPoints,
+        priority: validatedData.priority,
+        tddEnabled: validatedData.tddEnabled,
+        acceptanceCriteria: validatedData.acceptanceCriteria,
       },
       include: {
         agentTasks: true,

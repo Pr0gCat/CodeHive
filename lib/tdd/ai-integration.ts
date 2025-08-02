@@ -63,7 +63,7 @@ export class AITDDIntegration {
       // Execute with Claude Code
       const result = await this.executor.execute(prompt, {
         workingDirectory: projectContext.localPath,
-        timeout: 120000, // 2 minutes
+        timeout: 1800000, // 30 minutes
         projectId: projectContext.id,
         agentType: 'tdd-test-generator',
       });
@@ -141,7 +141,7 @@ export class AITDDIntegration {
     try {
       const result = await this.executor.execute(prompt, {
         workingDirectory: projectContext.localPath,
-        timeout: 180000, // 3 minutes
+        timeout: 1800000, // 30 minutes
         projectId: projectContext.id,
         agentType: 'tdd-implementation',
       });
@@ -220,7 +220,7 @@ export class AITDDIntegration {
     try {
       const result = await this.executor.execute(prompt, {
         workingDirectory: projectContext.localPath,
-        timeout: 120000, // 2 minutes
+        timeout: 1800000, // 30 minutes
         projectId: projectContext.id,
         agentType: 'tdd-refactoring',
       });

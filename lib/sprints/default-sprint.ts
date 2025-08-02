@@ -38,6 +38,41 @@ export async function createDefaultFirstSprint(projectId: string, projectName: s
       },
     });
 
+    // Create Claude Code /init task as the first story
+    const claudeInitStory = await prisma.kanbanCard.create({
+      data: {
+        projectId,
+        epicId: documentationEpic.id,
+        sprintId: sprint.id,
+        title: "Initialize project with Claude Code /init",
+        description: `Run Claude Code /init command to set up the project foundation:
+- Initialize project structure and configuration
+- Set up development environment
+- Create initial project files and directories
+- Configure tooling and dependencies
+- Establish coding standards and conventions
+
+This task will leverage Claude Code's intelligent project initialization to create a solid foundation for ${projectName}.`,
+        type: "STORY",
+        status: "TODO",
+        priority: "CRITICAL",
+        storyPoints: 2,
+        acceptanceCriteria: [
+          "Claude Code /init command executed successfully",
+          "Project structure is properly initialized",
+          "Development environment is configured",
+          "Basic tooling and dependencies are set up",
+          "Initial project files are created",
+          "Configuration files are properly structured"
+        ],
+        tags: ["initialization", "claude-code", "setup", "foundation"],
+        assignee: "Project Manager Agent",
+        tddEnabled: false, // This is a setup task, not a feature requiring TDD
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+
     // Create README creation story
     const readmeStory = await prisma.kanbanCard.create({
       data: {
@@ -111,7 +146,7 @@ This will create a foundation for ongoing documentation efforts.`,
     await prisma.sprint.update({
       where: { id: sprint.id },
       data: {
-        plannedStoryPoints: 5, // Total story points from both stories
+        plannedStoryPoints: 7, // Total story points from all stories (2 + 3 + 2)
       },
     });
 
@@ -120,19 +155,19 @@ This will create a foundation for ongoing documentation efforts.`,
       data: {
         sprintId: sprint.id,
         epicId: documentationEpic.id,
-        plannedStoryPoints: 5,
+        plannedStoryPoints: 7,
       },
     });
 
     console.log(`🚀 Created default first sprint for project ${projectName}:`);
     console.log(`   Sprint: ${sprint.name} (${sprint.id})`);
     console.log(`   Epic: ${documentationEpic.title} (${documentationEpic.id})`);
-    console.log(`   Stories: README creation, Technical docs setup`);
+    console.log(`   Stories: Claude Code /init, README creation, Technical docs setup`);
 
     return {
       sprint,
       epic: documentationEpic,
-      stories: [readmeStory, techDocsStory],
+      stories: [claudeInitStory, readmeStory, techDocsStory],
     };
   } catch (error) {
     console.error(`❌ Failed to create default first sprint for project ${projectName}:`, error);

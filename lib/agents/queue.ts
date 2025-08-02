@@ -381,7 +381,7 @@ export class TaskQueue {
           command: payload.command,
           projectContext,
           options: {
-            timeout: 240000, // 4 minutes
+            timeout: 1800000, // 30 minutes
             maxRetries: 2,
             workingDirectory: project.localPath,
           },
@@ -397,7 +397,7 @@ export class TaskQueue {
         // Fallback to direct execution for unsupported agents
         const result = await this.executor.execute(payload.command, {
           workingDirectory: project.localPath,
-          timeout: 120000, // 2 minutes
+          timeout: 1800000, // 30 minutes
           maxRetries: 2,
         });
 

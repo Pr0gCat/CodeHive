@@ -111,9 +111,8 @@ Format your response as JSON with this structure:
 `;
 
     try {
-      const result = await this.executor.executeCommand(analysisPrompt, {
-        expectedResponse: 'JSON_BREAKDOWN',
-        timeout: 120000, // 2 minutes for complex analysis
+      const result = await this.executor.execute(analysisPrompt, {
+        timeout: 1800000, // 30 minutes for complex analysis
       });
 
       if (!result.success) {
@@ -196,11 +195,7 @@ ${context.alternatives.map(alt => `- ${alt}`).join('\n')}`,
       include: {
         stories: {
           include: {
-            tasks: {
-              include: {
-                cycles: true,
-              },
-            },
+            cycles: true,
           },
         },
       },
@@ -242,13 +237,7 @@ ${context.alternatives.map(alt => `- ${alt}`).join('\n')}`,
     // Get blocked cycles (waiting for query answers)
     const blockedCycles = await prisma.cycle.findMany({
       where: {
-        task: {
-          story: {
-            epic: {
-              projectId
-            }
-          }
-        },
+        projectId,
         status: 'BLOCKED'
       },
     });
@@ -256,13 +245,7 @@ ${context.alternatives.map(alt => `- ${alt}`).join('\n')}`,
     // Get active work
     const activeCycles = await prisma.cycle.findMany({
       where: {
-        task: {
-          story: {
-            epic: {
-              projectId
-            }
-          }
-        },
+        projectId,
         status: 'IN_PROGRESS'
       },
     });
@@ -370,6 +353,22 @@ ${context.alternatives.map(alt => `- ${alt}`).join('\n')}`,
   private async executeTask(taskId: string): Promise<void> {
     console.log(`🚀 Starting execution of task: ${taskId}`);
     
+    // Get task with story information
+    const task = await prisma.task.findUnique({
+      where: { id: taskId },
+      include: {
+        story: {
+          include: {
+            epic: true,
+          },
+        },
+      },
+    });
+
+    if (!task) {
+      throw new Error(`Task not found: ${taskId}`);
+    }
+    
     // Update task status
     await prisma.task.update({
       where: { id: taskId },
@@ -377,14 +376,17 @@ ${context.alternatives.map(alt => `- ${alt}`).join('\n')}`,
     });
 
     // TODO: Integrate with TDD Developer Agent to create and execute cycles
-    // For now, we'll create a placeholder cycle
+    // For now, we'll create a placeholder cycle linked to the story
     const cycle = await prisma.cycle.create({
       data: {
-        taskId,
+        projectId: task.story.epic.projectId,
+        storyId: task.storyId,
         title: `Implementation cycle for task ${taskId}`,
-        goal: 'Implement task requirements using TDD methodology',
+        description: `Implement task requirements using TDD methodology`,
         phase: 'RED',
         status: 'IN_PROGRESS',
+        acceptanceCriteria: `Complete task: ${task.title}`,
+        sequence: 1,
       },
     });
 

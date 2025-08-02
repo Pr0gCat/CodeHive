@@ -26,7 +26,7 @@ export class AgentExecutor {
   ): Promise<AgentResult> {
     const startTime = Date.now();
     let {
-      timeout = 300000, // 5 minutes default
+      timeout = 1800000, // 30 minutes default
       maxRetries = 3,
     } = options;
 

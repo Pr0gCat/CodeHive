@@ -452,7 +452,7 @@ export class EvolutionEngine {
       return {
         type: 'constraints',
         current: `timeout: ${constraints.timeout || 'unlimited'}`,
-        suggested: 'timeout: 240000',
+        suggested: 'timeout: 1800000',
         reason: 'High execution times suggest need for stricter timeout',
         confidence: 0.75,
         expectedImprovement: 'Prevent hanging tasks and improve responsiveness',

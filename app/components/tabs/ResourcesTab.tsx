@@ -15,6 +15,13 @@ interface TokenLimits {
   monthlyBudget: number;
 }
 
+interface PerformanceMetrics {
+  burnRate: number;
+  dailyCycles: number;
+  avgCycleDuration: number;
+  successRate: number;
+}
+
 interface ResourcesTabProps {
   projectId: string;
 }
@@ -22,6 +29,7 @@ interface ResourcesTabProps {
 export function ResourcesTab({ projectId }: ResourcesTabProps) {
   const [usage, setUsage] = useState<TokenUsage>({ today: 0, thisWeek: 0, thisMonth: 0 });
   const [limits, setLimits] = useState<TokenLimits>({ dailyLimit: 100000, weeklyGuideline: 500000, monthlyBudget: 2000000 });
+  const [performance, setPerformance] = useState<PerformanceMetrics>({ burnRate: 0, dailyCycles: 0, avgCycleDuration: 0, successRate: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,15 +38,22 @@ export function ResourcesTab({ projectId }: ResourcesTabProps) {
 
   const fetchTokenStatus = async () => {
     try {
-      // This would fetch from the token management API
       const response = await fetch(`/api/progress/overview?projectId=${projectId}`);
       if (response.ok) {
         const data = await response.json();
-        if (data.resources) {
+        if (data.tokenUsage) {
           setUsage({
-            today: data.resources.tokensUsed || 0,
-            thisWeek: data.resources.tokensUsed * 7 || 0,
-            thisMonth: data.resources.tokensUsed * 30 || 0,
+            today: data.tokenUsage.today || 0,
+            thisWeek: data.tokenUsage.thisWeek || 0,
+            thisMonth: data.tokenUsage.thisMonth || 0,
+          });
+        }
+        if (data.performance) {
+          setPerformance({
+            burnRate: data.performance.burnRate || 0,
+            dailyCycles: data.performance.dailyCycles || 0,
+            avgCycleDuration: data.performance.avgCycleDuration || 0,
+            successRate: data.performance.successRate || 0,
           });
         }
       }
@@ -187,7 +202,7 @@ export function ResourcesTab({ projectId }: ResourcesTabProps) {
               <TrendingUp className="h-5 w-5 text-blue-400" />
               <span className="font-medium text-blue-200">燃燒率</span>
             </div>
-            <div className="text-2xl font-bold text-blue-300">1,234</div>
+            <div className="text-2xl font-bold text-blue-300">{performance.burnRate.toLocaleString()}</div>
             <div className="text-sm text-blue-400">tokens/小時</div>
           </div>
           
@@ -196,8 +211,8 @@ export function ResourcesTab({ projectId }: ResourcesTabProps) {
               <Zap className="h-5 w-5 text-green-400" />
               <span className="font-medium text-green-200">每日循環</span>
             </div>
-            <div className="text-2xl font-bold text-green-300">12</div>
-            <div className="text-sm text-green-400">平均完成</div>
+            <div className="text-2xl font-bold text-green-300">{performance.dailyCycles}</div>
+            <div className="text-sm text-green-400">今日完成</div>
           </div>
           
           <div className="bg-purple-900 rounded-lg p-4">
@@ -205,7 +220,7 @@ export function ResourcesTab({ projectId }: ResourcesTabProps) {
               <Clock className="h-5 w-5 text-purple-400" />
               <span className="font-medium text-purple-200">平均循環</span>
             </div>
-            <div className="text-2xl font-bold text-purple-300">45</div>
+            <div className="text-2xl font-bold text-purple-300">{performance.avgCycleDuration}</div>
             <div className="text-sm text-purple-400">分鐘</div>
           </div>
           
@@ -214,7 +229,7 @@ export function ResourcesTab({ projectId }: ResourcesTabProps) {
               <Zap className="h-5 w-5 text-orange-400" />
               <span className="font-medium text-orange-200">效率</span>
             </div>
-            <div className="text-2xl font-bold text-orange-300">87%</div>
+            <div className="text-2xl font-bold text-orange-300">{performance.successRate}%</div>
             <div className="text-sm text-orange-400">成功率</div>
           </div>
         </div>

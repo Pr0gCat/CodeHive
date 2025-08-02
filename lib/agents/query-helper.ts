@@ -171,7 +171,7 @@ export async function getCardQueries(projectId: string, cardId: string) {
  */
 export async function waitForQueryResponse(
   queryId: string,
-  timeoutMs: number = 300000
+  timeoutMs: number = 1800000
 ): Promise<boolean> {
   const startTime = Date.now();
 

@@ -11,6 +11,11 @@ const updateCardSchema = z.object({
     .optional(),
   position: z.number().int().min(0).optional(),
   assignedAgent: z.string().optional(),
+  epicId: z.string().cuid().optional().nullable(),
+  storyPoints: z.number().int().min(0).optional(),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
+  tddEnabled: z.boolean().optional(),
+  acceptanceCriteria: z.string().optional(),
 });
 
 export async function GET(

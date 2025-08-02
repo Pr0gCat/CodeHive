@@ -1,4 +1,4 @@
-import { ClaudeCodeExecutor } from '@/lib/claude-code';
+import { claudeCode } from '@/lib/claude-code';
 
 export interface CLAUDEMDUpdate {
   trigger: 'TASK_COMPLETION' | 'EPIC_COMPLETION' | 'QUERY_RESOLUTION';
@@ -18,10 +18,8 @@ export interface CLAUDEMDUpdate {
 }
 
 export class CLAUDEMDAutoUpdater {
-  private claudeExecutor: ClaudeCodeExecutor;
-
   constructor() {
-    this.claudeExecutor = new ClaudeCodeExecutor();
+    // Using the singleton claudeCode instance
   }
 
   async updateAfterTaskCompletion(update: CLAUDEMDUpdate): Promise<void> {
@@ -118,9 +116,9 @@ Please update CLAUDE.md to document this decision and the user's preferences for
       console.log('Command:', command.slice(0, 200) + '...');
 
       // Execute the Claude Code command to update CLAUDE.md
-      const result = await this.claudeExecutor.executeCommand(command, {
+      const result = await claudeCode.execute(command, {
         expectedResponse: 'CLAUDE.md_UPDATE_CONFIRMATION',
-        timeout: 60000, // 1 minute timeout for documentation updates
+        timeout: 1800000, // 30 minutes timeout for documentation updates
       });
 
       if (result.success) {

@@ -25,11 +25,7 @@ export async function GET(request: NextRequest) {
       include: {
         stories: {
           include: {
-            tasks: {
-              include: {
-                cycles: true
-              }
-            }
+            cycles: true
           }
         }
       },
@@ -45,62 +41,141 @@ export async function GET(request: NextRequest) {
       orderBy: { priority: 'desc' }
     });
 
-    // Get token usage
-    const tokenUsage = await prisma.tokenUsage.findMany({
-      where: { projectId },
-      orderBy: { createdAt: 'desc' },
-      take: 1
+    // Get real token usage for today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const tokenUsageToday = await prisma.tokenUsage.findMany({
+      where: { 
+        projectId,
+        timestamp: {
+          gte: today
+        }
+      }
     });
 
     // Calculate epic progress
     const epicsWithProgress = epics.map(epic => {
-      const totalCycles = epic.stories.reduce((acc, story) => 
-        acc + story.tasks.reduce((taskAcc, task) => 
-          taskAcc + task.cycles.length, 0), 0);
-      
-      const completedCycles = epic.stories.reduce((acc, story) => 
-        acc + story.tasks.reduce((taskAcc, task) => 
-          taskAcc + task.cycles.filter(cycle => cycle.status === 'COMPLETED').length, 0), 0);
-      
-      const progress = totalCycles > 0 ? completedCycles / totalCycles : 0;
+      const totalStories = epic.stories.length;
+      const completedStories = epic.stories.filter(story => story.status === 'DONE').length;
+      const progress = totalStories > 0 ? completedStories / totalStories : 0;
       
       // Find current work
-      const activeCycle = epic.stories
-        .flatMap(story => story.tasks)
-        .flatMap(task => task.cycles)
-        .find(cycle => cycle.status === 'IN_PROGRESS');
+      const activeStory = epic.stories.find(story => story.status === 'IN_PROGRESS');
       
       return {
         id: epic.id,
         title: epic.title,
         progress,
         status: epic.status,
-        currentWork: activeCycle ? `Working on: ${activeCycle.goal}` : 'Planning next work'
+        currentWork: activeStory ? `Working on: ${activeStory.title}` : 'Planning next work'
       };
     });
 
-    // Format queries according to improved architecture
+    // Format queries
     const formattedQueries = queries.map(query => ({
       id: query.id,
       question: query.question,
-      priority: query.priority,
+      priority: query.priority as 'HIGH' | 'MEDIUM' | 'LOW',
       blockedCycles: 0, // TODO: Calculate actual blocked cycles
       context: query.context,
-      createdAt: query.createdAt
+      createdAt: query.createdAt.toISOString()
     }));
 
-    // Calculate resource status
-    const currentUsage = tokenUsage[0];
-    const tokensUsed = currentUsage?.tokensUsed || 0;
-    const tokensRemaining = Math.max(0, 100000 - tokensUsed); // TODO: Get from config
+    // Calculate real token usage
+    const todayTokens = tokenUsageToday.reduce((sum, usage) => sum + usage.inputTokens + usage.outputTokens, 0);
+    const dailyLimit = 100000; // TODO: Get from config
+    const tokensRemaining = Math.max(0, dailyLimit - todayTokens);
+
+    // Calculate real performance metrics
+    const now = new Date();
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    // Get cycles completed today
+    const cyclesCompletedToday = await prisma.cycle.count({
+      where: {
+        projectId,
+        status: 'COMPLETED',
+        completedAt: {
+          gte: startOfDay
+        }
+      }
+    });
+
+    // Get average cycle duration (in minutes)
+    const completedCycles = await prisma.cycle.findMany({
+      where: {
+        projectId,
+        status: 'COMPLETED',
+        completedAt: { not: null }
+      },
+      select: {
+        createdAt: true,
+        completedAt: true
+      }
+    });
+
+    const avgCycleDuration = completedCycles.length > 0 
+      ? completedCycles.reduce((acc, cycle) => {
+          const duration = cycle.completedAt!.getTime() - cycle.createdAt.getTime();
+          return acc + duration;
+        }, 0) / completedCycles.length / (1000 * 60) // Convert to minutes
+      : 0;
+
+    // Calculate burn rate (tokens per hour)
+    const hoursSinceStartOfDay = (now.getTime() - startOfDay.getTime()) / (1000 * 60 * 60);
+    const burnRate = hoursSinceStartOfDay > 0 ? Math.round(todayTokens / hoursSinceStartOfDay) : 0;
+
+    // Calculate success rate (cycles completed vs failed)
+    const totalCycles = await prisma.cycle.count({ where: { projectId } });
+    const completedCyclesTotal = await prisma.cycle.count({ 
+      where: { projectId, status: 'COMPLETED' } 
+    });
+    const successRate = totalCycles > 0 ? Math.round((completedCyclesTotal / totalCycles) * 100) : 0;
+
+    // Get real historical token usage
+    const weekAgo = new Date(now);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    
+    const monthAgo = new Date(now);
+    monthAgo.setDate(monthAgo.getDate() - 30);
+
+    const weeklyTokens = await prisma.tokenUsage.findMany({
+      where: {
+        projectId,
+        timestamp: { gte: weekAgo }
+      }
+    });
+
+    const monthlyTokens = await prisma.tokenUsage.findMany({
+      where: {
+        projectId,
+        timestamp: { gte: monthAgo }
+      }
+    });
+
+    const thisWeekTotal = weeklyTokens.reduce((sum, usage) => sum + usage.inputTokens + usage.outputTokens, 0);
+    const thisMonthTotal = monthlyTokens.reduce((sum, usage) => sum + usage.inputTokens + usage.outputTokens, 0);
     
     return NextResponse.json({
       epics: epicsWithProgress,
       queries: formattedQueries,
       resources: {
-        tokensUsed,
+        tokensUsed: todayTokens,
         tokensRemaining,
         status: tokensRemaining > 10000 ? 'ACTIVE' : tokensRemaining > 1000 ? 'WARNING' : 'CRITICAL'
+      },
+      performance: {
+        burnRate,
+        dailyCycles: cyclesCompletedToday,
+        avgCycleDuration: Math.round(avgCycleDuration),
+        successRate
+      },
+      tokenUsage: {
+        today: todayTokens,
+        thisWeek: thisWeekTotal,
+        thisMonth: thisMonthTotal
       },
       project: {
         id: projectId,

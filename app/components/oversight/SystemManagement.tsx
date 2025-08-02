@@ -84,7 +84,7 @@ export function SystemManagement() {
           global: settingsData.data,
           agents: {
             maxConcurrentTasks: 5,
-            timeoutDuration: 300000,
+            timeoutDuration: 1800000,
             retryAttempts: 3,
             healthCheckInterval: 30000
           },

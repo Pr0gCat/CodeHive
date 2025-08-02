@@ -145,19 +145,22 @@ export class TokenBasedResourceManager {
     operation: string,
     tokensUsed: number,
     context: {
-      epicId?: string;
-      storyId?: string;
       taskId?: string;
-      cycleId?: string;
+      inputTokens?: number;
+      outputTokens?: number;
     } = {}
   ): Promise<void> {
+    // Split total tokens into input/output if not provided
+    const inputTokens = context.inputTokens || Math.floor(tokensUsed * 0.7);
+    const outputTokens = context.outputTokens || Math.floor(tokensUsed * 0.3);
+    
     await prisma.tokenUsage.create({
       data: {
         projectId,
         agentType,
-        operation,
-        tokensUsed,
-        ...context,
+        taskId: context.taskId,
+        inputTokens,
+        outputTokens,
         timestamp: new Date(),
       },
     });
@@ -178,22 +181,16 @@ export class TokenBasedResourceManager {
   }> {
     const status = await this.getTokenStatus(projectId);
     
-    // Get all pending tasks
-    const tasks = await prisma.task.findMany({
+    // Get all pending stories/cards
+    const stories = await prisma.kanbanCard.findMany({
       where: {
-        story: {
-          epic: {
-            projectId,
-          },
+        projectId,
+        status: {
+          in: ['BACKLOG', 'TODO'],
         },
-        status: 'PENDING',
       },
       include: {
-        story: {
-          include: {
-            epic: true,
-          },
-        },
+        epic: true,
         cycles: true,
       },
     });
@@ -205,17 +202,17 @@ export class TokenBasedResourceManager {
       blocked: [] as string[],
     };
 
-    for (const task of tasks) {
-      const estimatedTokens = this.estimateTaskTokenUsage(task);
+    for (const story of stories) {
+      const estimatedTokens = this.estimateStoryTokenUsage(story);
       
       if (status.remaining.today < estimatedTokens) {
-        categorized.blocked.push(task.id);
+        categorized.blocked.push(story.id);
       } else if (estimatedTokens < 500) {
-        categorized.highPriority.push(task.id);
+        categorized.highPriority.push(story.id);
       } else if (estimatedTokens < 2000) {
-        categorized.mediumPriority.push(task.id);
+        categorized.mediumPriority.push(story.id);
       } else {
-        categorized.lowPriority.push(task.id);
+        categorized.lowPriority.push(story.id);
       }
     }
 
@@ -231,13 +228,7 @@ export class TokenBasedResourceManager {
     // Update all in-progress cycles to paused state
     await prisma.cycle.updateMany({
       where: {
-        task: {
-          story: {
-            epic: {
-              projectId,
-            },
-          },
-        },
+        projectId,
         status: 'IN_PROGRESS',
       },
       data: {
@@ -269,13 +260,7 @@ export class TokenBasedResourceManager {
     // Update paused cycles back to in-progress
     await prisma.cycle.updateMany({
       where: {
-        task: {
-          story: {
-            epic: {
-              projectId,
-            },
-          },
-        },
+        projectId,
         status: 'PAUSED',
       },
       data: {
@@ -330,25 +315,20 @@ export class TokenBasedResourceManager {
     };
 
     for (const record of usage) {
-      breakdown.total += record.tokensUsed;
+      const totalTokens = record.inputTokens + record.outputTokens;
+      breakdown.total += totalTokens;
       
-      breakdown.byAgent[record.agentType] = (breakdown.byAgent[record.agentType] || 0) + record.tokensUsed;
-      
-      if (record.epicId) {
-        breakdown.byEpic[record.epicId] = (breakdown.byEpic[record.epicId] || 0) + record.tokensUsed;
-      }
+      breakdown.byAgent[record.agentType] = (breakdown.byAgent[record.agentType] || 0) + totalTokens;
       
       if (record.taskId) {
-        breakdown.byTask[record.taskId] = (breakdown.byTask[record.taskId] || 0) + record.tokensUsed;
+        breakdown.byTask[record.taskId] = (breakdown.byTask[record.taskId] || 0) + totalTokens;
       }
       
-      if (record.cycleId) {
-        breakdown.byCycle.push({
-          cycleId: record.cycleId,
-          tokens: record.tokensUsed,
-          timestamp: record.timestamp,
-        });
-      }
+      breakdown.byCycle.push({
+        cycleId: record.id, // Use record id as identifier
+        tokens: totalTokens,
+        timestamp: record.timestamp,
+      });
     }
 
     return breakdown;
@@ -382,13 +362,7 @@ export class TokenBasedResourceManager {
     // Get pending cycles to estimate remaining work
     const pendingCycles = await prisma.cycle.count({
       where: {
-        task: {
-          story: {
-            epic: {
-              projectId,
-            },
-          },
-        },
+        projectId,
         status: {
           in: ['PENDING', 'IN_PROGRESS'],
         },
@@ -420,17 +394,22 @@ export class TokenBasedResourceManager {
     };
   }
 
-  private estimateTaskTokenUsage(task: any): number {
-    // Rough estimation based on task type and complexity
+  private estimateStoryTokenUsage(story: any): number {
+    // Rough estimation based on story priority and complexity
     const baseTokens = {
-      FRONTEND: 1000,
-      BACKEND: 1500,
-      DATABASE: 800,
-      API: 1200,
-      INTEGRATION: 2000,
+      HIGH: 1500,
+      MEDIUM: 1000,
+      LOW: 500,
     };
 
-    return baseTokens[task.type as keyof typeof baseTokens] || 1000;
+    const storyTokens = baseTokens[story.priority as keyof typeof baseTokens] || 1000;
+    
+    // Add tokens for TDD cycles if enabled
+    if (story.tddEnabled) {
+      return storyTokens * 1.5; // TDD adds ~50% more tokens
+    }
+    
+    return storyTokens;
   }
 
   private async handleLimitChecks(projectId: string, status: TokenStatus): Promise<void> {

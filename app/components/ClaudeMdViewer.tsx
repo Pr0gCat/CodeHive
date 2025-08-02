@@ -64,7 +64,7 @@ export default function ClaudeMdViewer({
     try {
       // Create AbortController for timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 200000); // 200 seconds timeout
+      const timeoutId = setTimeout(() => controller.abort(), 1800000); // 30 minutes timeout
 
       const response = await fetch(`/api/projects/${projectId}/claude-md`, {
         method: 'POST',

@@ -10,6 +10,8 @@ import { useToast } from '@/components/ui/ToastManager';
 import ClaudeMdViewer from '../../components/ClaudeMdViewer';
 import { UnifiedProjectOverview } from '../../components/UnifiedProjectOverview';
 import UserQueriesPanel from '../../components/UserQueriesPanel';
+import EpicCreateModal from '../../components/EpicCreateModal';
+import KanbanBoard from '../../components/KanbanBoard';
 
 interface ProjectPageProps {
   params: { id: string };
@@ -22,9 +24,11 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [logsModalOpen, setLogsModalOpen] = useState(false);
+  const [epicCreateModalOpen, setEpicCreateModalOpen] = useState(false);
   const [projectSettings, setProjectSettings] =
     useState<ProjectSettings | null>(null);
   const [agentStatus, setAgentStatus] = useState<string>('unknown');
+  const [epics, setEpics] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<
     'overview' | 'epics' | 'stories' | 'tasks' | 'cycles' | 'queries' | 'claude-md'
   >('overview');
@@ -125,10 +129,29 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     }
   }, [params.id]);
 
+  const fetchEpics = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/epics?projectId=${params.id}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setEpics(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch epics:', error);
+    }
+  }, [params.id]);
+
+  const handleEpicCreated = () => {
+    fetchEpics();
+    showToast('Epic 已成功建立', 'success');
+  };
+
   useEffect(() => {
     fetchProject();
     fetchAgentStatus();
     fetchClaudeMdStatus();
+    fetchEpics();
 
     // Set up polling for initialization progress
     let initProgressInterval: NodeJS.Timeout | null = null;
@@ -714,7 +737,10 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                       <h2 className="text-2xl font-bold text-accent-50">Epic 規劃</h2>
                       <p className="text-primary-300 mt-1">規劃專案的主要功能模組和大型需求</p>
                     </div>
-                    <button className="px-4 py-2 bg-accent-600 text-accent-50 rounded-lg hover:bg-accent-700 flex items-center gap-2">
+                    <button 
+                      onClick={() => setEpicCreateModalOpen(true)}
+                      className="px-4 py-2 bg-accent-600 text-accent-50 rounded-lg hover:bg-accent-700 flex items-center gap-2"
+                    >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
@@ -722,16 +748,104 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                     </button>
                   </div>
                   
-                  {/* Epic List Placeholder */}
-                  <div className="bg-primary-900 border border-primary-700 rounded-lg p-8 text-center">
-                    <div className="text-primary-400 mb-4">
-                      <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                      </svg>
+                  {/* Epic List */}
+                  {epics.length > 0 ? (
+                    <div className="space-y-4">
+                      {epics.map((epic) => (
+                        <div key={epic.id} className="bg-primary-900 border border-primary-700 rounded-lg p-6">
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-3 mb-2">
+                                <h3 className="text-xl font-semibold text-accent-50">{epic.title}</h3>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  epic.type === 'MVP' ? 'bg-purple-900 text-purple-200' :
+                                  epic.type === 'FEATURE' ? 'bg-blue-900 text-blue-200' :
+                                  epic.type === 'ENHANCEMENT' ? 'bg-green-900 text-green-200' :
+                                  'bg-orange-900 text-orange-200'
+                                }`}>
+                                  {epic.type}
+                                </span>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  epic.mvpPriority === 'CRITICAL' ? 'bg-red-900 text-red-200' :
+                                  epic.mvpPriority === 'HIGH' ? 'bg-orange-900 text-orange-200' :
+                                  epic.mvpPriority === 'MEDIUM' ? 'bg-yellow-900 text-yellow-200' :
+                                  epic.mvpPriority === 'LOW' ? 'bg-blue-900 text-blue-200' :
+                                  'bg-gray-900 text-gray-200'
+                                }`}>
+                                  {epic.mvpPriority}
+                                </span>
+                              </div>
+                              {epic.description && (
+                                <p className="text-primary-300 mb-3">{epic.description}</p>
+                              )}
+                              {epic.coreValue && (
+                                <p className="text-sm text-accent-200 mb-3">
+                                  <span className="font-medium">核心價值：</span> {epic.coreValue}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                epic.phase === 'PLANNING' ? 'bg-blue-900 text-blue-200' :
+                                epic.phase === 'IN_PROGRESS' ? 'bg-green-900 text-green-200' :
+                                epic.phase === 'DONE' ? 'bg-gray-900 text-gray-200' :
+                                'bg-red-900 text-red-200'
+                              }`}>
+                                {epic.phase}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {/* Progress Bar */}
+                          <div className="mb-4">
+                            <div className="flex justify-between text-sm text-primary-300 mb-2">
+                              <span>進度</span>
+                              <span>{epic.progress?.percentage || 0}%</span>
+                            </div>
+                            <div className="w-full bg-primary-700 rounded-full h-2">
+                              <div
+                                className="bg-accent-500 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${epic.progress?.percentage || 0}%` }}
+                              />
+                            </div>
+                            <div className="flex justify-between text-xs text-primary-400 mt-1">
+                              <span>{epic.progress?.storiesCompleted || 0} / {epic.progress?.storiesTotal || 0} Stories</span>
+                              <span>{epic.progress?.storyPointsCompleted || 0} / {epic.progress?.storyPointsTotal || 0} 點數</span>
+                            </div>
+                          </div>
+
+                          {/* Metadata */}
+                          <div className="flex items-center justify-between text-sm text-primary-400">
+                            <div className="flex items-center gap-4">
+                              <span>建立於：{new Date(epic.createdAt).toLocaleDateString('zh-TW')}</span>
+                              {epic.dueDate && (
+                                <span>目標完成：{new Date(epic.dueDate).toLocaleDateString('zh-TW')}</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span>{epic.estimatedStoryPoints} 預估點數</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <h3 className="text-lg font-medium text-primary-200 mb-2">尚無 Epic</h3>
-                    <p className="text-primary-400 text-sm">建立您的第一個 Epic 來組織專案功能</p>
-                  </div>
+                  ) : (
+                    <div className="bg-primary-900 border border-primary-700 rounded-lg p-8 text-center">
+                      <div className="text-primary-400 mb-4">
+                        <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                      </div>
+                      <h3 className="text-lg font-medium text-primary-200 mb-2">尚無 Epic</h3>
+                      <p className="text-primary-400 text-sm mb-4">建立您的第一個 Epic 來組織專案功能</p>
+                      <button 
+                        onClick={() => setEpicCreateModalOpen(true)}
+                        className="px-4 py-2 bg-accent-600 text-accent-50 rounded-lg hover:bg-accent-700"
+                      >
+                        建立第一個 Epic
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -740,33 +854,8 @@ export default function ProjectPage({ params }: ProjectPageProps) {
             <div
               className={`h-full ${activeTab === 'stories' ? 'block' : 'hidden'}`}
             >
-              <div className="p-6 h-full overflow-y-auto">
-                <div className="max-w-7xl mx-auto">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h2 className="text-2xl font-bold text-accent-50">Story 開發</h2>
-                      <p className="text-primary-300 mt-1">開發用戶故事和具體任務</p>
-                    </div>
-                    <button className="px-4 py-2 bg-accent-600 text-accent-50 rounded-lg hover:bg-accent-700 flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      新增 Story
-                    </button>
-                  </div>
-                  
-                  {/* Story Kanban Board Placeholder */}
-                  <div className="grid grid-cols-4 gap-4">
-                    {['待辦', '進行中', '審查', '完成'].map((status, index) => (
-                      <div key={index} className="bg-primary-900 border border-primary-700 rounded-lg p-4">
-                        <h3 className="text-lg font-medium text-accent-50 mb-4">{status}</h3>
-                        <div className="text-center py-8 text-primary-400">
-                          <p className="text-sm">無 Story</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              <div className="p-6 h-full overflow-hidden">
+                <KanbanBoard projectId={project.id} />
               </div>
             </div>
 
@@ -894,6 +983,14 @@ export default function ProjectPage({ params }: ProjectPageProps) {
         projectId={project.id}
         isOpen={logsModalOpen}
         onClose={() => setLogsModalOpen(false)}
+      />
+
+      {/* Epic Create Modal */}
+      <EpicCreateModal
+        projectId={project.id}
+        isOpen={epicCreateModalOpen}
+        onClose={() => setEpicCreateModalOpen(false)}
+        onEpicCreated={handleEpicCreated}
       />
     </div>
   );

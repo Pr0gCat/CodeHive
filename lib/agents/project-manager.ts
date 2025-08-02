@@ -320,7 +320,7 @@ export class ProjectManagerAgent {
 
       const result = await this.executor.execute('/init', {
         workingDirectory: localPath,
-        timeout: 120000, // 2 minutes timeout for project analysis
+        timeout: 1800000, // 30 minutes timeout for /init command (can be very complex)
       });
 
       if (result.success && result.output) {
@@ -892,7 +892,7 @@ Guidelines:
 
       const result = await this.executor.execute(prompt, {
         workingDirectory: context.localPath,
-        timeout: 120000, // 2 minutes timeout for feature analysis
+        timeout: 1800000, // 30 minutes timeout for feature analysis
       });
 
       if (!result.success || !result.output) {
@@ -1152,7 +1152,7 @@ Project Path: ${projectPath}
       // Execute Claude Code with /init prompt only
       const result = await this.executor.execute(`/init`, {
         workingDirectory: projectPath,
-        timeout: 180000, // 3 minutes
+        timeout: 1800000, // 30 minutes
         agentType: 'project-manager-claude-md',
       });
 

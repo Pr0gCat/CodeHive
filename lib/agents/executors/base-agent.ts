@@ -55,7 +55,7 @@ export abstract class BaseAgent {
       // Execute with Claude Code
       const result = await this.executor.execute(prompt, {
         workingDirectory: this.context.localPath,
-        timeout: options.timeout || 300000, // 5 minutes default
+        timeout: options.timeout || 1800000, // 30 minutes default
         maxRetries: options.maxRetries || 2,
         environment: options.environment,
         projectId: this.context.id,
