@@ -174,11 +174,11 @@ export default function ProjectsPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-4">
             {projects.map(
               (
                 project: Project & {
-                  _count?: { tokenUsage?: number };
+                  _count?: { tokenUsage?: number; kanbanCards?: number };
                 }
               ) => (
                 <Link
@@ -189,81 +189,118 @@ export default function ProjectsPage() {
                   <div className="bg-primary-900 rounded-lg shadow-sm border border-primary-800 p-6 hover:shadow-md hover:border-primary-700 transition-all">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-lg font-semibold text-accent-50 group-hover:text-primary-400 transition-colors">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-xl font-semibold text-accent-50 group-hover:text-accent-400 transition-colors">
                             {project.name}
                           </h3>
+                          <span
+                            className={`px-3 py-1 text-xs font-medium rounded-full ${getProjectStatusColor(project.status)}`}
+                          >
+                            {project.status}
+                          </span>
                           {project.status === 'INITIALIZING' && (
                             <div className="flex items-center">
-                              <div className="animate-spin rounded-full h-3 w-3 border border-blue-300 border-t-transparent"></div>
+                              <div className="animate-spin rounded-full h-4 w-4 border border-blue-300 border-t-transparent"></div>
                             </div>
                           )}
                         </div>
                         {project.summary && (
-                          <p className="text-sm text-primary-200 mt-1 font-medium line-clamp-1">
+                          <p className="text-sm text-primary-300 mb-3 line-clamp-2">
                             {project.summary}
                           </p>
                         )}
-                        {project.description && (
-                          <p className="text-sm text-primary-300 mt-1 line-clamp-2">
-                            {project.description}
-                          </p>
+                        
+                        {/* Tech Stack Info */}
+                        <div className="flex items-center gap-4 text-sm text-primary-400 mb-3">
+                          {project.language && (
+                            <span className="flex items-center gap-1">
+                              <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                              {project.language}
+                            </span>
+                          )}
+                          {project.framework && (
+                            <span className="flex items-center gap-1">
+                              <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                              {project.framework}
+                            </span>
+                          )}
+                          {project.packageManager && (
+                            <span className="flex items-center gap-1">
+                              <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                              {project.packageManager}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="text-right">
+                        <div className="text-sm font-medium text-accent-50 mb-1">
+                          Last updated: {new Date(project.updatedAt).toLocaleDateString()}
+                        </div>
+                        <div className="text-xs text-primary-400">
+                          {new Date(project.updatedAt).toLocaleTimeString()}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Detailed Stats Row */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-accent-50">
+                          {project._count?.kanbanCards || 0}
+                        </div>
+                        <div className="text-xs text-primary-400">Total Cards</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-green-400">
+                          0
+                        </div>
+                        <div className="text-xs text-primary-400">Completed</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-yellow-400">
+                          0
+                        </div>
+                        <div className="text-xs text-primary-400">In Progress</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-blue-400">
+                          {project._count?.tokenUsage || 0}
+                        </div>
+                        <div className="text-xs text-primary-400">Token Usage</div>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between text-sm mb-2">
+                        <span className="text-primary-300">Progress</span>
+                        <span className="text-accent-50">0%</span>
+                      </div>
+                      <div className="w-full bg-primary-700 rounded-full h-2">
+                        <div
+                          className="bg-accent-500 h-2 rounded-full transition-all duration-300"
+                          style={{ width: '0%' }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Git Info & Path */}
+                    <div className="pt-3 border-t border-primary-800">
+                      <div className="flex items-center gap-4 text-xs">
+                        {project.gitUrl && (
+                          <span className="flex items-center gap-1 text-primary-400">
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.30 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                            </svg>
+                            Remote
+                          </span>
                         )}
-                      </div>
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full ${getAgentStatusColor(agentStatus)}`}
-                      >
-                        {agentStatus.toUpperCase()}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-sm text-primary-400">
-                      <div className="flex items-center space-x-4">
-                        <span className="flex items-center">
-                          <svg
-                            className="w-4 h-4 mr-1"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                            />
-                          </svg>
-                          {project._count?.tokenUsage || 0} 任務
-                        </span>
-                        <span className="flex items-center">
-                          <svg
-                            className="w-4 h-4 mr-1"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M13 10V3L4 14h7v7l9-11h-7z"
-                            />
-                          </svg>
-                          {project._count?.tokenUsage || 0} 任務
-                        </span>
-                      </div>
-                      <span>
-                        {new Date(project.updatedAt).toLocaleDateString()}
-                      </span>
-                    </div>
-
-                    {project.localPath && (
-                      <div className="mt-3 pt-3 border-t border-primary-800">
-                        <p className="text-xs text-primary-400 font-mono truncate">
+                        <span className="text-primary-400 font-mono truncate max-w-md">
                           {project.localPath}
-                        </p>
+                        </span>
                       </div>
-                    )}
+                    </div>
                   </div>
                 </Link>
               )

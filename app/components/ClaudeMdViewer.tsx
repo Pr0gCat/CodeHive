@@ -36,8 +36,12 @@ export default function ClaudeMdViewer({
       if (!response.ok) {
         throw new Error('Failed to fetch CLAUDE.md');
       }
-      const data: ClaudeMdData = await response.json();
-      setClaudeMdData(data);
+      const result = await response.json();
+      if (result.success) {
+        setClaudeMdData(result.data);
+      } else {
+        throw new Error(result.error || 'Failed to fetch CLAUDE.md');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -49,10 +53,10 @@ export default function ClaudeMdViewer({
     setIsUpdating(true);
     try {
       await fetchClaudeMd(); // Just refetch the file content
-      showToast('CLAUDE.md 內容已重新載入', 'success');
+      showToast('CLAUDE.md content reloaded', 'success');
       onClaudeMdUpdate?.(); // Notify parent component
     } catch (err) {
-      showToast('重新載入 CLAUDE.md 時發生錯誤', 'error');
+      showToast('Error reloading CLAUDE.md', 'error');
       console.error('Error refreshing CLAUDE.md:', err);
     } finally {
       setIsUpdating(false);
@@ -75,17 +79,17 @@ export default function ClaudeMdViewer({
       const data = await response.json();
 
       if (data.success) {
-        showToast('CLAUDE.md 已重新生成', 'success');
+        showToast('CLAUDE.md regenerated successfully', 'success');
         await fetchClaudeMd(); // Refresh content
         onClaudeMdUpdate?.(); // Notify parent component
       } else {
-        showToast(`重新生成失敗：${data.error}`, 'error');
+        showToast(`Regeneration failed: ${data.error}`, 'error');
       }
     } catch (err) {
       if ((err as Error).name === 'AbortError') {
-        showToast('重新生成 CLAUDE.md 超時，請重試', 'error');
+        showToast('CLAUDE.md regeneration timed out, please retry', 'error');
       } else {
-        showToast('重新生成 CLAUDE.md 時發生錯誤', 'error');
+        showToast('Error regenerating CLAUDE.md', 'error');
       }
       console.error('Error regenerating CLAUDE.md:', err);
     } finally {
@@ -166,7 +170,7 @@ export default function ClaudeMdViewer({
       <div className="flex items-center justify-center h-64">
         <div className="flex items-center space-x-3">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-accent-500"></div>
-          <span className="text-primary-400">載入 CLAUDE.md 中...</span>
+          <span className="text-primary-400">Loading CLAUDE.md...</span>
         </div>
       </div>
     );
@@ -177,14 +181,14 @@ export default function ClaudeMdViewer({
       <div className="flex flex-col items-center justify-center h-64 space-y-4">
         <div className="text-red-400 text-center">
           <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
-          <p className="font-medium">載入失敗</p>
+          <p className="font-medium">Loading Failed</p>
           <p className="text-sm text-red-300">{error}</p>
         </div>
         <button
           onClick={fetchClaudeMd}
           className="px-4 py-2 bg-accent-600 text-accent-50 rounded hover:bg-accent-700 transition-colors"
         >
-          重試
+          Retry
         </button>
       </div>
     );
@@ -213,7 +217,7 @@ export default function ClaudeMdViewer({
               setViewMode(viewMode === 'rendered' ? 'raw' : 'rendered')
             }
             className="p-2 text-primary-400 hover:text-accent-50 hover:bg-primary-800 rounded transition-colors"
-            title={viewMode === 'rendered' ? '顯示原始文本' : '顯示渲染內容'}
+            title={viewMode === 'rendered' ? 'Show raw text' : 'Show rendered content'}
           >
             {viewMode === 'rendered' ? (
               <EyeOff className="w-4 h-4" />
@@ -231,7 +235,7 @@ export default function ClaudeMdViewer({
             <RefreshCw
               className={`w-4 h-4 ${isUpdating ? 'animate-spin' : ''}`}
             />
-            <span>{isUpdating ? '載入中...' : '重新載入'}</span>
+            <span>{isUpdating ? 'Loading...' : 'Refresh'}</span>
           </button>
 
           {/* Regenerate Button */}
@@ -243,7 +247,7 @@ export default function ClaudeMdViewer({
             <Settings
               className={`w-4 h-4 ${isRegenerating ? 'animate-spin' : ''}`}
             />
-            <span>{isRegenerating ? '重新生成中...' : '重新生成'}</span>
+            <span>{isRegenerating ? 'Regenerating...' : 'Regenerate'}</span>
           </button>
         </div>
       </div>
@@ -267,10 +271,10 @@ export default function ClaudeMdViewer({
             <FileText className="w-16 h-16 text-primary-600" />
             <div>
               <h3 className="text-lg font-medium text-primary-300 mb-2">
-                CLAUDE.md 尚未存在
+                CLAUDE.md does not exist yet
               </h3>
               <p className="text-primary-400 mb-4">
-                {claudeMdData?.message || '此專案尚未生成 CLAUDE.md 文件'}
+                {claudeMdData?.message || 'This project has not generated a CLAUDE.md file yet'}
               </p>
               <button
                 onClick={handleRegenerateClaudeMd}
@@ -280,7 +284,7 @@ export default function ClaudeMdViewer({
                 <Settings
                   className={`w-4 h-4 ${isRegenerating ? 'animate-spin' : ''}`}
                 />
-                <span>{isRegenerating ? '生成中...' : '生成 CLAUDE.md'}</span>
+                <span>{isRegenerating ? 'Generating...' : 'Generate CLAUDE.md'}</span>
               </button>
             </div>
           </div>
@@ -291,7 +295,7 @@ export default function ClaudeMdViewer({
       {claudeMdData?.lastModified && (
         <div className="p-3 border-t border-primary-800 bg-primary-900">
           <p className="text-xs text-primary-500">
-            最後修改：{new Date(claudeMdData.lastModified).toLocaleString()}
+            Last modified: {new Date(claudeMdData.lastModified).toLocaleString()}
           </p>
         </div>
       )}
