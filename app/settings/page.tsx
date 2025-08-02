@@ -8,7 +8,6 @@ import PercentageSlider from '@/components/ui/PercentageSlider';
 import TokenLimitSlider from '@/components/ui/TokenLimitSlider';
 import RateLimitSlider from '@/components/ui/RateLimitSlider';
 import { useToast } from '@/components/ui/ToastManager';
-import SocketIOTest from '../components/SocketIOTest';
 import TaskRecoveryStatus from '../components/admin/TaskRecoveryStatus';
 import { SystemManagement } from '../components/oversight/SystemManagement';
 import { Settings, Database, Monitor } from 'lucide-react';
@@ -602,9 +601,6 @@ export default function SettingsPage() {
     <div className="space-y-8">
       {/* Task Recovery Status */}
       <TaskRecoveryStatus />
-
-      {/* WebSocket Test */}
-      <SocketIOTest />
     </div>
   );
 
