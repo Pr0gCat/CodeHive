@@ -364,16 +364,6 @@ export function ImprovedProjectOverview({ projectId }: ImprovedProjectOverviewPr
         </div>
       )}
 
-      {/* Empty State */}
-      {(!overview?.epics || overview.epics.length === 0) && urgentQueries.length === 0 && (
-        <div className="text-center py-12">
-          <Target className="h-12 w-12 text-primary-400 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-accent-50 mb-2">準備開始建構</h3>
-          <p className="text-primary-300 mb-4">
-            描述您想要建構的內容，我會將其分解為可管理的部分。
-          </p>
-        </div>
-      )}
     </div>
   );
 
