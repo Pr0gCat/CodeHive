@@ -234,7 +234,7 @@ export default function TokenMonitor() {
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-primary-800 rounded-lg p-4 border border-primary-600">
             <div className="text-2xl font-bold text-accent-50">
               {summary.totalProjects}
@@ -258,6 +258,41 @@ export default function TokenMonitor() {
               {summary.averageUsage.toFixed(1)}%
             </div>
             <div className="text-sm text-primary-300">平均使用率</div>
+          </div>
+        </div>
+
+        {/* Resource Usage Trends */}
+        <div className="bg-primary-800 rounded-lg p-4 border border-primary-600">
+          <h3 className="text-lg font-semibold text-accent-50 mb-4">資源使用趨勢</h3>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-primary-300">每日燃燒率</span>
+              <span className="text-sm font-medium text-accent-50">
+                {formatShortNumber(global.totalTokensUsed)} tokens/天
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-primary-300">預估剩餘天數</span>
+              <span className="text-sm font-medium text-accent-50">
+                {global.totalTokensUsed > 0 
+                  ? Math.floor(global.remainingTokens / (global.totalTokensUsed || 1))
+                  : '∞'
+                } 天
+              </span>
+            </div>
+            <div className="bg-primary-700 rounded-lg p-3 mt-4">
+              <div className="text-xs text-primary-400 mb-2">Token 分配</div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-primary-300">已使用</span>
+                  <span className="text-red-400">{formatShortNumber(global.totalTokensUsed)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-primary-300">剩餘</span>
+                  <span className="text-green-400">{formatShortNumber(global.remainingTokens)}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

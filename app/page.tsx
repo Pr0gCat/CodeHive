@@ -2,7 +2,7 @@ import CodeHiveLogo from './components/CodeHiveLogo';
 import Navbar from './components/Navbar';
 import ProjectProgressDashboard from './components/ProjectProgressDashboard';
 import TokenMonitor from './components/TokenMonitor';
-import TokenStatistics from './components/TokenStatistics';
+import { OverviewDashboard } from './components/oversight/OverviewDashboard';
 
 export default function Home() {
   return (
@@ -18,46 +18,27 @@ export default function Home() {
               歡迎使用 CodeHive
             </h1>
           </div>
-          <p className="text-lg text-primary-300 mb-8">
+          <p className="text-lg text-primary-300">
             Claude Code 驅動的多 Agent 軟體開發平台
           </p>
-          <div className="mt-8">
-            <a
-              href="/projects"
-              className="inline-flex items-center px-6 py-3 bg-accent-600 text-accent-50 font-medium rounded-lg hover:bg-accent-700 focus:outline-none focus:ring-2 focus:ring-accent-500"
-            >
-              查看專案
-              <svg
-                className="ml-2 w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </a>
+        </div>
+
+        {/* Portfolio Overview Dashboard */}
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-8">
+            <OverviewDashboard />
           </div>
         </div>
 
-        {/* Content Grid */}
-        <div className="max-w-6xl mx-auto">
-          {/* Token Monitor - Full Width */}
-          <div className="mb-8">
-            <TokenMonitor />
-          </div>
-
+        {/* Secondary Content Grid */}
+        <div className="max-w-7xl mx-auto mt-12">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Token Statistics */}
+            {/* Token Monitor - Left Side */}
             <div>
-              <TokenStatistics />
+              <TokenMonitor />
             </div>
 
-            {/* Project Progress Dashboard */}
+            {/* Project Progress Dashboard - Right Side */}
             <div>
               <ProjectProgressDashboard />
             </div>

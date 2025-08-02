@@ -10,6 +10,8 @@ import RateLimitSlider from '@/components/ui/RateLimitSlider';
 import { useToast } from '@/components/ui/ToastManager';
 import SocketIOTest from '../components/SocketIOTest';
 import TaskRecoveryStatus from '../components/admin/TaskRecoveryStatus';
+import { SystemManagement } from '../components/oversight/SystemManagement';
+import { Settings, Database, Monitor } from 'lucide-react';
 
 interface ProjectBudget {
   projectId: string;
@@ -26,8 +28,11 @@ interface BudgetData {
   totalAllocated: number;
 }
 
+type SettingsTab = 'settings' | 'system' | 'debug';
+
 export default function SettingsPage() {
   const { showToast } = useToast();
+  const [activeTab, setActiveTab] = useState<SettingsTab>('settings');
 
   // All settings combined
   const [allSettings, setAllSettings] = useState({
@@ -327,6 +332,282 @@ export default function SettingsPage() {
     );
   }
 
+  const tabs = [
+    {
+      id: 'settings' as const,
+      name: '系統設定',
+      icon: Settings,
+      description: '全域設定和預算分配'
+    },
+    {
+      id: 'system' as const,
+      name: '系統管理',
+      icon: Database,
+      description: '維護和監控'
+    },
+    {
+      id: 'debug' as const,
+      name: '除錯工具',
+      icon: Monitor,
+      description: '連接測試和恢復'
+    }
+  ];
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'settings':
+        return renderSettingsTab();
+      case 'system':
+        return <SystemManagement />;
+      case 'debug':
+        return renderDebugTab();
+      default:
+        return renderSettingsTab();
+    }
+  };
+
+  const renderSettingsTab = () => (
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Global Settings */}
+        <div className="space-y-6">
+          {/* Token Limits */}
+          <div className="bg-primary-900 border border-primary-800 rounded-lg shadow p-6">
+            <h2 className="text-xl font-bold text-accent-50 mb-6">
+              全域限制設定
+            </h2>
+
+            {/* Daily Token Limit */}
+            <div className="mb-8">
+              <TokenLimitSlider
+                value={globalSettings.dailyTokenLimit}
+                onChange={value =>
+                  handleGlobalSettingChange('dailyTokenLimit', value)
+                }
+                onChangeEnd={value =>
+                  handleGlobalSettingSave('dailyTokenLimit', value)
+                }
+                disabled={false}
+              />
+            </div>
+
+            {/* Warning and Critical Thresholds */}
+            <div className="mb-8">
+              <DualRangeSlider
+                minValue={globalSettings.warningThreshold}
+                maxValue={globalSettings.criticalThreshold}
+                onChange={handleThresholdChange}
+                onChangeEnd={handleThresholdSave}
+                min={0.1}
+                max={0.99}
+                step={0.01}
+                disabled={false}
+                label="預警閾值設定"
+                help="設定觸發警告和危險狀態的使用百分比。系統會在達到警告閾值時發出提醒，達到危險閾值時考慮暫停。"
+              />
+            </div>
+
+            {/* Allocation Strategy */}
+            <div className="mb-4">
+              <PercentageSlider
+                value={globalSettings.allocationStrategy}
+                onChange={value =>
+                  handleGlobalSettingChange('allocationStrategy', value)
+                }
+                onChangeEnd={value =>
+                  handleGlobalSettingSave('allocationStrategy', value)
+                }
+                disabled={false}
+                label="分配策略"
+                help="設定專案間的 Token 分配策略。較高的值會更積極地分配 Token 給活躍的專案。"
+                color="accent"
+                markers={[
+                  { value: 0, label: '均等' },
+                  { value: 0.5, label: '混合' },
+                  { value: 1, label: '使用量' },
+                ]}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Auto Management Settings */}
+        <div className="space-y-6">
+          <div className="bg-primary-900 border border-primary-800 rounded-lg shadow p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-accent-50">
+                自動管理
+              </h3>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-primary-800 rounded-md border border-primary-700">
+                <div>
+                  <label className="text-sm font-medium text-primary-300">
+                    自動恢復
+                  </label>
+                  <p className="text-xs text-primary-500">
+                    當 Token 使用量降至安全範圍時自動恢復 Agent 執行
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoSettings.autoResumeEnabled}
+                    onChange={e =>
+                      handleAutoSettingChange(
+                        'autoResumeEnabled',
+                        e.target.checked
+                      )
+                    }
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-primary-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-accent-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-600"></div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-primary-800 rounded-md border border-primary-700">
+                <div>
+                  <label className="text-sm font-medium text-primary-300">
+                    警告時暫停
+                  </label>
+                  <p className="text-xs text-primary-500">
+                    在達到警告閾值時暫停所有 Agent 執行
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoSettings.pauseOnWarning}
+                    onChange={e =>
+                      handleAutoSettingChange(
+                        'pauseOnWarning',
+                        e.target.checked
+                      )
+                    }
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-primary-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-accent-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-600"></div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Claude Code Configuration */}
+          <div className="bg-primary-900 border border-primary-800 rounded-lg shadow p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-accent-50">
+                Claude Code 配置
+              </h3>
+              <button
+                onClick={testClaudeConnection}
+                disabled={testingConnection}
+                className="px-3 py-1 text-sm bg-accent-600 text-white rounded hover:bg-accent-700 disabled:bg-primary-700 disabled:text-primary-400 disabled:cursor-not-allowed transition-colors"
+              >
+                {testingConnection ? '測試中...' : '測試連接'}
+              </button>
+            </div>
+
+            {/* Connection Status */}
+            {connectionStatus.status !== 'idle' && (
+              <div
+                className={`mb-4 p-3 rounded-md text-sm ${
+                  connectionStatus.status === 'testing'
+                    ? 'bg-blue-900 border border-blue-700 text-blue-300'
+                    : connectionStatus.status === 'success'
+                      ? 'bg-green-900 border border-green-700 text-green-300'
+                      : 'bg-red-900 border border-red-700 text-red-300'
+                }`}
+              >
+                {connectionStatus.message}
+              </div>
+            )}
+
+            <div className="space-y-6">
+              {/* Claude Code Path */}
+              <div>
+                <label className="text-sm font-medium text-primary-300 block mb-2">
+                  Claude Code 執行檔路徑
+                </label>
+                <input
+                  type="text"
+                  value={claudeSettings.claudeCodePath}
+                  onChange={e =>
+                    handleClaudeSettingChange(
+                      'claudeCodePath',
+                      e.target.value
+                    )
+                  }
+                  onBlur={e =>
+                    handleClaudeSettingSave(
+                      'claudeCodePath',
+                      e.target.value
+                    )
+                  }
+                  className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-md text-primary-100 focus:outline-none focus:ring-2 focus:ring-accent-600 focus:border-accent-600"
+                  placeholder="claude"
+                />
+                <p className="text-xs text-primary-500 mt-1">
+                  Claude Code CLI 的執行檔路徑。預設為 "claude"（需要在 PATH
+                  中）
+                </p>
+              </div>
+
+              {/* Rate Limit */}
+              <div>
+                <label className="text-sm font-medium text-primary-300 block mb-2">
+                  API 速率限制
+                </label>
+                <p className="text-xs text-primary-500 mb-4">
+                  每分鐘最多可執行的 Claude Code API 呼叫次數
+                </p>
+                <RateLimitSlider
+                  value={claudeSettings.rateLimitPerMinute}
+                  onChange={value =>
+                    handleClaudeSettingChange('rateLimitPerMinute', value)
+                  }
+                  onChangeEnd={value =>
+                    handleClaudeSettingSave('rateLimitPerMinute', value)
+                  }
+                  disabled={false}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Budget Allocation */}
+      <div className="bg-primary-900 border border-primary-800 rounded-lg shadow p-6">
+        <BudgetAllocationSlider
+          projects={budgetData.projects}
+          globalDailyLimit={budgetData.globalDailyLimit}
+          onChange={handleBudgetAllocationChange}
+          disabled={budgetSaving}
+        />
+
+        {budgetSaving && (
+          <div className="mt-4 text-center">
+            <div className="inline-flex items-center text-accent-400">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-accent-400 mr-2"></div>
+              更新預算分配中...
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderDebugTab = () => (
+    <div className="space-y-8">
+      {/* Task Recovery Status */}
+      <TaskRecoveryStatus />
+
+      {/* WebSocket Test */}
+      <SocketIOTest />
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-primary-950">
       <Navbar />
@@ -335,250 +616,45 @@ export default function SettingsPage() {
           <div className="mb-8">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-accent-50">系統設定</h1>
+                <h1 className="text-3xl font-bold text-accent-50">設定</h1>
                 <p className="text-primary-300 mt-2">
-                  管理全域限制、自動管理、API 配置和專案預算分配
+                  管理系統設定、維護工具和除錯功能
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Global Settings */}
-            <div className="space-y-6">
-              {/* Token Limits */}
-              <div className="bg-primary-900 border border-primary-800 rounded-lg shadow p-6">
-                <h2 className="text-xl font-bold text-accent-50 mb-6">
-                  全域限制設定
-                </h2>
-
-                {/* Daily Token Limit */}
-                <div className="mb-8">
-                  <TokenLimitSlider
-                    value={globalSettings.dailyTokenLimit}
-                    onChange={value =>
-                      handleGlobalSettingChange('dailyTokenLimit', value)
-                    }
-                    onChangeEnd={value =>
-                      handleGlobalSettingSave('dailyTokenLimit', value)
-                    }
-                    disabled={false}
-                  />
-                </div>
-
-                {/* Warning and Critical Thresholds */}
-                <div className="mb-8">
-                  <DualRangeSlider
-                    minValue={globalSettings.warningThreshold}
-                    maxValue={globalSettings.criticalThreshold}
-                    onChange={handleThresholdChange}
-                    onChangeEnd={handleThresholdSave}
-                    min={0.1}
-                    max={0.99}
-                    step={0.01}
-                    disabled={false}
-                    label="預警閾值設定"
-                    help="設定觸發警告和危險狀態的使用百分比。系統會在達到警告閾值時發出提醒，達到危險閾值時考慮暫停。"
-                  />
-                </div>
-
-                {/* Allocation Strategy */}
-                <div className="mb-4">
-                  <PercentageSlider
-                    value={globalSettings.allocationStrategy}
-                    onChange={value =>
-                      handleGlobalSettingChange('allocationStrategy', value)
-                    }
-                    onChangeEnd={value =>
-                      handleGlobalSettingSave('allocationStrategy', value)
-                    }
-                    disabled={false}
-                    label="分配策略"
-                    help="設定專案間的 Token 分配策略。較高的值會更積極地分配 Token 給活躍的專案。"
-                    color="accent"
-                    markers={[
-                      { value: 0, label: '均等' },
-                      { value: 0.5, label: '混合' },
-                      { value: 1, label: '使用量' },
-                    ]}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Auto Management Settings */}
-            <div className="space-y-6">
-              <div className="bg-primary-900 border border-primary-800 rounded-lg shadow p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-accent-50">
-                    自動管理
-                  </h3>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-primary-800 rounded-md border border-primary-700">
-                    <div>
-                      <label className="text-sm font-medium text-primary-300">
-                        自動恢復
-                      </label>
-                      <p className="text-xs text-primary-500">
-                        當 Token 使用量降至安全範圍時自動恢復 Agent 執行
-                      </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={autoSettings.autoResumeEnabled}
-                        onChange={e =>
-                          handleAutoSettingChange(
-                            'autoResumeEnabled',
-                            e.target.checked
-                          )
-                        }
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-primary-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-accent-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-600"></div>
-                    </label>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 bg-primary-800 rounded-md border border-primary-700">
-                    <div>
-                      <label className="text-sm font-medium text-primary-300">
-                        警告時暫停
-                      </label>
-                      <p className="text-xs text-primary-500">
-                        在達到警告閾值時暫停所有 Agent 執行
-                      </p>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={autoSettings.pauseOnWarning}
-                        onChange={e =>
-                          handleAutoSettingChange(
-                            'pauseOnWarning',
-                            e.target.checked
-                          )
-                        }
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-primary-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-accent-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent-600"></div>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Claude Code Configuration */}
-              <div className="bg-primary-900 border border-primary-800 rounded-lg shadow p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-accent-50">
-                    Claude Code 配置
-                  </h3>
+          {/* Tab Navigation */}
+          <div className="bg-primary-900 rounded-lg border border-primary-700 mb-8">
+            <div className="flex overflow-x-auto">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
                   <button
-                    onClick={testClaudeConnection}
-                    disabled={testingConnection}
-                    className="px-3 py-1 text-sm bg-accent-600 text-white rounded hover:bg-accent-700 disabled:bg-primary-700 disabled:text-primary-400 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {testingConnection ? '測試中...' : '測試連接'}
-                  </button>
-                </div>
-
-                {/* Connection Status */}
-                {connectionStatus.status !== 'idle' && (
-                  <div
-                    className={`mb-4 p-3 rounded-md text-sm ${
-                      connectionStatus.status === 'testing'
-                        ? 'bg-blue-900 border border-blue-700 text-blue-300'
-                        : connectionStatus.status === 'success'
-                          ? 'bg-green-900 border border-green-700 text-green-300'
-                          : 'bg-red-900 border border-red-700 text-red-300'
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-3 px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-all ${
+                      activeTab === tab.id
+                        ? 'text-accent-50 border-accent-500 bg-primary-800'
+                        : 'text-primary-300 border-transparent hover:text-accent-50 hover:bg-primary-800'
                     }`}
                   >
-                    {connectionStatus.message}
-                  </div>
-                )}
-
-                <div className="space-y-6">
-                  {/* Claude Code Path */}
-                  <div>
-                    <label className="text-sm font-medium text-primary-300 block mb-2">
-                      Claude Code 執行檔路徑
-                    </label>
-                    <input
-                      type="text"
-                      value={claudeSettings.claudeCodePath}
-                      onChange={e =>
-                        handleClaudeSettingChange(
-                          'claudeCodePath',
-                          e.target.value
-                        )
-                      }
-                      onBlur={e =>
-                        handleClaudeSettingSave(
-                          'claudeCodePath',
-                          e.target.value
-                        )
-                      }
-                      className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-md text-primary-100 focus:outline-none focus:ring-2 focus:ring-accent-600 focus:border-accent-600"
-                      placeholder="claude"
-                    />
-                    <p className="text-xs text-primary-500 mt-1">
-                      Claude Code CLI 的執行檔路徑。預設為 "claude"（需要在 PATH
-                      中）
-                    </p>
-                  </div>
-
-                  {/* Rate Limit */}
-                  <div>
-                    <label className="text-sm font-medium text-primary-300 block mb-2">
-                      API 速率限制
-                    </label>
-                    <p className="text-xs text-primary-500 mb-4">
-                      每分鐘最多可執行的 Claude Code API 呼叫次數
-                    </p>
-                    <RateLimitSlider
-                      value={claudeSettings.rateLimitPerMinute}
-                      onChange={value =>
-                        handleClaudeSettingChange('rateLimitPerMinute', value)
-                      }
-                      onChangeEnd={value =>
-                        handleClaudeSettingSave('rateLimitPerMinute', value)
-                      }
-                      disabled={false}
-                    />
-                  </div>
-                </div>
-              </div>
+                    <Icon className="h-5 w-5" />
+                    <div className="text-left">
+                      <div>{tab.name}</div>
+                      <div className="text-xs text-primary-400 font-normal">
+                        {tab.description}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {/* Budget Allocation */}
-          <div className="mt-8 bg-primary-900 border border-primary-800 rounded-lg shadow p-6">
-            <BudgetAllocationSlider
-              projects={budgetData.projects}
-              globalDailyLimit={budgetData.globalDailyLimit}
-              onChange={handleBudgetAllocationChange}
-              disabled={budgetSaving}
-            />
-
-            {budgetSaving && (
-              <div className="mt-4 text-center">
-                <div className="inline-flex items-center text-accent-400">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-accent-400 mr-2"></div>
-                  更新預算分配中...
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Task Recovery Status */}
-          <div className="mt-8">
-            <TaskRecoveryStatus />
-          </div>
-
-          {/* WebSocket Test */}
-          <div className="mt-8">
-            <SocketIOTest />
+          {/* Tab Content */}
+          <div className="min-h-[600px]">
+            {renderTabContent()}
           </div>
         </div>
       </div>

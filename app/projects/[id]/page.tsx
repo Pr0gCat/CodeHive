@@ -5,15 +5,12 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import AgentStatusPanel from '../../components/AgentStatusPanel';
 import AIAssistant from '../../components/AIAssistant';
-import EpicDashboard from '../../components/EpicDashboard';
-import HierarchicalProjectView from '../../components/HierarchicalProjectView';
 import ProjectLogsModal from '../../components/ProjectLogsModal';
 import ProjectSettingsModal from '../../components/ProjectSettingsModal';
-import TDDDashboard from '../../components/TDDDashboard';
 import { useToast } from '@/components/ui/ToastManager';
-import UserQueriesPanel from '../../components/UserQueriesPanel';
 import ClaudeMdViewer from '../../components/ClaudeMdViewer';
-import SprintDashboard from '../../components/SprintDashboard';
+import { UnifiedProjectOverview } from '../../components/UnifiedProjectOverview';
+import UserQueriesPanel from '../../components/UserQueriesPanel';
 
 interface ProjectPageProps {
   params: { id: string };
@@ -30,9 +27,8 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     useState<ProjectSettings | null>(null);
   const [agentStatus, setAgentStatus] = useState<string>('unknown');
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'development' | 'queries' | 'claude-md'
+    'overview' | 'epics' | 'stories' | 'tasks' | 'cycles' | 'queries' | 'claude-md'
   >('overview');
-  const [devSubTab, setDevSubTab] = useState<'epics' | 'tdd' | 'sprints'>('epics');
   const [claudeMdLastUpdate, setClaudeMdLastUpdate] = useState<Date | null>(
     null
   );
@@ -46,12 +42,18 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const tab = urlParams.get('tab');
-    if (tab === 'development') {
-      setActiveTab('development');
+    if (tab === 'claude-md') {
+      setActiveTab('claude-md');
     } else if (tab === 'queries') {
       setActiveTab('queries');
-    } else if (tab === 'claude-md') {
-      setActiveTab('claude-md');
+    } else if (tab === 'epics') {
+      setActiveTab('epics');
+    } else if (tab === 'stories') {
+      setActiveTab('stories');
+    } else if (tab === 'tasks') {
+      setActiveTab('tasks');
+    } else if (tab === 'cycles') {
+      setActiveTab('cycles');
     } else {
       setActiveTab('overview');
     }
@@ -501,19 +503,20 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col">
-          {/* Tabs */}
+          {/* Tabs - Organized by Workflow */}
           <div className="border-b border-primary-800 bg-primary-950">
-            <div className="flex">
+            <div className="flex overflow-x-auto">
+              {/* 1. PLANNING PHASE */}
               <button
                 onClick={() => setActiveTab('overview')}
-                className={`px-8 py-4 text-base font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
                   activeTab === 'overview'
                     ? 'text-accent-50 border-accent-500'
                     : 'text-primary-400 hover:text-accent-50 border-transparent hover:border-primary-600'
                 }`}
               >
                 <svg
-                  className="w-5 h-5"
+                  className="w-4 h-4"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -525,18 +528,19 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                     d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
                   />
                 </svg>
-                總覽
+                專案總覽
               </button>
+              
               <button
-                onClick={() => setActiveTab('development')}
-                className={`px-8 py-4 text-base font-medium border-b-2 transition-colors flex items-center gap-2 ${
-                  activeTab === 'development'
+                onClick={() => setActiveTab('epics')}
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
+                  activeTab === 'epics'
                     ? 'text-accent-50 border-accent-500'
                     : 'text-primary-400 hover:text-accent-50 border-transparent hover:border-primary-600'
                 }`}
               >
                 <svg
-                  className="w-5 h-5"
+                  className="w-4 h-4"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -545,21 +549,97 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                   />
                 </svg>
-                開發
+                Epic 規劃
               </button>
+              
+              {/* 2. DEVELOPMENT PHASE */}
+              <button
+                onClick={() => setActiveTab('stories')}
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
+                  activeTab === 'stories'
+                    ? 'text-accent-50 border-accent-500'
+                    : 'text-primary-400 hover:text-accent-50 border-transparent hover:border-primary-600'
+                }`}
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                  />
+                </svg>
+                Story 開發
+              </button>
+              
+              <button
+                onClick={() => setActiveTab('cycles')}
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
+                  activeTab === 'cycles'
+                    ? 'text-accent-50 border-accent-500'
+                    : 'text-primary-400 hover:text-accent-50 border-transparent hover:border-primary-600'
+                }`}
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                TDD 週期
+              </button>
+              
+              {/* 3. EXECUTION PHASE */}
+              <button
+                onClick={() => setActiveTab('tasks')}
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
+                  activeTab === 'tasks'
+                    ? 'text-accent-50 border-accent-500'
+                    : 'text-primary-400 hover:text-accent-50 border-transparent hover:border-primary-600'
+                }`}
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+                任務執行
+              </button>
+              
+              {/* 4. COMMUNICATION PHASE */}
               <button
                 onClick={() => setActiveTab('queries')}
-                className={`px-8 py-4 text-base font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
                   activeTab === 'queries'
                     ? 'text-accent-50 border-accent-500'
                     : 'text-primary-400 hover:text-accent-50 border-transparent hover:border-primary-600'
                 }`}
               >
                 <svg
-                  className="w-5 h-5"
+                  className="w-4 h-4"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -568,21 +648,23 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth={2}
-                    d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                   />
                 </svg>
-                諮詢
+                AI 諮詢
               </button>
+              
+              {/* 5. DOCUMENTATION PHASE */}
               <button
                 onClick={() => setActiveTab('claude-md')}
-                className={`px-8 py-4 text-base font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
                   activeTab === 'claude-md'
                     ? 'text-accent-50 border-accent-500'
                     : 'text-primary-400 hover:text-accent-50 border-transparent hover:border-primary-600'
                 }`}
               >
                 <svg
-                  className="w-5 h-5"
+                  className="w-4 h-4"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -595,7 +677,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                   />
                 </svg>
                 <div className="flex flex-col items-start">
-                  <span>CLAUDE.md</span>
+                  <span>專案文檔</span>
                   {claudeMdLastUpdate && (
                     <span className="text-xs text-primary-500 font-normal">
                       {claudeMdLastUpdate.toLocaleDateString('zh-TW', {
@@ -613,87 +695,172 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
           {/* Tab Content */}
           <div className="flex-1">
-            {/* Project Overview */}
+            {/* Unified Project Overview */}
             <div
               className={`h-full ${activeTab === 'overview' ? 'block' : 'hidden'}`}
             >
               <div className="p-6 h-full overflow-y-auto">
-                <HierarchicalProjectView projectId={project.id} />
+                <UnifiedProjectOverview projectId={project.id} />
               </div>
             </div>
 
-            {/* Development Tab with Sub-navigation */}
+            {/* Epics Management Tab */}
             <div
-              className={`h-full flex flex-col ${activeTab === 'development' ? 'block' : 'hidden'}`}
+              className={`h-full ${activeTab === 'epics' ? 'block' : 'hidden'}`}
             >
-              {/* Sub-tabs */}
-              <div className="bg-primary-900 border-b border-primary-800">
-                <div className="flex px-6">
-                  <button
-                    onClick={() => setDevSubTab('epics')}
-                    className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                      devSubTab === 'epics'
-                        ? 'text-accent-50 border-accent-500'
-                        : 'text-primary-400 hover:text-accent-50 border-transparent'
-                    }`}
-                  >
-                    Epic 管理
-                  </button>
-                  <button
-                    onClick={() => setDevSubTab('sprints')}
-                    className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                      devSubTab === 'sprints'
-                        ? 'text-accent-50 border-accent-500'
-                        : 'text-primary-400 hover:text-accent-50 border-transparent'
-                    }`}
-                  >
-                    Sprint 管理
-                  </button>
-                  <button
-                    onClick={() => setDevSubTab('tdd')}
-                    className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                      devSubTab === 'tdd'
-                        ? 'text-accent-50 border-accent-500'
-                        : 'text-primary-400 hover:text-accent-50 border-transparent'
-                    }`}
-                  >
-                    TDD 開發
-                  </button>
-                </div>
-              </div>
-
-              {/* Sub-tab Content */}
-              <div className="flex-1">
-                {/* Epic Dashboard */}
-                <div
-                  className={`h-full ${devSubTab === 'epics' ? 'block' : 'hidden'}`}
-                >
-                  <div className="p-6 h-full overflow-y-auto">
-                    <EpicDashboard projectId={project.id} />
+              <div className="p-6 h-full overflow-y-auto">
+                <div className="max-w-7xl mx-auto">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-accent-50">Epic 規劃</h2>
+                      <p className="text-primary-300 mt-1">規劃專案的主要功能模組和大型需求</p>
+                    </div>
+                    <button className="px-4 py-2 bg-accent-600 text-accent-50 rounded-lg hover:bg-accent-700 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      新增 Epic
+                    </button>
                   </div>
-                </div>
-
-                {/* Sprint Management */}
-                <div
-                  className={`h-full ${devSubTab === 'sprints' ? 'block' : 'hidden'}`}
-                >
-                  <div className="p-6 h-full overflow-y-auto">
-                    <SprintDashboard projectId={project.id} />
-                  </div>
-                </div>
-
-                {/* TDD Dashboard */}
-                <div
-                  className={`h-full ${devSubTab === 'tdd' ? 'block' : 'hidden'}`}
-                >
-                  <div className="p-6 h-full overflow-y-auto">
-                    <TDDDashboard projectId={project.id} />
+                  
+                  {/* Epic List Placeholder */}
+                  <div className="bg-primary-900 border border-primary-700 rounded-lg p-8 text-center">
+                    <div className="text-primary-400 mb-4">
+                      <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-primary-200 mb-2">尚無 Epic</h3>
+                    <p className="text-primary-400 text-sm">建立您的第一個 Epic 來組織專案功能</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* User Queries Panel */}
+            {/* Stories Management Tab */}
+            <div
+              className={`h-full ${activeTab === 'stories' ? 'block' : 'hidden'}`}
+            >
+              <div className="p-6 h-full overflow-y-auto">
+                <div className="max-w-7xl mx-auto">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-accent-50">Story 開發</h2>
+                      <p className="text-primary-300 mt-1">開發用戶故事和具體任務</p>
+                    </div>
+                    <button className="px-4 py-2 bg-accent-600 text-accent-50 rounded-lg hover:bg-accent-700 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      新增 Story
+                    </button>
+                  </div>
+                  
+                  {/* Story Kanban Board Placeholder */}
+                  <div className="grid grid-cols-4 gap-4">
+                    {['待辦', '進行中', '審查', '完成'].map((status, index) => (
+                      <div key={index} className="bg-primary-900 border border-primary-700 rounded-lg p-4">
+                        <h3 className="text-lg font-medium text-accent-50 mb-4">{status}</h3>
+                        <div className="text-center py-8 text-primary-400">
+                          <p className="text-sm">無 Story</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tasks Tracking Tab */}
+            <div
+              className={`h-full ${activeTab === 'tasks' ? 'block' : 'hidden'}`}
+            >
+              <div className="p-6 h-full overflow-y-auto">
+                <div className="max-w-7xl mx-auto">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-accent-50">任務執行</h2>
+                      <p className="text-primary-300 mt-1">監控代理程式執行的任務狀態與進度</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button className="px-3 py-1 text-sm border border-primary-600 text-primary-300 rounded hover:bg-primary-800">
+                        全部
+                      </button>
+                      <button className="px-3 py-1 text-sm border border-primary-600 text-primary-300 rounded hover:bg-primary-800">
+                        進行中
+                      </button>
+                      <button className="px-3 py-1 text-sm border border-primary-600 text-primary-300 rounded hover:bg-primary-800">
+                        已完成
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Task List Placeholder */}
+                  <div className="bg-primary-900 border border-primary-700 rounded-lg p-8 text-center">
+                    <div className="text-primary-400 mb-4">
+                      <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-primary-200 mb-2">尚無執行任務</h3>
+                    <p className="text-primary-400 text-sm">代理程式執行的任務將顯示在這裡</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* TDD Cycles Tab */}
+            <div
+              className={`h-full ${activeTab === 'cycles' ? 'block' : 'hidden'}`}
+            >
+              <div className="p-6 h-full overflow-y-auto">
+                <div className="max-w-7xl mx-auto">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-2xl font-bold text-accent-50">TDD 週期管理</h2>
+                      <p className="text-primary-300 mt-1">追蹤測試驅動開發的 RED-GREEN-REFACTOR-REVIEW 週期</p>
+                    </div>
+                    <button className="px-4 py-2 bg-accent-600 text-accent-50 rounded-lg hover:bg-accent-700 flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      新增週期
+                    </button>
+                  </div>
+                  
+                  {/* TDD Cycle Phases */}
+                  <div className="grid grid-cols-4 gap-4 mb-8">
+                    {[
+                      { name: 'RED', desc: '編寫失敗測試', color: 'bg-red-900 border-red-700 text-red-200' },
+                      { name: 'GREEN', desc: '實作最少代碼', color: 'bg-green-900 border-green-700 text-green-200' },
+                      { name: 'REFACTOR', desc: '重構優化代碼', color: 'bg-blue-900 border-blue-700 text-blue-200' },
+                      { name: 'REVIEW', desc: '代碼審查', color: 'bg-purple-900 border-purple-700 text-purple-200' }
+                    ].map((phase, index) => (
+                      <div key={index} className={`border rounded-lg p-4 ${phase.color}`}>
+                        <h3 className="font-bold text-lg mb-2">{phase.name}</h3>
+                        <p className="text-sm opacity-90">{phase.desc}</p>
+                        <div className="mt-3 text-center py-4">
+                          <p className="text-xs opacity-75">無進行中週期</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Cycle History Placeholder */}
+                  <div className="bg-primary-900 border border-primary-700 rounded-lg p-8 text-center">
+                    <div className="text-primary-400 mb-4">
+                      <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </div>
+                    <h3 className="text-lg font-medium text-primary-200 mb-2">尚無 TDD 週期</h3>
+                    <p className="text-primary-400 text-sm">開始您的第一個測試驅動開發週期</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Queries Tab */}
             <div
               className={`h-full ${activeTab === 'queries' ? 'block' : 'hidden'}`}
             >

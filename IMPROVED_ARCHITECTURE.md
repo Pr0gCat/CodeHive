@@ -979,62 +979,62 @@ interface AgentCommunication {
 ```mermaid
 graph TB
     %% User Input Phase
-    UserInput["User Input: I want user authentication"]
+    UserInput[👤 User: "I want user authentication"]
     
     %% Project Manager Analysis
-    PM_Analysis["Project Manager Agent<br/>Analyze requirements<br/>Extract features<br/>Identify scope"]
+    PM_Analysis[🧠 Project Manager Agent<br/>- Analyze requirements<br/>- Extract features<br/>- Identify scope]
     
     %% Work Breakdown
-    Epic_Creation["Create Epic<br/>User Authentication System"]
-    Story_Breakdown["Break into Stories<br/>User registration<br/>User login<br/>Password reset"]
-    Task_Planning["Plan Tasks<br/>Email validation<br/>Password hashing<br/>JWT tokens"]
-    TDD_Estimation["Estimate TDD Cycles<br/>15 cycles total"]
+    Epic_Creation[📋 Create Epic<br/>"User Authentication System"]
+    Story_Breakdown[📝 Break into Stories<br/>- User registration<br/>- User login<br/>- Password reset]
+    Task_Planning[⚙️ Plan Tasks<br/>- Email validation<br/>- Password hashing<br/>- JWT tokens]
+    TDD_Estimation[🔢 Estimate TDD Cycles<br/>~15 cycles total]
     
     %% Development Execution
-    Start_Development["Start Development"]
-    Current_Task["Select Next Task<br/>Email validation"]
+    Start_Development[🚀 Start Development]
+    Current_Task[📌 Select Next Task<br/>"Email validation"]
     
     %% TDD Cycle
-    TDD_RED["RED Phase<br/>Write failing test"]
-    TDD_GREEN["GREEN Phase<br/>Implement code"]
-    TDD_REFACTOR["REFACTOR Phase<br/>Clean up code"]
-    TDD_REVIEW["REVIEW Phase<br/>Code review"]
+    TDD_RED[🔴 RED Phase<br/>Write failing test]
+    TDD_GREEN[🟢 GREEN Phase<br/>Implement code]
+    TDD_REFACTOR[🔵 REFACTOR Phase<br/>Clean up code]
+    TDD_REVIEW[⭐ REVIEW Phase<br/>Code review]
     
     %% Decision Points
-    Need_Query{"Design Decision<br/>Needed?"}
-    Create_Query["Create Query<br/>How should login form look?"]
-    AI_Proposal["AI Proposal<br/>Simple form with email/password"]
+    Need_Query{🤔 Design Decision<br/>Needed?}
+    Create_Query[❓ Create Query<br/>"How should login form look?"]
+    AI_Proposal[🤖 AI Proposal<br/>"Simple form with email/password"]
     
     %% User Interaction
-    User_Response{"User Response"}
-    Comment["User Comments<br/>Make it simple, add remember me"]
-    AI_Refine["AI Refines Proposal<br/>Updated with remember me option"]
-    User_Approve["User Approves<br/>Final proposal"]
+    User_Response{👤 User Response}
+    Comment[💬 User Comments<br/>"Make it simple, add remember me"]
+    AI_Refine[🔄 AI Refines Proposal<br/>"Updated with remember me option"]
+    User_Approve[✅ User Approves<br/>Final proposal]
     
     %% Progress & Updates
-    Cycle_Complete["Cycle Complete"]
-    Update_CLAUDE["Update CLAUDE.md<br/>via Claude Code command"]
-    Progress_Update["Update Progress<br/>UI dashboards"]
+    Cycle_Complete[✅ Cycle Complete]
+    Update_CLAUDE[📄 Update CLAUDE.md<br/>via Claude Code command]
+    Progress_Update[📊 Update Progress<br/>UI dashboards]
     
     %% Resource Management
-    Check_Budget{"Check Token Budget"}
-    Budget_OK["Budget Available"]
-    Budget_Limit["Budget Limit Reached<br/>Pause until reset"]
+    Check_Budget{💰 Check Token Budget}
+    Budget_OK[✅ Budget Available]
+    Budget_Limit[⏸️ Budget Limit Reached<br/>Pause until reset]
     
     %% Completion Checks
-    More_Cycles{"More Cycles<br/>in Task?"}
-    More_Tasks{"More Tasks<br/>in Story?"}
-    More_Stories{"More Stories<br/>in Epic?"}
+    More_Cycles{🔄 More Cycles<br/>in Task?}
+    More_Tasks{📋 More Tasks<br/>in Story?}
+    More_Stories{📖 More Stories<br/>in Epic?}
     
     %% Epic Completion
-    Epic_Complete["Epic Complete"]
-    Major_Update["Major CLAUDE.md Update"]
-    User_Delivery["Deliver to User"]
+    Epic_Complete[🎉 Epic Complete]
+    Major_Update[📄 Major CLAUDE.md Update]
+    User_Delivery[🚢 Deliver to User]
     
     %% Error Handling
-    Error_Detected{"Error Detected?"}
-    Simple_Error["Simple Technical Error<br/>Retry with different approach"]
-    Complex_Error["Complex Design Issue<br/>Create query for user input"]
+    Error_Detected{❌ Error Detected?}
+    Simple_Error[🔧 Simple Technical Error<br/>Retry with different approach]
+    Complex_Error[🆘 Complex Design Issue<br/>Create query for user input]
     
     %% Flow Connections
     UserInput --> PM_Analysis

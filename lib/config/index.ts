@@ -110,3 +110,38 @@ export const config: Config = {
   isDevelopment: unifiedConfig.environment.isDevelopment,
 };
 
+// Get default project ID for the improved architecture
+export async function getDefaultProjectId(): Promise<string | null> {
+  try {
+    const { PrismaClient } = await import('@prisma/client');
+    const prisma = new PrismaClient();
+    
+    // Find the first active project, or any project if none are active
+    const project = await prisma.project.findFirst({
+      where: {
+        status: {
+          in: ['ACTIVE', 'INITIALIZING']
+        }
+      },
+      orderBy: {
+        updatedAt: 'desc'
+      }
+    });
+    
+    if (!project) {
+      // If no active projects, get the most recently updated project
+      const fallbackProject = await prisma.project.findFirst({
+        orderBy: {
+          updatedAt: 'desc'
+        }
+      });
+      return fallbackProject?.id || null;
+    }
+    
+    return project.id;
+  } catch (error) {
+    console.error('Error getting default project ID:', error);
+    return null;
+  }
+}
+
