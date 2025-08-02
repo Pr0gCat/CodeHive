@@ -1,7 +1,7 @@
 'use client';
 
 import { useSocket } from '@/lib/socket/client';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export interface InitializationPhase {
@@ -17,6 +17,7 @@ interface HiveInitializationAnimationSocketProps {
   isVisible: boolean;
   onComplete?: () => void;
   onError?: (error: string) => void;
+  onCancel?: () => void;
   projectName?: string;
   taskId?: string;
 }
@@ -25,11 +26,13 @@ export default function HiveInitializationAnimationSocket({
   isVisible,
   onComplete,
   onError,
+  onCancel,
   projectName = 'New Project',
   taskId,
 }: HiveInitializationAnimationSocketProps) {
   const [showContent, setShowContent] = useState(false);
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Use WebSocket hook
   const {
@@ -47,6 +50,41 @@ export default function HiveInitializationAnimationSocket({
     phases.length > 0 && phases.every(phase => phase.status === 'completed');
   const hasError =
     phases.some(phase => phase.status === 'error') || !!socketError;
+
+  // Cancel task function
+  const handleCancel = async () => {
+    if (!taskId || isCancelling) return;
+
+    const confirmed = confirm(
+      `Are you sure you want to cancel the initialization of "${projectName}"?\n\nThis will stop the process and clean up all created files and database records.`
+    );
+
+    if (!confirmed) return;
+
+    setIsCancelling(true);
+
+    try {
+      const response = await fetch(`/api/tasks/${taskId}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log('✅ Task cancelled successfully:', result);
+        onCancel?.();
+      } else {
+        console.error('❌ Failed to cancel task:', result.error);
+        alert(`Failed to cancel task: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('❌ Error cancelling task:', error);
+      alert('Error cancelling task. Please try again.');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   // Debug log
   console.log('🎯 HiveInitializationAnimationSocket:', {
@@ -269,6 +307,28 @@ export default function HiveInitializationAnimationSocket({
               />
             </div>
           </div>
+
+          {/* Cancel Button */}
+          {!isComplete && !hasError && taskId && (
+            <div className="text-center mb-6">
+              <button
+                onClick={handleCancel}
+                disabled={isCancelling}
+                className={`
+                  inline-flex items-center px-6 py-3 border border-red-600 
+                  text-red-400 font-medium rounded-lg transition-all duration-200
+                  ${
+                    isCancelling
+                      ? 'bg-red-600/10 cursor-not-allowed opacity-50'
+                      : 'hover:bg-red-600/20 hover:border-red-500 hover:text-red-300'
+                  }
+                `}
+              >
+                <X className="w-5 h-5 mr-2" />
+                {isCancelling ? 'Cancelling...' : 'Cancel Initialization'}
+              </button>
+            </div>
+          )}
 
           {/* Status Messages */}
           {isComplete && !hasError && (

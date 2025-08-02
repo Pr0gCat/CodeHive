@@ -3,6 +3,7 @@
 import { Project, ProjectSettings } from '@/lib/db';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import AgentStatusPanel from '../../components/AgentStatusPanel';
 import ProjectLogsModal from '../../components/ProjectLogsModal';
 import ProjectSettingsModal from '../../components/ProjectSettingsModal';
@@ -19,6 +20,7 @@ interface ProjectPageProps {
 
 export default function ProjectPage({ params }: ProjectPageProps) {
   const { showToast } = useToast();
+  const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +41,9 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     currentPhase?: string;
     progress?: number;
     message?: string;
+    taskId?: string;
   } | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Check URL parameters for tab selection
   useEffect(() => {
@@ -86,7 +90,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
   const fetchInitializationProgress = useCallback(async () => {
     try {
-      const response = await fetch(`/api/projects/progress/${params.id}`);
+      const response = await fetch(`/api/projects/${params.id}/task`);
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.data) {
@@ -94,6 +98,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
             currentPhase: data.data.currentPhase,
             progress: data.data.progress,
             message: data.data.message,
+            taskId: data.data.taskId,
           });
         }
       }
@@ -102,6 +107,41 @@ export default function ProjectPage({ params }: ProjectPageProps) {
       console.warn('Failed to fetch initialization progress:', err);
     }
   }, [params.id]);
+
+  // Cancel initialization function
+  const handleCancelInitialization = async () => {
+    if (!initializationProgress?.taskId || isCancelling) return;
+
+    const confirmed = confirm(
+      `Are you sure you want to cancel the initialization of "${project?.name}"?\n\nThis will stop the process and remove all created files and database records.`
+    );
+
+    if (!confirmed) return;
+
+    setIsCancelling(true);
+
+    try {
+      const response = await fetch(`/api/tasks/${initializationProgress.taskId}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        showToast('Project initialization cancelled successfully', 'success');
+        // Redirect to projects list
+        router.push('/projects');
+      } else {
+        showToast(`Failed to cancel initialization: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('Error cancelling initialization:', error);
+      showToast('Error cancelling initialization. Please try again.', 'error');
+    } finally {
+      setIsCancelling(false);
+    }
+  };
 
   const fetchAgentStatus = useCallback(async () => {
     try {
@@ -391,12 +431,33 @@ export default function ProjectPage({ params }: ProjectPageProps) {
               初始化過程在背景進行，完成後您將能夠正常使用專案的所有功能。
             </p>
           </div>
-          <Link
-            href="/projects"
-            className="inline-block px-6 py-2 bg-accent-600 text-accent-50 rounded-lg hover:bg-accent-700 transition-colors font-medium"
-          >
-            返回專案列表
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              href="/projects"
+              className="inline-block px-6 py-2 bg-accent-600 text-accent-50 rounded-lg hover:bg-accent-700 transition-colors font-medium"
+            >
+              返回專案列表
+            </Link>
+            
+            {/* Cancel Button */}
+            {initializationProgress?.taskId && (
+              <button
+                onClick={handleCancelInitialization}
+                disabled={isCancelling}
+                className={`
+                  px-6 py-2 border border-red-600 text-red-400 font-medium rounded-lg 
+                  transition-all duration-200
+                  ${
+                    isCancelling
+                      ? 'bg-red-600/10 cursor-not-allowed opacity-50'
+                      : 'hover:bg-red-600/20 hover:border-red-500 hover:text-red-300'
+                  }
+                `}
+              >
+                {isCancelling ? '取消中...' : '取消初始化'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );

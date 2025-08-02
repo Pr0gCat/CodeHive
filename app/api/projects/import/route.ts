@@ -276,6 +276,12 @@ export async function POST(request: NextRequest) {
         localPath || gitClient.generateProjectPath(projectName);
 
       // Phase 1: Git Repository
+      // Check for cancellation before starting
+      if (await taskManager.isTaskCancelled(taskId)) {
+        console.log(`🚫 Task ${taskId} was cancelled, stopping execution`);
+        return;
+      }
+
       await taskManager.startPhase(taskId, 'git_clone');
 
       let needsClone = false;
@@ -360,6 +366,12 @@ export async function POST(request: NextRequest) {
       }
 
       // Phase 3: Project Analysis - WITH REAL PROGRESS
+      // Check for cancellation before analysis
+      if (await taskManager.isTaskCancelled(taskId)) {
+        console.log(`🚫 Task ${taskId} was cancelled, stopping execution`);
+        return;
+      }
+
       await taskManager.startPhase(taskId, 'analysis');
 
       // Run real project analysis with progress tracking
@@ -386,6 +398,12 @@ export async function POST(request: NextRequest) {
       });
 
       // Phase 3: Completion - Update project status first
+      // Check for cancellation before completion
+      if (await taskManager.isTaskCancelled(taskId)) {
+        console.log(`🚫 Task ${taskId} was cancelled, stopping execution`);
+        return;
+      }
+
       await taskManager.startPhase(taskId, 'completion');
 
       await taskManager.updatePhaseProgress(taskId, 'completion', 20, {
@@ -419,6 +437,12 @@ export async function POST(request: NextRequest) {
       });
 
       // Phase 4: Sprint Setup - Create default first sprint (now that project is ACTIVE)
+      // Check for cancellation before sprint setup
+      if (await taskManager.isTaskCancelled(taskId)) {
+        console.log(`🚫 Task ${taskId} was cancelled, stopping execution`);
+        return;
+      }
+
       await taskManager.startPhase(taskId, 'sprint_setup');
 
       try {
