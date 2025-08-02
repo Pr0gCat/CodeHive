@@ -92,8 +92,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // For local path imports, verify the directory exists
+    // Additional filesystem validation
     if (localPath) {
+      // For local path imports, verify the source directory exists
       try {
         const { promises: fs } = await import('fs');
         await fs.access(localPath);
@@ -105,6 +106,21 @@ export async function POST(request: NextRequest) {
           },
           { status: 400 }
         );
+      }
+    } else if (gitUrl) {
+      // For Git URL imports, verify the target directory doesn't already exist
+      try {
+        const { promises: fs } = await import('fs');
+        await fs.access(finalLocalPath);
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Directory already exists at: ${finalLocalPath}. Please choose a different project name or remove the existing directory.`,
+          },
+          { status: 409 }
+        );
+      } catch {
+        // Directory doesn't exist, which is what we want for Git URL imports
       }
     }
 
