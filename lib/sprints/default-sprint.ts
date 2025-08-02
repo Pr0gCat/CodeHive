@@ -29,7 +29,7 @@ export async function createDefaultFirstSprint(projectId: string, projectName: s
         projectId,
         title: "Project Documentation",
         description: "Create comprehensive project documentation including README and technical guides",
-        priority: "HIGH",
+        mvpPriority: "HIGH",
         status: "IN_PROGRESS",
         estimatedStoryPoints: 5,
         actualStoryPoints: 0,
@@ -53,20 +53,19 @@ export async function createDefaultFirstSprint(projectId: string, projectName: s
 - Establish coding standards and conventions
 
 This task will leverage Claude Code's intelligent project initialization to create a solid foundation for ${projectName}.`,
-        type: "STORY",
         status: "TODO",
+        position: 1,
         priority: "CRITICAL",
         storyPoints: 2,
-        acceptanceCriteria: [
+        acceptanceCriteria: JSON.stringify([
           "Claude Code /init command executed successfully",
           "Project structure is properly initialized",
           "Development environment is configured",
           "Basic tooling and dependencies are set up",
           "Initial project files are created",
           "Configuration files are properly structured"
-        ],
-        tags: ["initialization", "claude-code", "setup", "foundation"],
-        assignee: "Project Manager Agent",
+        ]),
+        assignedAgent: "Project Manager Agent",
         tddEnabled: false, // This is a setup task, not a feature requiring TDD
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -90,20 +89,19 @@ This task will leverage Claude Code's intelligent project initialization to crea
 - Tech stack documentation
 
 This README should serve as the primary entry point for understanding and working with the project.`,
-        type: "STORY",
         status: "TODO",
+        position: 2,
         priority: "HIGH",
         storyPoints: 3,
-        acceptanceCriteria: [
+        acceptanceCriteria: JSON.stringify([
           "README.md contains comprehensive project overview",
           "Installation and setup instructions are clear and complete",
           "Code examples and usage patterns are provided",
           "Development workflow is documented",
           "Contributing guidelines are included",
           "Project structure is explained"
-        ],
-        tags: ["documentation", "readme", "setup"],
-        assignee: "Project Manager Agent",
+        ]),
+        assignedAgent: "Project Manager Agent",
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -124,19 +122,18 @@ This README should serve as the primary entry point for understanding and workin
 - Deployment procedures
 
 This will create a foundation for ongoing documentation efforts.`,
-        type: "STORY",
         status: "TODO",
+        position: 3,
         priority: "MEDIUM",
         storyPoints: 2,
-        acceptanceCriteria: [
+        acceptanceCriteria: JSON.stringify([
           "Documentation structure is established",
           "Basic API docs template is created (if applicable)",
           "Architecture overview document exists",
           "Development guidelines are documented",
           "Testing documentation is outlined"
-        ],
-        tags: ["documentation", "technical", "architecture"],
-        assignee: "Documentation Agent",
+        ]),
+        assignedAgent: "Documentation Agent",
         createdAt: new Date(),
         updatedAt: new Date(),
       },

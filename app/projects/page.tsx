@@ -3,8 +3,19 @@
 import { Project } from '@/lib/db';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import ProjectImportModal from '../components/ProjectImportModal';
+import ConfirmationModal from '../components/ConfirmationModal';
+
+interface ProjectTask {
+  taskId: string;
+  taskType: string;
+  status: string;
+  currentPhase?: string;
+  progress: number;
+  message: string;
+}
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -12,6 +23,19 @@ export default function ProjectsPage() {
   const [error, setError] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [agentStatus, setAgentStatus] = useState<string>('unknown');
+  const [projectTasks, setProjectTasks] = useState<Record<string, ProjectTask>>({});
+  const [cancellingProjects, setCancellingProjects] = useState<Set<string>>(new Set());
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    projectId: string;
+    projectName: string;
+    isFailed: boolean;
+  }>({
+    isOpen: false,
+    projectId: '',
+    projectName: '',
+    isFailed: false,
+  });
 
   const fetchAgentStatus = async () => {
     try {
@@ -31,7 +55,10 @@ export default function ProjectsPage() {
     fetchAgentStatus();
 
     // Update agent status every 5 seconds
-    const interval = setInterval(fetchAgentStatus, 5000);
+    const interval = setInterval(() => {
+      fetchAgentStatus();
+      fetchProjectTasks();
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -42,6 +69,8 @@ export default function ProjectsPage() {
 
       if (data.success) {
         setProjects(data.data);
+        // Fetch task information for INITIALIZING projects
+        fetchProjectTasks(data.data);
       } else {
         setError(data.error || 'Failed to fetch projects');
       }
@@ -50,6 +79,105 @@ export default function ProjectsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchProjectTasks = async (projectList?: Project[]) => {
+    const initializingProjects = (projectList || projects).filter(
+      (project: Project) => project.status === 'INITIALIZING'
+    );
+
+    for (const project of initializingProjects) {
+      try {
+        const response = await fetch(`/api/projects/${project.id}/task`);
+        const data = await response.json();
+
+        if (data.success) {
+          setProjectTasks(prev => ({
+            ...prev,
+            [project.id]: data.data,
+          }));
+        }
+      } catch (error) {
+        console.error(`Failed to fetch task for project ${project.id}:`, error);
+      }
+    }
+  };
+
+  const handleCancelProject = (projectId: string, projectName: string) => {
+    const task = projectTasks[projectId];
+    
+    // If already cancelling, ignore
+    if (cancellingProjects.has(projectId)) return;
+    
+    // For INITIALIZING projects without active tasks, we can still attempt cleanup
+    if (!task) {
+      console.log(`No active task found for project ${projectId}, but attempting cleanup for INITIALIZING project`);
+    }
+
+    // Show confirmation modal
+    setConfirmModal({
+      isOpen: true,
+      projectId,
+      projectName,
+      isFailed: task?.status === 'FAILED',
+    });
+  };
+
+  const handleConfirmCancel = async () => {
+    const { projectId, projectName } = confirmModal;
+    const task = projectTasks[projectId];
+
+    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+    setCancellingProjects(prev => new Set(prev).add(projectId));
+
+    try {
+      let response, result;
+      
+      if (task && task.taskId) {
+        // If we have an active task, cancel it via task endpoint
+        response = await fetch(`/api/tasks/${task.taskId}/cancel`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        result = await response.json();
+      } else {
+        // If no active task, try to clean up the project directly
+        response = await fetch(`/api/projects/${projectId}/cleanup`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason: 'manual_cancellation' }),
+        });
+        result = await response.json();
+      }
+
+      if (result.success) {
+        console.log('✅ Project cancelled successfully:', result);
+        // Refresh projects list to show updated status
+        fetchProjects();
+        // Remove from tasks tracking
+        setProjectTasks(prev => {
+          const newTasks = { ...prev };
+          delete newTasks[projectId];
+          return newTasks;
+        });
+      } else {
+        console.error('❌ Failed to cancel project:', result.error);
+        alert(`Failed to cancel project: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('❌ Error cancelling project:', error);
+      alert('Error cancelling project. Please try again.');
+    } finally {
+      setCancellingProjects(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(projectId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleCancelModalClose = () => {
+    setConfirmModal(prev => ({ ...prev, isOpen: false }));
   };
 
   const getAgentStatusColor = (status: string) => {
@@ -181,29 +309,150 @@ export default function ProjectsPage() {
                   _count?: { tokenUsage?: number; kanbanCards?: number };
                 }
               ) => (
-                <Link
-                  key={project.id}
-                  href={`/projects/${project.id}`}
-                  className="group block"
-                >
-                  <div className="bg-primary-900 rounded-lg shadow-sm border border-primary-800 p-6 hover:shadow-md hover:border-primary-700 transition-all">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="text-xl font-semibold text-accent-50 group-hover:text-accent-400 transition-colors">
-                            {project.name}
-                          </h3>
-                          <span
-                            className={`px-3 py-1 text-xs font-medium rounded-full ${getProjectStatusColor(project.status)}`}
-                          >
-                            {project.status}
-                          </span>
-                          {project.status === 'INITIALIZING' && (
+                <div key={project.id} className="group">
+                  {project.status === 'INITIALIZING' ? (
+                    // INITIALIZING projects - not clickable, show cancel button
+                    <div className="bg-primary-900 rounded-lg shadow-sm border border-primary-800 p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="text-xl font-semibold text-accent-50">
+                              {project.name}
+                            </h3>
+                            <span
+                              className={`px-3 py-1 text-xs font-medium rounded-full ${getProjectStatusColor(project.status)}`}
+                            >
+                              {project.status}
+                            </span>
                             <div className="flex items-center">
                               <div className="animate-spin rounded-full h-4 w-4 border border-blue-300 border-t-transparent"></div>
                             </div>
+                          </div>
+                          
+                          {/* Initialization Progress */}
+                          {projectTasks[project.id] && (
+                            <div className="mb-3">
+                              <div className={`text-sm mb-1 ${
+                                projectTasks[project.id].status === 'FAILED' 
+                                  ? 'text-red-300' 
+                                  : 'text-blue-300'
+                              }`}>
+                                {projectTasks[project.id].status === 'FAILED'
+                                  ? 'Initialization Failed'
+                                  : projectTasks[project.id].currentPhase || 'Initializing...'
+                                }
+                              </div>
+                              <div className="text-xs text-primary-400 mb-2">
+                                {projectTasks[project.id].message}
+                              </div>
+                              <div className="w-full bg-primary-800 rounded-full h-2">
+                                <div
+                                  className={`h-2 rounded-full transition-all duration-300 ${
+                                    projectTasks[project.id].status === 'FAILED'
+                                      ? 'bg-red-500'
+                                      : 'bg-blue-500'
+                                  }`}
+                                  style={{ width: `${projectTasks[project.id].progress}%` }}
+                                />
+                              </div>
+                              <div className="text-xs text-primary-400 mt-1">
+                                {projectTasks[project.id].status === 'FAILED'
+                                  ? 'Failed - click Cancel to clean up'
+                                  : `${projectTasks[project.id].progress}% complete`
+                                }
+                              </div>
+                            </div>
                           )}
                         </div>
+                        
+                        {/* Cancel Button */}
+                        <div className="ml-4">
+                          <button
+                            onClick={() => handleCancelProject(project.id, project.name)}
+                            disabled={cancellingProjects.has(project.id)}
+                            className={`
+                              inline-flex items-center px-4 py-2 border border-red-600 
+                              text-red-400 font-medium rounded-lg transition-all duration-200
+                              ${
+                                cancellingProjects.has(project.id)
+                                  ? 'bg-red-600/10 cursor-not-allowed opacity-50'
+                                  : 'hover:bg-red-600/20 hover:border-red-500 hover:text-red-300'
+                              }
+                            `}
+                          >
+                            <X className="w-4 h-4 mr-2" />
+                            {cancellingProjects.has(project.id) 
+                              ? 'Cleaning up...' 
+                              : (projectTasks[project.id]?.status === 'FAILED' ? 'Clean up' : 'Cancel')
+                            }
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {project.summary && (
+                        <p className="text-sm text-primary-300 mb-3 line-clamp-2">
+                          {project.summary}
+                        </p>
+                      )}
+                      
+                      {/* Tech Stack Info */}
+                      <div className="flex items-center gap-4 text-sm text-primary-400 mb-3">
+                        {project.language && (
+                          <span className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                            {project.language}
+                          </span>
+                        )}
+                        {project.framework && (
+                          <span className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                            {project.framework}
+                          </span>
+                        )}
+                        {project.packageManager && (
+                          <span className="flex items-center gap-1">
+                            <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                            {project.packageManager}
+                          </span>
+                        )}
+                      </div>
+                      
+                      {/* Git Info & Path */}
+                      <div className="pt-3 border-t border-primary-800">
+                        <div className="flex items-center gap-4 text-xs">
+                          {project.gitUrl && (
+                            <span className="flex items-center gap-1 text-primary-400">
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.30 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                              </svg>
+                              Remote
+                            </span>
+                          )}
+                          <span className="text-primary-400 font-mono truncate max-w-md">
+                            {project.localPath}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    // Active projects - clickable
+                    <Link
+                      href={`/projects/${project.id}`}
+                      className="block"
+                    >
+                      <div className="bg-primary-900 rounded-lg shadow-sm border border-primary-800 p-6 hover:shadow-md hover:border-primary-700 transition-all">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="text-xl font-semibold text-accent-50 group-hover:text-accent-400 transition-colors">
+                                {project.name}
+                              </h3>
+                              <span
+                                className={`px-3 py-1 text-xs font-medium rounded-full ${getProjectStatusColor(project.status)}`}
+                              >
+                                {project.status}
+                              </span>
+                            </div>
                         {project.summary && (
                           <p className="text-sm text-primary-300 mb-3 line-clamp-2">
                             {project.summary}
@@ -301,8 +550,10 @@ export default function ProjectsPage() {
                         </span>
                       </div>
                     </div>
-                  </div>
-                </Link>
+                      </div>
+                    </Link>
+                  )}
+                </div>
               )
             )}
           </div>
@@ -312,6 +563,22 @@ export default function ProjectsPage() {
       <ProjectImportModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}
+      />
+
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={handleCancelModalClose}
+        onConfirm={handleConfirmCancel}
+        title={confirmModal.isFailed ? "Clean Up Failed Project" : "Cancel Project Initialization"}
+        message={
+          confirmModal.isFailed
+            ? `Are you sure you want to clean up the failed project "${confirmModal.projectName}"?\n\nThis will remove all created files and database records.`
+            : `Are you sure you want to cancel the initialization of "${confirmModal.projectName}"?\n\nThis will stop the process and clean up all created files and database records.`
+        }
+        confirmText={confirmModal.isFailed ? "Clean Up" : "Cancel Project"}
+        cancelText="Keep Project"
+        variant="danger"
+        isLoading={cancellingProjects.has(confirmModal.projectId)}
       />
     </div>
   );

@@ -3,6 +3,7 @@
 import { useSocket } from '@/lib/socket/client';
 import { AlertTriangle, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import ConfirmationModal from '../ConfirmationModal';
 
 export interface InitializationPhase {
   id: string;
@@ -33,6 +34,7 @@ export default function HiveInitializationAnimationSocket({
   const [showContent, setShowContent] = useState(false);
   const [currentPhaseIndex, setCurrentPhaseIndex] = useState(0);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Use WebSocket hook
   const {
@@ -51,15 +53,15 @@ export default function HiveInitializationAnimationSocket({
   const hasError =
     phases.some(phase => phase.status === 'error') || !!socketError;
 
-  // Cancel task function
-  const handleCancel = async () => {
+  // Show cancel confirmation
+  const handleCancelClick = () => {
     if (!taskId || isCancelling) return;
+    setShowConfirmModal(true);
+  };
 
-    const confirmed = confirm(
-      `Are you sure you want to cancel the initialization of "${projectName}"?\n\nThis will stop the process and clean up all created files and database records.`
-    );
-
-    if (!confirmed) return;
+  // Cancel task function
+  const handleConfirmCancel = async () => {
+    setShowConfirmModal(false);
 
     setIsCancelling(true);
 
@@ -312,7 +314,7 @@ export default function HiveInitializationAnimationSocket({
           {!isComplete && !hasError && taskId && (
             <div className="text-center mb-6">
               <button
-                onClick={handleCancel}
+                onClick={handleCancelClick}
                 disabled={isCancelling}
                 className={`
                   inline-flex items-center px-6 py-3 border border-red-600 
@@ -356,6 +358,18 @@ export default function HiveInitializationAnimationSocket({
           )}
         </div>
       </div>
+
+      <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleConfirmCancel}
+        title="Cancel Project Initialization"
+        message={`Are you sure you want to cancel the initialization of "${projectName}"?\n\nThis will stop the process and clean up all created files and database records.`}
+        confirmText="Cancel Initialization"
+        cancelText="Keep Initializing"
+        variant="danger"
+        isLoading={isCancelling}
+      />
     </div>
   );
 }

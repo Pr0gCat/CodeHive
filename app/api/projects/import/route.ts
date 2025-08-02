@@ -589,7 +589,7 @@ export async function POST(request: NextRequest) {
 
         const descriptionResult = await descriptionResponse.json();
         if (descriptionResult.success && descriptionResult.data?.context) {
-          await taskManager.updatePhaseProgress(taskId, 'initialization', 50, {
+          await taskManager.updatePhaseProgress(taskId, 'completion', 87, {
             type: 'PHASE_PROGRESS',
             message: '生成智能專案描述',
           });

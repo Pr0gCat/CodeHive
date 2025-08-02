@@ -8,11 +8,11 @@ export async function GET(
   const projectId = params.id;
 
   try {
-    // Find the active task for this project
+    // Find the active or recent task for this project
     const activeTask = await prisma.taskExecution.findFirst({
       where: {
         projectId,
-        status: { in: ['PENDING', 'RUNNING'] },
+        status: { in: ['PENDING', 'RUNNING', 'FAILED', 'CANCELLED'] },
       },
       include: {
         phases: { orderBy: { order: 'asc' } },
@@ -26,7 +26,7 @@ export async function GET(
 
     if (!activeTask) {
       return NextResponse.json(
-        { success: false, error: 'No active task found for this project' },
+        { success: false, error: 'No task found for this project' },
         { status: 404 }
       );
     }
