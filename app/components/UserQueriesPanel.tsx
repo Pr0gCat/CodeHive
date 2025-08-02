@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/ToastManager';
+import { useCallback, useEffect, useState } from 'react';
 
 interface QueryComment {
   id: string;
@@ -47,7 +47,8 @@ export default function UserQueriesPanel({ projectId }: UserQueriesPanelProps) {
   const [filterStatus, setFilterStatus] = useState<string>('PENDING');
   const [filterUrgency, setFilterUrgency] = useState<string>('');
 
-  const fetchQueries = async () => {
+  const fetchQueries = useCallback(async () => {
+    setLoading(true);
     try {
       const params = new URLSearchParams();
       if (filterStatus) params.append('status', filterStatus);
@@ -68,11 +69,11 @@ export default function UserQueriesPanel({ projectId }: UserQueriesPanelProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId, filterStatus, filterUrgency]);
 
   useEffect(() => {
     fetchQueries();
-  }, [projectId, filterStatus, filterUrgency]);
+  }, [fetchQueries]);
 
   const handleAddComment = async (queryId: string) => {
     if (!commentText.trim()) return;

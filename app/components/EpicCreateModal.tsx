@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { EpicType, MVPPriority } from '@/lib/db';
 import { useToast } from '@/components/ui/ToastManager';
+import { EpicType, MVPPriority } from '@/lib/db';
+import { useState } from 'react';
 
 interface EpicCreateModalProps {
   isOpen: boolean;
@@ -57,7 +57,7 @@ export default function EpicCreateModal({
       } else {
         showToast(data.error || '建立 Epic 失敗', 'error');
       }
-    } catch (error) {
+    } catch (_error) {
       showToast('建立 Epic 失敗', 'error');
     } finally {
       setLoading(false);

@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/db';
-import { AgentSpec } from './types';
-import { PerformanceTracker, PerformanceMetrics } from './performance-tracker';
+import { PerformanceMetrics, PerformanceTracker } from './performance-tracker';
 
 export interface EvolutionSuggestion {
   type: 'prompt' | 'capabilities' | 'constraints' | 'dependencies';
@@ -18,6 +17,28 @@ export interface EvolutionResult {
   performanceBefore: PerformanceMetrics;
   implementedChanges: number;
   reasoning: string;
+}
+
+interface AgentSpecification {
+  id: string;
+  type: string;
+  prompt: string;
+  capabilities: string[];
+  constraints: string[];
+  dependencies: string[];
+  evolution: Array<{
+    version: number;
+    timestamp: Date;
+    performanceBefore: string | null;
+  }>;
+}
+
+interface EvolutionRecord {
+  version: number;
+  timestamp: Date;
+  changes: string;
+  performanceBefore: string | null;
+  performanceAfter: string | null;
 }
 
 export class EvolutionEngine {
@@ -207,8 +228,8 @@ export class EvolutionEngine {
   }
 
   async getEvolutionHistory(agentId: string): Promise<{
-    agent: any;
-    evolutions: any[];
+    agent: AgentSpecification;
+    evolutions: EvolutionRecord[];
     performanceProgress: {
       version: number;
       successRate: number;
@@ -351,7 +372,7 @@ export class EvolutionEngine {
   }
 
   private async analyzePrompt(
-    agent: any,
+    agent: AgentSpecification,
     metrics: PerformanceMetrics
   ): Promise<EvolutionSuggestion | null> {
     // Analyze common errors to suggest prompt improvements
@@ -387,7 +408,7 @@ export class EvolutionEngine {
   }
 
   private async analyzeCapabilities(
-    agent: any,
+    agent: AgentSpecification,
     metrics: PerformanceMetrics
   ): Promise<EvolutionSuggestion[]> {
     const suggestions: EvolutionSuggestion[] = [];
@@ -421,7 +442,7 @@ export class EvolutionEngine {
   }
 
   private async analyzeConstraints(
-    agent: any,
+    agent: AgentSpecification,
     metrics: PerformanceMetrics
   ): Promise<EvolutionSuggestion | null> {
     const constraints = JSON.parse(agent.constraints);
@@ -442,7 +463,7 @@ export class EvolutionEngine {
   }
 
   private async analyzeDependencies(
-    agent: any,
+    agent: AgentSpecification,
     metrics: PerformanceMetrics
   ): Promise<EvolutionSuggestion | null> {
     const dependencies = JSON.parse(agent.dependencies);

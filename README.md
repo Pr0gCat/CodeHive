@@ -239,7 +239,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 ## Project Management
 
-- 📊 [Current Status](PROJECT_STATUS.md) - Overall project progress
+- [Current Status](PROJECT_STATUS.md) - Overall project progress
 - 🗺️ [Roadmap](ROADMAP.md) - Development phases and milestones
 - ✅ [Task Board](TASKS.md) - Current sprint and backlog
 - 🏃 [Sprint Planning](SPRINTS.md) - Detailed sprint schedules and progress

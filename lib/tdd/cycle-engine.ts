@@ -1,13 +1,13 @@
 import {
-  Artifact,
-  Cycle,
-  CyclePhase,
-  CycleStatus,
-  prisma,
-  Query,
-  QueryUrgency,
-  Test,
-  TestStatus,
+    Artifact,
+    Cycle,
+    CyclePhase,
+    CycleStatus,
+    prisma,
+    Query,
+    QueryUrgency,
+    Test,
+    TestStatus,
 } from '@/lib/db';
 import { BranchManager } from '@/lib/git/branch-manager';
 import { WorkspaceManager } from '@/lib/workspace/workspace-manager';
@@ -375,7 +375,7 @@ export class TDDCycleEngine {
     if (!mergeResult.success) {
       console.error(`Failed to create merge request: ${mergeResult.error}`);
     } else {
-      console.log(`✅ Created merge request: ${mergeResult.output}`);
+      console.log(`Created merge request: ${mergeResult.output}`);
     }
 
     // Mark cycle as completed

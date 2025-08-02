@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/ToastManager';
+import { useCallback, useEffect, useState } from 'react';
 
 interface Test {
   id: string;
@@ -42,7 +42,8 @@ export default function TDDDashboard({ projectId }: TDDDashboardProps) {
   const [loading, setLoading] = useState(true);
   const [executing, setExecuting] = useState(false);
 
-  const fetchCycles = async () => {
+  const fetchCycles = useCallback(async () => {
+    setLoading(true);
     try {
       const response = await fetch(`/api/projects/${projectId}/cycles`);
       const data = await response.json();
@@ -53,14 +54,14 @@ export default function TDDDashboard({ projectId }: TDDDashboardProps) {
         const active = data.data.find((c: Cycle) => c.status === 'ACTIVE');
         setActiveCycle(active || null);
       } else {
-        showToast(data.error || '無法載入 TDD 週期', 'error');
+        console.error('無法載入 TDD 週期：', data.error);
       }
     } catch (error) {
-      showToast('無法載入 TDD 週期', 'error');
+      console.error('Error fetching cycles:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
 
   useEffect(() => {
     fetchCycles();
@@ -153,7 +154,7 @@ export default function TDDDashboard({ projectId }: TDDDashboardProps) {
       }
       eventSource?.close();
     };
-  }, [projectId]);
+  }, [projectId, fetchCycles]);
 
   const executePhase = async (cycleId: string) => {
     setExecuting(true);

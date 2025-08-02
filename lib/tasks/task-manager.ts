@@ -9,16 +9,27 @@ export interface TaskPhase {
   estimatedDuration?: number; // milliseconds
 }
 
+export type TaskEventType =
+  | 'PHASE_START'
+  | 'PHASE_PROGRESS'
+  | 'PHASE_COMPLETE'
+  | 'FILE_PROCESSED'
+  | 'ERROR'
+  | 'INFO';
+
+export interface TaskEventDetails {
+  duration?: number | null;
+  fileCount?: number;
+  filesProcessed?: number;
+  currentFile?: string;
+  error?: string;
+  [key: string]: unknown;
+}
+
 export interface TaskEvent {
-  type:
-    | 'PHASE_START'
-    | 'PHASE_PROGRESS'
-    | 'PHASE_COMPLETE'
-    | 'FILE_PROCESSED'
-    | 'ERROR'
-    | 'INFO';
+  type: TaskEventType;
   message: string;
-  details?: any;
+  details?: TaskEventDetails;
   progress?: number;
 }
 
@@ -87,7 +98,7 @@ export class TaskManager {
       ...options,
     });
 
-    console.log(`📝 Created task ${taskId} with ${phases.length} phases`);
+    console.log(`Created task ${taskId} with ${phases.length} phases`);
   }
 
   /**
@@ -156,7 +167,7 @@ export class TaskManager {
     phaseId: string,
     progress: number,
     event: TaskEvent,
-    details?: any
+    details?: TaskEventDetails
   ) {
     const updateTime = new Date();
 
@@ -191,9 +202,11 @@ export class TaskManager {
     taskEventEmitter.emitPhaseUpdated(
       taskId,
       phaseId,
-      progress,
-      event.message,
-      event.details
+      {
+        progress,
+        message: event.message,
+        details: event.details,
+      }
     );
 
     await this.emitEvent(taskId, phaseId, {
@@ -202,14 +215,18 @@ export class TaskManager {
     });
 
     console.log(
-      `📊 Updated ${phaseId} progress: ${progress}% (overall: ${totalProgress.toFixed(1)}%)`
+      `Updated ${phaseId} progress: ${progress}% (overall: ${totalProgress.toFixed(1)}%)`
     );
   }
 
   /**
    * Complete a phase
    */
-  async completePhase(taskId: string, phaseId: string, metrics?: any) {
+  async completePhase(
+    taskId: string,
+    phaseId: string,
+    metrics?: Record<string, unknown>
+  ) {
     const completionTime = new Date();
 
     // Get phase start time to calculate duration
@@ -240,7 +257,7 @@ export class TaskManager {
     });
 
     console.log(
-      `✅ Completed phase ${phaseId} for task ${taskId} in ${duration}ms`
+      `Completed phase ${phaseId} for task ${taskId} in ${duration}ms`
     );
   }
 
@@ -266,7 +283,7 @@ export class TaskManager {
     });
 
     // Emit task failed event
-    taskEventEmitter.emitTaskFailed(taskId, error);
+    taskEventEmitter.emitTaskFailed(taskId, { error });
 
     await this.emitEvent(taskId, phaseId, {
       type: 'ERROR',
@@ -280,7 +297,7 @@ export class TaskManager {
   /**
    * Complete entire task
    */
-  async completeTask(taskId: string, result?: any) {
+  async completeTask(taskId: string, result?: Record<string, unknown>) {
     const completionTime = new Date();
 
     await prisma.taskExecution.update({
@@ -373,11 +390,14 @@ export class TaskManager {
     });
 
     // Emit to event emitter system
-    taskEventEmitter.emitTaskEvent(
+    taskEventEmitter.emitEventCreated(
       taskId,
       event.type,
-      event.message,
-      event.details
+      {
+        message: event.message,
+        details: event.details,
+        progress: event.progress,
+      }
     );
 
     // Notify subscribers (legacy callback system)

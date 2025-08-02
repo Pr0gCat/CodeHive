@@ -1,6 +1,6 @@
-import { promises as fs } from 'fs';
-import { join, extname, relative } from 'path';
 import { taskManager } from '@/lib/tasks/task-manager';
+import { promises as fs } from 'fs';
+import { extname, join } from 'path';
 
 export interface FileAnalysis {
   path: string;
@@ -19,7 +19,7 @@ export interface ProjectAnalysisResult {
   detectedLanguage?: string;
   detectedPackageManager?: string;
   detectedTestFramework?: string;
-  packageJsonContent?: any;
+  packageJsonContent?: Record<string, unknown>;
   readmeContent?: string;
   gitignorePatterns?: string[];
   dependencies?: string[];
@@ -236,7 +236,7 @@ export class ProjectAnalyzer {
       await this.updateProgress(taskId, phaseId, 100, '專案分析完成', metrics);
 
       console.log(
-        `📊 Project analysis completed in ${duration}ms: ${result.totalFiles} files, ${(result.totalSize / 1024 / 1024).toFixed(2)}MB`
+        `Project analysis completed in ${duration}ms: ${result.totalFiles} files, ${(result.totalSize / 1024 / 1024).toFixed(2)}MB`
       );
 
       return result;
@@ -482,7 +482,7 @@ export class ProjectAnalyzer {
     phaseId?: string,
     progress?: number,
     message?: string,
-    details?: any
+    details?: Record<string, unknown>
   ) {
     if (taskId && phaseId && progress !== undefined && message) {
       await taskManager.updatePhaseProgress(taskId, phaseId, progress, {

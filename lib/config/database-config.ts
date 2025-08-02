@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logging/structured-logger';
 
 export interface DatabaseConfig {
   dailyTokenLimit: number;
@@ -48,7 +49,7 @@ export async function getDatabaseConfig(): Promise<DatabaseConfig> {
       rateLimitPerMinute: settings.rateLimitPerMinute,
     };
   } catch (error) {
-    console.error('Failed to load database config:', error);
+    logger.error('Failed to load database config', { module: 'config' }, error as Error);
 
     // 如果資料庫讀取失敗，返回預設配置（與 fallbackConfig 一致）
     return {

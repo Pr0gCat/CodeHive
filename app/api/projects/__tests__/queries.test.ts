@@ -1,6 +1,9 @@
 import { prisma } from '@/lib/db';
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 
+// Mock fetch for testing
+global.fetch = jest.fn();
+
 describe('Queries API', () => {
   let testProjectId: string;
 
@@ -24,6 +27,7 @@ describe('Queries API', () => {
     await prisma.project.delete({
       where: { id: testProjectId },
     });
+    jest.clearAllMocks();
   });
 
   it('should create a query', async () => {
@@ -35,6 +39,18 @@ describe('Queries API', () => {
       urgency: 'BLOCKING',
       priority: 'HIGH',
     };
+
+    // Mock successful response
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          title: 'Test Query',
+          type: 'ARCHITECTURE',
+        },
+      }),
+    });
 
     const response = await fetch(`/api/projects/${testProjectId}/queries`, {
       method: 'POST',
@@ -62,6 +78,20 @@ describe('Queries API', () => {
         priority: 'MEDIUM',
         status: 'PENDING',
       },
+    });
+
+    // Mock successful response
+    (fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: [
+          {
+            title: 'Test Query',
+            type: 'BUSINESS_LOGIC',
+          },
+        ],
+      }),
     });
 
     const response = await fetch(`/api/projects/${testProjectId}/queries`);

@@ -44,6 +44,7 @@ model Project {
   mvpPhases   MVPPhase[]
   taskExecutions TaskExecution[]
   logs        ProjectLog[]
+  sprints     Sprint[]
 
   @@map("projects")
 }
@@ -149,6 +150,7 @@ model KanbanCard {
   id          String     @id @default(cuid())
   projectId   String
   epicId      String?    // Optional: which epic this story belongs to
+  sprintId    String?    // Optional: which sprint this story is assigned to
   title       String
   description String?
   status      String @default("BACKLOG")
@@ -171,6 +173,7 @@ model KanbanCard {
   // Relations
   project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   epic        Epic?        @relation(fields: [epicId], references: [id], onDelete: SetNull)
+  sprint      Sprint?      @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   agentTasks  AgentTask[]
   queuedTasks QueuedTask[]
   cycles      Cycle[]      // TDD cycles for this story
@@ -458,6 +461,7 @@ model Epic {
   stories     KanbanCard[] // Epic contains multiple stories/cards
   dependencies EpicDependency[] @relation("EpicDependencies")
   dependents   EpicDependency[] @relation("EpicDependents")
+  sprintEpics SprintEpic[] // Epics can span multiple sprints
 
   @@map("epics")
 }
@@ -624,6 +628,104 @@ model Artifact {
   @@map("artifacts")
 }
 
+// Sprint Management Models
+model Sprint {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String   // "Sprint 1", "Sprint 2", etc.
+  goal        String?  // Sprint goal description
+  
+  // Sprint timing
+  startDate   DateTime
+  endDate     DateTime
+  duration    Int      // Duration in days
+  
+  // Sprint status
+  status      String   @default("PLANNING") // PLANNING, ACTIVE, COMPLETED, CANCELLED
+  
+  // Sprint capacity
+  plannedStoryPoints Int @default(0)
+  commitedStoryPoints Int @default(0)
+  completedStoryPoints Int @default(0)
+  velocity    Float?   // Average story points completed per sprint
+  
+  // Sprint ceremonies
+  planningNotes String?  // Sprint planning meeting notes
+  reviewNotes   String?  // Sprint review meeting notes
+  retrospectiveNotes String? // Sprint retrospective notes
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  completedAt DateTime?
+
+  // Relations
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stories     KanbanCard[] // Stories assigned to this sprint
+  sprintEpics SprintEpic[] // Track which epics are being worked on
+  burndown    SprintBurndown[]
+  dailyUpdates SprintDailyUpdate[]
+
+  @@map("sprints")
+}
+
+model SprintEpic {
+  id          String   @id @default(cuid())
+  sprintId    String
+  epicId      String
+  
+  // Track epic progress within sprint
+  plannedStoryPoints Int @default(0)
+  completedStoryPoints Int @default(0)
+  
+  createdAt   DateTime @default(now())
+
+  // Relations
+  sprint      Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  epic        Epic     @relation(fields: [epicId], references: [id], onDelete: Cascade)
+
+  @@unique([sprintId, epicId])
+  @@map("sprint_epics")
+}
+
+model SprintBurndown {
+  id          String   @id @default(cuid())
+  sprintId    String
+  date        DateTime
+  
+  // Burndown metrics
+  remainingStoryPoints Int
+  completedStoryPoints Int
+  idealRemainingPoints Float // Ideal burndown line
+  
+  createdAt   DateTime @default(now())
+
+  // Relations
+  sprint      Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+
+  @@unique([sprintId, date])
+  @@map("sprint_burndown")
+}
+
+model SprintDailyUpdate {
+  id          String   @id @default(cuid())
+  sprintId    String
+  date        DateTime
+  
+  // Daily standup tracking
+  storiesCompleted Int @default(0)
+  storiesInProgress Int @default(0)
+  blockers    String?  // JSON array of blockers
+  notes       String?  // Additional daily notes
+  
+  createdAt   DateTime @default(now())
+
+  // Relations
+  sprint      Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+
+  @@unique([sprintId, date])
+  @@map("sprint_daily_updates")
+}
+
 // Note: SQLite doesn't support enums, so we use strings with default values
 // Valid values:
 // ProjectStatus: "INITIALIZING", "ACTIVE", "PAUSED", "COMPLETED", "ARCHIVED"
@@ -645,6 +747,7 @@ model Artifact {
 // QueryStatus: "PENDING", "ANSWERED", "DISMISSED", "EXPIRED"
 // ArtifactType: "CODE", "TEST", "DOCS", "SCHEMA", "CONFIG"
 // LogLevel: "info", "warn", "error", "debug"
+// SprintStatus: "PLANNING", "ACTIVE", "COMPLETED", "CANCELLED"
 
 model ProjectLog {
   id        String   @id @default(cuid())

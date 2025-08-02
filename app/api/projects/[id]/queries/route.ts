@@ -1,6 +1,16 @@
 import { prisma } from '@/lib/db';
-import { NextRequest, NextResponse } from 'next/server';
 import { checkProjectOperationAccess } from '@/lib/project-access-control';
+import { NextRequest, NextResponse } from 'next/server';
+
+interface QueryWhereClause {
+  projectId: string;
+  status?: string;
+  urgency?: string;
+  cycleId?: string;
+  context?: {
+    contains: string;
+  };
+}
 
 export async function GET(
   request: NextRequest,
@@ -13,7 +23,7 @@ export async function GET(
     const cycleId = searchParams.get('cycleId');
     const cardId = searchParams.get('cardId');
 
-    const where: any = {
+    const where: QueryWhereClause = {
       projectId: params.id,
     };
 

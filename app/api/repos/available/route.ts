@@ -1,16 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { readdirSync, statSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { prisma } from '@/lib/db';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const reposPath = join(process.cwd(), 'repos');
 
     // Check if repos directory exists
     try {
       statSync(reposPath);
-    } catch (error) {
+    } catch {
       // If repos directory doesn't exist, return empty array
       return NextResponse.json({
         success: true,
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       try {
         const itemPath = join(reposPath, item);
         return statSync(itemPath).isDirectory();
-      } catch (error) {
+      } catch {
         return false;
       }
     });
@@ -80,10 +80,10 @@ export async function GET(request: NextRequest) {
             if (urlMatch) {
               gitUrl = urlMatch[1].trim();
             }
-          } catch (configError) {
+          } catch {
             // Git config not readable, continue without URL
           }
-        } catch (gitError) {
+        } catch {
           // No .git directory
         }
 
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
           projectType,
           fileCount: projectFiles.length,
         };
-      } catch (error) {
+      } catch {
         return {
           ...folder,
           hasGit: false,

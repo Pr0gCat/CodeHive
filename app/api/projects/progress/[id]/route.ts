@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { NextRequest, NextResponse } from 'next/server';
 
 // This endpoint now serves as a simple status check since real-time updates
 // are handled via WebSocket connections
@@ -10,7 +10,7 @@ export async function GET(
   const taskId = params.id;
 
   try {
-    console.log(`📊 REST API request for task status: ${taskId}`);
+    console.log(`REST API request for task status: ${taskId}`);
 
     // Get current task state
     const task = await prisma.taskExecution.findUnique({

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useToast } from '@/components/ui/ToastManager';
 import PrioritySlider from '@/components/ui/PrioritySlider';
+import { useToast } from '@/components/ui/ToastManager';
+import { useCallback, useEffect, useState } from 'react';
 
 interface EnhancedAgentInvokerProps {
   cardId: string;
@@ -48,7 +48,6 @@ export default function EnhancedAgentInvoker({
     useState<AgentCapabilities | null>(null);
   const [command, setCommand] = useState('');
   const [priority, setPriority] = useState(5);
-  const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [taskId, setTaskId] = useState<string | null>(null);
@@ -57,24 +56,6 @@ export default function EnhancedAgentInvoker({
   useEffect(() => {
     fetchAvailableAgents();
   }, []);
-
-  useEffect(() => {
-    if (selectedAgent) {
-      fetchAgentCapabilities(selectedAgent);
-    }
-  }, [selectedAgent]);
-
-  useEffect(() => {
-    if (command.trim() && selectedAgent) {
-      const timeoutId = setTimeout(() => {
-        validateCommand();
-      }, 500); // Debounce validation
-
-      return () => clearTimeout(timeoutId);
-    } else {
-      setValidation(null);
-    }
-  }, [command, selectedAgent]);
 
   const fetchAvailableAgents = async () => {
     try {
@@ -92,7 +73,7 @@ export default function EnhancedAgentInvoker({
     }
   };
 
-  const fetchAgentCapabilities = async (agentType: string) => {
+  const fetchAgentCapabilities = useCallback(async (agentType: string) => {
     try {
       const response = await fetch(
         `/api/agents/capabilities?agentType=${agentType}&projectId=${projectId}`
@@ -105,9 +86,9 @@ export default function EnhancedAgentInvoker({
     } catch (error) {
       console.error('Error fetching agent capabilities:', error);
     }
-  };
+  }, [projectId]);
 
-  const validateCommand = async () => {
+  const validateCommand = useCallback(async () => {
     if (!command.trim() || !selectedAgent) return;
 
     setValidating(true);
@@ -134,7 +115,25 @@ export default function EnhancedAgentInvoker({
     } finally {
       setValidating(false);
     }
-  };
+  }, [command, selectedAgent, projectId]);
+
+  useEffect(() => {
+    if (selectedAgent) {
+      fetchAgentCapabilities(selectedAgent);
+    }
+  }, [selectedAgent, fetchAgentCapabilities]);
+
+  useEffect(() => {
+    if (command.trim() && selectedAgent) {
+      const timeoutId = setTimeout(() => {
+        validateCommand();
+      }, 500); // Debounce validation
+
+      return () => clearTimeout(timeoutId);
+    } else {
+      setValidation(null);
+    }
+  }, [command, selectedAgent, validateCommand]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

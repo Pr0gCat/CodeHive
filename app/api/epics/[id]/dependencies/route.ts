@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma, DependencyType } from '@/lib/db';
+import { prisma } from '@/lib/db';
 import { z } from 'zod';
 
 // Dependency creation schema

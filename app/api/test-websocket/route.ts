@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { taskEventEmitter } from '@/lib/events/task-event-emitter';
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,9 +31,9 @@ export async function POST(request: NextRequest) {
       taskEventEmitter.emitPhaseUpdated(
         taskId,
         'test-phase-1',
-        25,
-        'Test phase 1 progress',
         {
+          progress: 25,
+          message: 'Test phase 1 progress',
           details: ['Step 1 completed', 'Step 2 in progress'],
         }
       );
@@ -43,8 +43,10 @@ export async function POST(request: NextRequest) {
       taskEventEmitter.emitPhaseUpdated(
         taskId,
         'test-phase-1',
-        75,
-        'Test phase 1 almost done'
+        {
+          progress: 75,
+          message: 'Test phase 1 almost done',
+        }
       );
     }, 2000);
 
@@ -52,8 +54,10 @@ export async function POST(request: NextRequest) {
       taskEventEmitter.emitPhaseUpdated(
         taskId,
         'test-phase-1',
-        100,
-        'Test phase 1 completed'
+        {
+          progress: 100,
+          message: 'Test phase 1 completed',
+        }
       );
     }, 3000);
 
@@ -61,8 +65,10 @@ export async function POST(request: NextRequest) {
       taskEventEmitter.emitPhaseUpdated(
         taskId,
         'test-phase-2',
-        50,
-        'Test phase 2 in progress'
+        {
+          progress: 50,
+          message: 'Test phase 2 in progress',
+        }
       );
     }, 4000);
 

@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { TaskQueue } from '@/lib/agents/queue';
+import { QueueStatus } from '@/lib/agents/types';
+import { NextRequest, NextResponse } from 'next/server';
 
 // Global task queue instance
 let taskQueue: TaskQueue | null = null;
@@ -63,7 +64,7 @@ export async function PUT(request: NextRequest) {
 
     const status = await queue.getQueueStatus();
     const currentStatus = queue.getStatus();
-    const actionPerformed = currentStatus === 'ACTIVE' ? 'resumed' : 'paused';
+    const actionPerformed = currentStatus === QueueStatus.ACTIVE ? 'resumed' : 'paused';
 
     return NextResponse.json({
       success: true,

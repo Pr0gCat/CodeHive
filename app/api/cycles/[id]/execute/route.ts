@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { TDDCycleEngine } from '@/lib/tdd/cycle-engine';
-import { AITDDIntegration } from '@/lib/tdd/ai-integration';
 
 // PUT /api/cycles/[id]/execute - Execute current phase of cycle
 export async function PUT(

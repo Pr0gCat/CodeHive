@@ -1,6 +1,22 @@
 import { prisma } from '@/lib/db';
 import { TaskManager } from './task-manager';
 
+interface TaskExecution {
+  taskId: string;
+  phases: Array<{
+    phaseId: string;
+    status: string;
+    order: number;
+  }>;
+}
+
+interface Project {
+  id: string;
+  name: string;
+  localPath: string | null;
+  gitUrl: string | null;
+}
+
 /**
  * Task Recovery Service
  * 
@@ -45,7 +61,7 @@ export class TaskRecoveryService {
       });
 
       if (initializingProjects.length === 0) {
-        console.log('✅ No interrupted initialization tasks to recover');
+        console.log('No interrupted initialization tasks to recover');
         if (cleanedCount > 0) {
           console.log(`🧹 Cleaned up ${cleanedCount} old orphaned projects`);
         }
@@ -61,7 +77,7 @@ export class TaskRecoveryService {
         await this.recoverProjectTask(project);
       }
 
-      console.log('✅ Task recovery process completed');
+      console.log('Task recovery process completed');
     } catch (error) {
       console.error('❌ Error during task recovery:', error);
     }
@@ -135,20 +151,20 @@ export class TaskRecoveryService {
    * Resume project creation task
    */
   private async resumeProjectCreation(
-    taskExecution: any,
-    project: any
+    taskExecution: TaskExecution,
+    project: Project
   ): Promise<void> {
     try {
       // Check what phase was last active
       const lastActivePhase = taskExecution.phases.find(
-        (p: any) => p.status === 'ACTIVE'
+        (p) => p.status === 'ACTIVE'
       );
       const lastCompletedPhase = taskExecution.phases
-        .filter((p: any) => p.status === 'COMPLETED')
-        .sort((a: any, b: any) => b.order - a.order)[0];
+        .filter((p) => p.status === 'COMPLETED')
+        .sort((a, b) => b.order - a.order)[0];
 
       console.log(
-        `📊 Last active phase: ${lastActivePhase?.phaseId || 'none'}, Last completed: ${lastCompletedPhase?.phaseId || 'none'}`
+        `Last active phase: ${lastActivePhase?.phaseId || 'none'}, Last completed: ${lastCompletedPhase?.phaseId || 'none'}`
       );
 
       // Restart the creation process from the appropriate phase
@@ -170,16 +186,16 @@ export class TaskRecoveryService {
    * Resume project import task
    */
   private async resumeProjectImport(
-    taskExecution: any,
-    project: any
+    taskExecution: TaskExecution,
+    project: Project
   ): Promise<void> {
     try {
       // Check what phase was last active
       const lastActivePhase = taskExecution.phases.find(
-        (p: any) => p.status === 'ACTIVE'
+        (p) => p.status === 'ACTIVE'
       );
 
-      console.log(`📊 Resuming import from phase: ${lastActivePhase?.phaseId || 'beginning'}`);
+      console.log(`Resuming import from phase: ${lastActivePhase?.phaseId || 'beginning'}`);
 
       // Restart the import process
       // For safety, we'll restart the entire import process
@@ -232,7 +248,7 @@ export class TaskRecoveryService {
     }
 
     if (cleanedCount > 0) {
-      console.log(`✅ Cleaned up ${cleanedCount} orphaned projects`);
+      console.log(`Cleaned up ${cleanedCount} orphaned projects`);
     }
     
     return cleanedCount;
@@ -264,7 +280,7 @@ export class TaskRecoveryService {
 
           if (files.length > 0 && isGitRepo) {
             // Project appears to be successfully created
-            console.log(`✅ Orphaned project ${project.name} appears complete, marking as ACTIVE`);
+            console.log(`Orphaned project ${project.name} appears complete, marking as ACTIVE`);
             await prisma.project.update({
               where: { id: project.id },
               data: { status: 'ACTIVE' },

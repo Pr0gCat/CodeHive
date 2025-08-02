@@ -1,24 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { configCache } from '@/lib/config';
+import { prisma } from '@/lib/db';
+import { globalSettingsSchema } from '@/lib/validations/settings';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-const globalSettingsSchema = z
-  .object({
-    dailyTokenLimit: z.number().min(1000000).max(500000000), // 1M to 500M
-    warningThreshold: z.number().min(0.1).max(0.95), // 10% to 95%
-    criticalThreshold: z.number().min(0.1).max(0.99), // 10% to 99%
-    allocationStrategy: z.number().min(0.0).max(1.0), // 0% to 100%
-    autoResumeEnabled: z.boolean(),
-    pauseOnWarning: z.boolean(),
-    // Claude API Configuration
-    claudeCodePath: z.string().min(1),
-    rateLimitPerMinute: z.number().min(1).max(1000),
-  })
-  .refine(data => data.warningThreshold < data.criticalThreshold, {
-    message: 'Warning threshold must be less than critical threshold',
-    path: ['warningThreshold'],
-  });
+interface GlobalSettings {
+  id: string;
+  dailyTokenLimit: number;
+  warningThreshold: number;
+  criticalThreshold: number;
+  allocationStrategy: number;
+  autoResumeEnabled: boolean;
+  pauseOnWarning: boolean;
+  claudeCodePath: string;
+  rateLimitPerMinute: number;
+}
 
 export async function GET() {
   try {
@@ -103,7 +99,7 @@ export async function PUT(request: NextRequest) {
 }
 
 // Helper function to recalculate project budgets when global settings change
-async function recalculateProjectBudgets(globalSettings: any) {
+async function recalculateProjectBudgets(globalSettings: GlobalSettings) {
   try {
     const projectBudgets = await prisma.projectBudget.findMany();
 

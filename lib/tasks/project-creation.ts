@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db';
-import { TaskManager } from './task-manager';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { TaskManager } from './task-manager';
 
 const taskManager = TaskManager.getInstance();
 
@@ -44,7 +44,7 @@ export async function createProjectAsync(
   const finalLocalPath = localPath || gitClient.generateProjectPath(name);
 
   try {
-    console.log(`🚀 Starting project creation recovery for: ${name}`);
+    console.log(`Starting project creation recovery for: ${name}`);
 
     // Update task status to running
     await prisma.taskExecution.update({
@@ -83,141 +83,31 @@ export async function createProjectAsync(
       console.log(`📁 Created project directory: ${finalLocalPath}`);
     }
 
-    // Create README if it doesn't exist
-    const readmePath = path.join(finalLocalPath, 'README.md');
-    try {
-      await fs.access(readmePath);
-      console.log(`📄 README.md already exists`);
-    } catch {
-      const readmeContent = `# ${name}
-
-${description || 'A CodeHive managed project'}
-
-## Getting Started
-
-This project is managed by CodeHive, an AI-native project management platform.
-
-### Features
-- Automated TDD cycles with AI-driven development
-- Real-time progress tracking and project insights
-- Intelligent Epic and Story management
-
-### Development Workflow
-1. Create feature requests through CodeHive UI
-2. Project Manager agent breaks down features into Epics and Stories
-3. TDD cycles drive development with minimal manual intervention
-4. All changes are tracked through Git commits
-`;
-
-      await fs.writeFile(readmePath, readmeContent, 'utf8');
-      console.log(`📄 Created README.md`);
-    }
-
-    await taskManager.updatePhaseProgress(taskId, setupPhaseId, 100, {
-      type: 'PHASE_COMPLETE',
-      message: 'Project structure created',
-    });
-
-    // Phase 3: Git initialization
-    const gitInitPhaseId = 'git_init';
-    await taskManager.updatePhaseProgress(taskId, gitInitPhaseId, 0, {
+    // Phase 3: Create default first sprint with README task
+    const sprintSetupPhaseId = 'sprint_setup';
+    await taskManager.updatePhaseProgress(taskId, sprintSetupPhaseId, 0, {
       type: 'PHASE_START',
-      message: 'Initializing Git repository',
-    });
-
-    if (initializeGit) {
-      const isExistingRepo = await gitClient.isValidRepository(finalLocalPath);
-
-      if (!isExistingRepo) {
-        const initResult = await gitClient.init(finalLocalPath);
-
-        if (!initResult.success) {
-          throw new Error(`Failed to initialize Git: ${initResult.error}`);
-        }
-
-        // Create initial commit
-        const commitResult = await gitClient.initialCommit(
-          finalLocalPath,
-          'Initial commit - CodeHive project setup (recovered)'
-        );
-
-        if (!commitResult.success) {
-          console.warn('Failed to create initial commit:', commitResult.error);
-        }
-      } else {
-        console.log(`📦 Git repository already exists`);
-      }
-    }
-
-    await taskManager.updatePhaseProgress(taskId, gitInitPhaseId, 100, {
-      type: 'PHASE_COMPLETE',
-      message: 'Git repository initialized',
-    });
-
-    // Phase 4: CLAUDE.md generation
-    const claudeMdPhaseId = 'claude_md_generation';
-    await taskManager.updatePhaseProgress(taskId, claudeMdPhaseId, 0, {
-      type: 'PHASE_START',
-      message: 'Generating CLAUDE.md',
+      message: 'Creating default first sprint with README task',
     });
 
     try {
-      const claudeMdPath = path.join(finalLocalPath, 'CLAUDE.md');
-      const claudeMdExists = await fs
-        .access(claudeMdPath)
-        .then(() => true)
-        .catch(() => false);
-
-      if (!claudeMdExists) {
-        await taskManager.updatePhaseProgress(taskId, claudeMdPhaseId, 40, {
-          type: 'PHASE_PROGRESS',
-          message: 'Generating CLAUDE.md with Claude Code...',
-        });
-
-        // Run project analysis first
-        const { projectAnalyzer } = await import('@/lib/analysis/project-analyzer');
-        const analysisResult = await projectAnalyzer.analyzeProject(finalLocalPath);
-
-        const projectContext = `You are helping to create a CLAUDE.md file for a ${analysisResult.detectedLanguage || 'software'} project.
-
-Project Analysis Results:
-- Total Files: ${analysisResult.totalFiles}
-- Detected Language: ${analysisResult.detectedLanguage || 'Unknown'}
-- Detected Framework: ${analysisResult.detectedFramework || 'None'}
-- Detected Package Manager: ${analysisResult.detectedPackageManager || 'Unknown'}
-- Detected Test Framework: ${analysisResult.detectedTestFramework || 'None'}
-
-Task: Create a comprehensive CLAUDE.md file for this project (recovered initialization).`;
-
-        const { claudeCode } = await import('@/lib/claude-code');
-        const claudeResult = await claudeCode.execute(projectContext, {
-          workingDirectory: finalLocalPath,
-          timeout: 180000,
-        });
-
-        if (!claudeResult.success) {
-          throw new Error(`Claude Code failed: ${claudeResult.error}`);
-        }
-
-        console.log(`✅ CLAUDE.md generated successfully (recovery)`);
-      } else {
-        console.log(`📋 CLAUDE.md already exists, skipping generation`);
-      }
-
-      await taskManager.updatePhaseProgress(taskId, claudeMdPhaseId, 100, {
+      const { createDefaultFirstSprint } = await import('@/lib/sprints/default-sprint');
+      const sprintResult = await createDefaultFirstSprint(projectId, name);
+      
+      await taskManager.updatePhaseProgress(taskId, sprintSetupPhaseId, 100, {
         type: 'PHASE_COMPLETE',
-        message: 'CLAUDE.md ready',
+        message: `Created first sprint with README creation task`,
       });
-    } catch (claudeMdError) {
-      console.error(`❌ Error generating CLAUDE.md:`, claudeMdError);
-      // Continue without CLAUDE.md
-      await taskManager.updatePhaseProgress(taskId, claudeMdPhaseId, 100, {
+      console.log(`🚀 Created default first sprint for project recovery: ${name}`);
+    } catch (sprintError) {
+      console.error('❌ Failed to create default sprint during recovery:', sprintError);
+      await taskManager.updatePhaseProgress(taskId, sprintSetupPhaseId, 100, {
         type: 'PHASE_COMPLETE',
-        message: 'CLAUDE.md generation skipped due to error',
+        message: 'Sprint creation skipped due to error',
       });
     }
 
-    // Phase 5: Completion
+    // Phase 4: Completion
     const completionPhaseId = 'completion';
     await taskManager.updatePhaseProgress(taskId, completionPhaseId, 0, {
       type: 'PHASE_START',

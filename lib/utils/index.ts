@@ -1,3 +1,4 @@
+import { FunctionType } from '@/lib/types/shared';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -95,7 +96,7 @@ export function truncate(str: string, length: number): string {
 /**
  * Create a debounced function
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends FunctionType>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -109,7 +110,7 @@ export function debounce<T extends (...args: any[]) => any>(
 /**
  * Create a throttled function
  */
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends FunctionType>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {

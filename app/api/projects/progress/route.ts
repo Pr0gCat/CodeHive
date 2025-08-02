@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Fetch projects with their related data
     const projects = await prisma.project.findMany({
@@ -186,7 +186,7 @@ async function getRecentActivity(projectId: string): Promise<string> {
     }
 
     return `Last updated ${formatTimeAgo(new Date())}`;
-  } catch (error) {
+  } catch {
     return 'No recent activity';
   }
 }

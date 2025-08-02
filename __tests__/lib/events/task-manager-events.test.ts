@@ -1,124 +1,79 @@
-import {
-  taskEventEmitter,
-  TaskEventData,
-} from '@/lib/events/task-event-emitter';
+import { TaskEventData, taskEventEmitter } from '@/lib/events/task-event-emitter';
 
 describe('TaskManager Event System Integration', () => {
   beforeEach(() => {
-    // Clear all listeners before each test
-    taskEventEmitter.removeAllListeners();
-  });
-
-  afterEach(() => {
-    // Clean up all listeners after each test
     taskEventEmitter.removeAllListeners();
   });
 
   it('should work with real TaskManager workflow simulation', done => {
     const taskId = 'workflow-test-1';
-    const phases = ['init', 'process', 'complete'];
     const receivedEvents: TaskEventData[] = [];
 
-    // Subscribe to all events for this task
-    const unsubscribe = taskEventEmitter.onTaskEvent(
-      taskId,
-      (event: TaskEventData) => {
-        receivedEvents.push(event);
-
-        // Complete test after receiving task completion event
-        if (event.type === 'task_completed') {
-          expect(receivedEvents).toHaveLength(7); // Created + Started + 3 Phase Updates + Event + Completed
-
-          // Verify event sequence
-          expect(receivedEvents[0].type).toBe('task_created');
-          expect(receivedEvents[1].type).toBe('task_started');
-          expect(receivedEvents[2].type).toBe('phase_updated');
-          expect(receivedEvents[3].type).toBe('phase_updated');
-          expect(receivedEvents[4].type).toBe('phase_updated');
-          expect(receivedEvents[5].type).toBe('event_created');
-          expect(receivedEvents[6].type).toBe('task_completed');
-
-          // Verify phase progress
-          expect(receivedEvents[2].data.progress).toBe(25);
-          expect(receivedEvents[3].data.progress).toBe(50);
-          expect(receivedEvents[4].data.progress).toBe(100);
-
-          unsubscribe();
-          done();
+    // Listen to all task events
+    const eventTypes = ['task_created', 'task_started', 'phase_updated', 'event_created', 'task_completed'];
+    
+    eventTypes.forEach(eventType => {
+      taskEventEmitter.on(eventType, (event: TaskEventData) => {
+        if (event.taskId === taskId) {
+          receivedEvents.push(event);
+          
+          if (event.type === 'task_completed') {
+            expect(receivedEvents).toHaveLength(7);
+            expect(receivedEvents[0].type).toBe('task_created');
+            expect(receivedEvents[1].type).toBe('task_started');
+            expect(receivedEvents[2].type).toBe('phase_updated');
+            expect(receivedEvents[3].type).toBe('phase_updated');
+            expect(receivedEvents[4].type).toBe('phase_updated');
+            expect(receivedEvents[5].type).toBe('event_created');
+            expect(receivedEvents[6].type).toBe('task_completed');
+            expect(receivedEvents[2].data?.progress).toBe(25);
+            expect(receivedEvents[3].data?.progress).toBe(50);
+            expect(receivedEvents[4].data?.progress).toBe(100);
+            done();
+          }
         }
-      }
-    );
-
-    // Simulate TaskManager workflow
-    // 1. Task created
-    taskEventEmitter.emitTaskCreated(taskId, {
-      type: 'PROJECT_CREATE',
-      phases: phases.length,
+      });
     });
 
-    // 2. Task started
+    // Simulate task workflow
+    taskEventEmitter.emitTaskCreated(taskId, { type: 'PROJECT_CREATE' });
     taskEventEmitter.emitTaskStarted(taskId);
-
-    // 3. Phase progress updates
-    taskEventEmitter.emitPhaseUpdated(
-      taskId,
-      phases[0],
-      25,
-      'Initializing project'
-    );
-    taskEventEmitter.emitPhaseUpdated(
-      taskId,
-      phases[1],
-      50,
-      'Processing files'
-    );
-    taskEventEmitter.emitPhaseUpdated(taskId, phases[2], 100, 'Finalizing');
-
-    // 4. Task event
-    taskEventEmitter.emitTaskEvent(taskId, 'INFO', 'All phases completed');
-
-    // 5. Task completed
-    taskEventEmitter.emitTaskCompleted(taskId, {
-      success: true,
-      totalFiles: 42,
-    });
+    taskEventEmitter.emitPhaseUpdated(taskId, 'phase-1', { progress: 25, message: 'Phase 1' });
+    taskEventEmitter.emitPhaseUpdated(taskId, 'phase-2', { progress: 50, message: 'Phase 2' });
+    taskEventEmitter.emitPhaseUpdated(taskId, 'phase-3', { progress: 100, message: 'Phase 3' });
+    taskEventEmitter.emitEventCreated(taskId, 'custom_event', { message: 'Custom event' });
+    taskEventEmitter.emitTaskCompleted(taskId, { success: true });
   });
 
   it('should handle task failure workflow', done => {
     const taskId = 'workflow-test-2';
     const receivedEvents: TaskEventData[] = [];
 
-    const unsubscribe = taskEventEmitter.onTaskEvent(
-      taskId,
-      (event: TaskEventData) => {
-        receivedEvents.push(event);
-
-        if (event.type === 'task_failed') {
-          expect(receivedEvents).toHaveLength(4); // Created + Started + Phase Update + Failed
-
-          expect(receivedEvents[0].type).toBe('task_created');
-          expect(receivedEvents[1].type).toBe('task_started');
-          expect(receivedEvents[2].type).toBe('phase_updated');
-          expect(receivedEvents[3].type).toBe('task_failed');
-
-          expect(receivedEvents[3].data).toBe('Network connection failed');
-
-          unsubscribe();
-          done();
+    const eventTypes = ['task_created', 'task_started', 'phase_updated', 'task_failed'];
+    
+    eventTypes.forEach(eventType => {
+      taskEventEmitter.on(eventType, (event: TaskEventData) => {
+        if (event.taskId === taskId) {
+          receivedEvents.push(event);
+          
+          if (event.type === 'task_failed') {
+            expect(receivedEvents).toHaveLength(4);
+            expect(receivedEvents[0].type).toBe('task_created');
+            expect(receivedEvents[1].type).toBe('task_started');
+            expect(receivedEvents[2].type).toBe('phase_updated');
+            expect(receivedEvents[3].type).toBe('task_failed');
+            expect(receivedEvents[3].data?.message).toBe('Network connection failed');
+            done();
+          }
         }
-      }
-    );
+      });
+    });
 
-    // Simulate failed workflow
-    taskEventEmitter.emitTaskCreated(taskId, { type: 'PROJECT_IMPORT' });
+    // Simulate failed task workflow
+    taskEventEmitter.emitTaskCreated(taskId, { type: 'PROJECT_CREATE' });
     taskEventEmitter.emitTaskStarted(taskId);
-    taskEventEmitter.emitPhaseUpdated(
-      taskId,
-      'clone',
-      30,
-      'Cloning repository'
-    );
-    taskEventEmitter.emitTaskFailed(taskId, 'Network connection failed');
+    taskEventEmitter.emitPhaseUpdated(taskId, 'phase-1', { progress: 25, message: 'Phase 1' });
+    taskEventEmitter.emitTaskFailed(taskId, { message: 'Network connection failed' });
   });
 
   it('should support multiple concurrent tasks', done => {
@@ -128,70 +83,47 @@ describe('TaskManager Event System Integration', () => {
     const events2: TaskEventData[] = [];
     let completedTasks = 0;
 
-    const unsubscribe1 = taskEventEmitter.onTaskEvent(taskId1, event => {
-      events1.push(event);
-      if (event.type === 'task_completed') {
-        completedTasks++;
-        if (completedTasks === 2) {
-          checkResults();
-        }
-      }
-    });
-
-    const unsubscribe2 = taskEventEmitter.onTaskEvent(taskId2, event => {
-      events2.push(event);
-      if (event.type === 'task_completed') {
-        completedTasks++;
-        if (completedTasks === 2) {
-          checkResults();
-        }
-      }
-    });
-
     const checkResults = () => {
-      // Each task should have received its own events only
-      expect(events1.every(e => e.taskId === taskId1)).toBe(true);
-      expect(events2.every(e => e.taskId === taskId2)).toBe(true);
+      expect(events1).toHaveLength(2);
+      expect(events1[0].type).toBe('task_created');
+      expect(events1[1].type).toBe('task_completed');
+      expect(events1[0].taskId).toBe(taskId1);
 
-      expect(events1).toHaveLength(3); // Created + Started + Completed
-      expect(events2).toHaveLength(3); // Created + Started + Completed
-
-      unsubscribe1();
-      unsubscribe2();
+      expect(events2).toHaveLength(2);
+      expect(events2[0].type).toBe('task_created');
+      expect(events2[1].type).toBe('task_completed');
+      expect(events2[0].taskId).toBe(taskId2);
       done();
     };
 
-    // Start both tasks simultaneously
-    taskEventEmitter.emitTaskCreated(taskId1, { type: 'TASK1' });
-    taskEventEmitter.emitTaskCreated(taskId2, { type: 'TASK2' });
-    taskEventEmitter.emitTaskStarted(taskId1);
-    taskEventEmitter.emitTaskStarted(taskId2);
-    taskEventEmitter.emitTaskCompleted(taskId1, { result: 'task1' });
-    taskEventEmitter.emitTaskCompleted(taskId2, { result: 'task2' });
-  });
+    taskEventEmitter.on('task_created', (event: TaskEventData) => {
+      if (event.taskId === taskId1) {
+        events1.push(event);
+      } else if (event.taskId === taskId2) {
+        events2.push(event);
+      }
+    });
 
-  it('should provide listener count debugging info', () => {
-    const taskId = 'debug-test';
+    taskEventEmitter.on('task_completed', (event: TaskEventData) => {
+      if (event.taskId === taskId1) {
+        events1.push(event);
+        completedTasks++;
+        if (completedTasks === 2) {
+          checkResults();
+        }
+      } else if (event.taskId === taskId2) {
+        events2.push(event);
+        completedTasks++;
+        if (completedTasks === 2) {
+          checkResults();
+        }
+      }
+    });
 
-    // Initially no listeners
-    const initial = taskEventEmitter.getListenerCount();
-    expect(initial.task_created).toBe(0);
-
-    // Add subscription
-    const unsubscribe = taskEventEmitter.onTaskEvent(taskId, () => {});
-
-    const afterSubscribe = taskEventEmitter.getListenerCount();
-    expect(afterSubscribe.task_created).toBe(1);
-    expect(afterSubscribe.task_started).toBe(1);
-    expect(afterSubscribe.task_completed).toBe(1);
-    expect(afterSubscribe.task_failed).toBe(1);
-    expect(afterSubscribe.phase_updated).toBe(1);
-    expect(afterSubscribe.event_created).toBe(1);
-
-    // Remove subscription
-    unsubscribe();
-
-    const afterUnsubscribe = taskEventEmitter.getListenerCount();
-    expect(afterUnsubscribe.task_created).toBe(0);
+    // Simulate concurrent task execution
+    taskEventEmitter.emitTaskCreated(taskId1, { type: 'TASK_1' });
+    taskEventEmitter.emitTaskCreated(taskId2, { type: 'TASK_2' });
+    taskEventEmitter.emitTaskCompleted(taskId1, { success: true });
+    taskEventEmitter.emitTaskCompleted(taskId2, { success: true });
   });
 });

@@ -1,13 +1,14 @@
 import { claudeCode } from '@/lib/claude-code';
 import { tokenTracker } from '@/lib/claude-code/token-tracker';
-import { AgentResult, AgentExecutionOptions } from './types';
+import { logger } from '@/lib/logging/structured-logger';
 import {
-  getProjectSettings,
-  checkRateLimit,
-  checkTokenLimit,
-  logTokenUsage,
-  canRunParallelAgent,
+    canRunParallelAgent,
+    checkRateLimit,
+    checkTokenLimit,
+    getProjectSettings,
+    logTokenUsage,
 } from './project-settings';
+import { AgentExecutionOptions, AgentResult } from './types';
 
 export interface ExecutorOptions extends AgentExecutionOptions {
   projectId?: string;
@@ -106,17 +107,18 @@ export class AgentExecutor {
       try {
         // Log the prompt in development environment
         if (process.env.NODE_ENV === 'development') {
-          console.log('\n🤖 [Claude Code Executor] Sending prompt:', {
+          logger.debug('🤖 [Claude Code Executor] Sending prompt', {
+            module: 'agents',
             projectId,
             agentType,
             workingDirectory,
             attempt,
-            promptPreview:
-              prompt.length > 200
-                ? prompt.substring(0, 200) + '...[truncated]'
-                : prompt,
-            fullPrompt: prompt.length <= 500 ? prompt : '[too long to display]',
             promptLength: prompt.length,
+          }, {
+            promptPreview: prompt.length > 200
+              ? prompt.substring(0, 200) + '...[truncated]'
+              : prompt,
+            fullPrompt: prompt.length <= 500 ? prompt : '[too long to display]',
           });
         }
 
@@ -142,15 +144,18 @@ export class AgentExecutor {
 
         // Log the result in development environment
         if (process.env.NODE_ENV === 'development') {
-          console.log('✅ [Claude Code Executor] Execution result:', {
+          logger.debug('[Claude Code Executor] Execution result', {
+            module: 'agents',
+            projectId,
+            agentType,
             success: result.success,
             executionTime: `${executionTime}ms`,
             tokensUsed: totalTokensUsed,
             outputLength: result.output?.length || 0,
-            outputPreview:
-              result.output && result.output.length > 300
-                ? result.output.substring(0, 300) + '...[truncated]'
-                : result.output,
+          }, {
+            outputPreview: result.output && result.output.length > 300
+              ? result.output.substring(0, 300) + '...[truncated]'
+              : result.output,
             error: result.error || null,
           });
         }
@@ -191,14 +196,17 @@ export class AgentExecutor {
 
         // Log error in development environment
         if (process.env.NODE_ENV === 'development') {
-          console.error(
-            `❌ [Claude Code Executor] Attempt ${attempt} failed:`,
+          logger.error(
+            `❌ [Claude Code Executor] Attempt ${attempt} failed`,
             {
-              error: error instanceof Error ? error.message : String(error),
+              module: 'agents',
               projectId,
               agentType,
-              workingDirectory,
-              promptLength: prompt.length,
+              attempt,
+            },
+            error as Error,
+            {
+              error: error instanceof Error ? error.message : String(error),
             }
           );
         }
@@ -213,7 +221,14 @@ export class AgentExecutor {
         // Exponential backoff
         const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
         if (process.env.NODE_ENV === 'development') {
-          console.log(`⏳ [Claude Code Executor] Retrying in ${delay}ms...`);
+          logger.info(`⏳ [Claude Code Executor] Retrying in ${delay}ms...`, {
+            module: 'agents',
+            projectId,
+            agentType,
+            attempt,
+            maxRetries,
+            delay,
+          });
         }
         await this.sleep(delay);
       }

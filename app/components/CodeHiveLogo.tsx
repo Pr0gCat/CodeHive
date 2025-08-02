@@ -5,7 +5,6 @@ interface CodeHiveLogoProps {
   className?: string;
   size?: number;
   showText?: boolean;
-  withBackground?: boolean;
   useSVG?: boolean;
 }
 
@@ -13,7 +12,6 @@ export default function CodeHiveLogo({
   className = '',
   size = 32,
   showText = false,
-  withBackground = false,
   useSVG = false,
 }: CodeHiveLogoProps) {
   // 如果使用 SVG 版本

@@ -1,14 +1,14 @@
-import { NextRequest } from 'next/server';
-import { GET, POST } from '@/app/api/projects/[id]/cycles/route';
-import {
-  GET as getCycle,
-  DELETE as deleteCycle,
-} from '@/app/api/cycles/[id]/route';
 import { PUT as executePhase } from '@/app/api/cycles/[id]/execute/route';
-import { mockPrisma, clearAllMocks } from '../../../helpers/test-utils';
+import {
+    DELETE as deleteCycle,
+    GET as getCycle,
+} from '@/app/api/cycles/[id]/route';
+import { GET, POST } from '@/app/api/projects/[id]/cycles/route';
+import { NextRequest } from 'next/server';
+import { clearAllMocks, mockPrisma } from '../../../helpers/test-utils';
 
 // Mock the TDD engine
-jest.mock('@/lib/tdd/cycle-engine', () => ({
+jest.doMock('@/lib/tdd/cycle-engine', () => ({
   TDDCycleEngine: jest.fn().mockImplementation(() => ({
     startCycle: jest.fn().mockResolvedValue({
       id: 'new-cycle-id',
@@ -129,6 +129,7 @@ describe('Cycles API Integration Tests', () => {
       );
 
       const response = await POST(request, { params: { id: 'test-project' } });
+      if (!response) throw new Error('Response is undefined');
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -155,6 +156,7 @@ describe('Cycles API Integration Tests', () => {
       );
 
       const response = await POST(request, { params: { id: 'test-project' } });
+      if (!response) throw new Error('Response is undefined');
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -177,6 +179,7 @@ describe('Cycles API Integration Tests', () => {
       const response = await POST(request, {
         params: { id: 'invalid-project' },
       });
+      if (!response) throw new Error('Response is undefined');
       const data = await response.json();
 
       expect(response.status).toBe(404);
@@ -204,6 +207,7 @@ describe('Cycles API Integration Tests', () => {
       );
 
       const response = await POST(request, { params: { id: 'test-project' } });
+      if (!response) throw new Error('Response is undefined');
       const data = await response.json();
 
       expect(response.status).toBe(500);
@@ -221,6 +225,7 @@ describe('Cycles API Integration Tests', () => {
       );
 
       const response = await POST(request, { params: { id: 'test-project' } });
+      if (!response) throw new Error('Response is undefined');
       const data = await response.json();
 
       expect(response.status).toBe(500);
@@ -510,6 +515,7 @@ describe('Cycles API Integration Tests', () => {
       );
 
       const response = await POST(request, { params: { id: 'test-project' } });
+      if (!response) throw new Error('Response is undefined');
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -537,6 +543,7 @@ describe('Cycles API Integration Tests', () => {
       );
 
       const response = await POST(request, { params: { id: 'test-project' } });
+      if (!response) throw new Error('Response is undefined');
       const data = await response.json();
 
       expect(response.status).toBe(400);

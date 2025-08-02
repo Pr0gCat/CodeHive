@@ -13,6 +13,7 @@ import TDDDashboard from '../../components/TDDDashboard';
 import { useToast } from '@/components/ui/ToastManager';
 import UserQueriesPanel from '../../components/UserQueriesPanel';
 import ClaudeMdViewer from '../../components/ClaudeMdViewer';
+import SprintDashboard from '../../components/SprintDashboard';
 
 interface ProjectPageProps {
   params: { id: string };
@@ -31,7 +32,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const [activeTab, setActiveTab] = useState<
     'overview' | 'development' | 'queries' | 'claude-md'
   >('overview');
-  const [devSubTab, setDevSubTab] = useState<'epics' | 'tdd'>('epics');
+  const [devSubTab, setDevSubTab] = useState<'epics' | 'tdd' | 'sprints'>('epics');
   const [claudeMdLastUpdate, setClaudeMdLastUpdate] = useState<Date | null>(
     null
   );
@@ -639,6 +640,16 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                     Epic 管理
                   </button>
                   <button
+                    onClick={() => setDevSubTab('sprints')}
+                    className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                      devSubTab === 'sprints'
+                        ? 'text-accent-50 border-accent-500'
+                        : 'text-primary-400 hover:text-accent-50 border-transparent'
+                    }`}
+                  >
+                    Sprint 管理
+                  </button>
+                  <button
                     onClick={() => setDevSubTab('tdd')}
                     className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                       devSubTab === 'tdd'
@@ -659,6 +670,15 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                 >
                   <div className="p-6 h-full overflow-y-auto">
                     <EpicDashboard projectId={project.id} />
+                  </div>
+                </div>
+
+                {/* Sprint Management */}
+                <div
+                  className={`h-full ${devSubTab === 'sprints' ? 'block' : 'hidden'}`}
+                >
+                  <div className="p-6 h-full overflow-y-auto">
+                    <SprintDashboard projectId={project.id} />
                   </div>
                 </div>
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma, EpicType, EpicPhase, EpicStatus, MVPPriority } from '@/lib/db';
+import { prisma } from '@/lib/db';
 import { z } from 'zod';
 
 // Epic creation schema
@@ -18,8 +18,8 @@ const createEpicSchema = z.object({
   sequence: z.number().int().min(0).default(0),
 });
 
-// Epic update schema
-const updateEpicSchema = createEpicSchema.partial().omit({ projectId: true });
+// Epic update schema (currently unused but may be needed for future updates)
+// const updateEpicSchema = createEpicSchema.partial().omit({ projectId: true });
 
 // GET /api/epics - List all epics with optional project filter
 export async function GET(request: NextRequest) {

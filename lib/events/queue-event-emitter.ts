@@ -2,17 +2,19 @@ import { EventEmitter } from 'events';
 
 export interface QueueEventData {
   taskId: string;
-  type:
-    | 'task_queued'
-    | 'task_started'
-    | 'task_completed'
-    | 'task_failed'
-    | 'queue_status_changed';
+  type: QueueEventType;
   timestamp: Date;
-  data?: any;
+  data?: Record<string, unknown>;
 }
 
-class QueueEventEmitter extends EventEmitter {
+export type QueueEventType = 
+  | 'task_queued'
+  | 'task_started'
+  | 'task_completed'
+  | 'task_failed'
+  | 'queue_status_changed';
+
+export class QueueEventEmitter extends EventEmitter {
   private static instance: QueueEventEmitter;
 
   public static getInstance(): QueueEventEmitter {
@@ -23,49 +25,49 @@ class QueueEventEmitter extends EventEmitter {
   }
 
   // Queue events
-  emitTaskQueued(taskId: string, data?: any) {
+  emitTaskQueued(taskId: string, data?: Record<string, unknown>) {
     this.emit('task_queued', {
       taskId,
       type: 'task_queued',
       timestamp: new Date(),
       data,
-    } as QueueEventData);
+    });
   }
 
-  emitTaskStarted(taskId: string, data?: any) {
+  emitTaskStarted(taskId: string, data?: Record<string, unknown>) {
     this.emit('task_started', {
       taskId,
       type: 'task_started',
       timestamp: new Date(),
       data,
-    } as QueueEventData);
+    });
   }
 
-  emitTaskCompleted(taskId: string, result?: any) {
+  emitTaskCompleted(taskId: string, result?: Record<string, unknown>) {
     this.emit('task_completed', {
       taskId,
       type: 'task_completed',
       timestamp: new Date(),
       data: result,
-    } as QueueEventData);
+    });
   }
 
-  emitTaskFailed(taskId: string, error?: any) {
+  emitTaskFailed(taskId: string, error?: Record<string, unknown>) {
     this.emit('task_failed', {
       taskId,
       type: 'task_failed',
       timestamp: new Date(),
       data: error,
-    } as QueueEventData);
+    });
   }
 
-  emitQueueStatusChanged(status: string, data?: any) {
+  emitQueueStatusChanged(status: string, data?: Record<string, unknown>) {
     this.emit('queue_status_changed', {
       taskId: 'queue',
       type: 'queue_status_changed',
       timestamp: new Date(),
       data: { status, ...data },
-    } as QueueEventData);
+    });
   }
 
   // Subscribe to queue events
@@ -127,4 +129,5 @@ class QueueEventEmitter extends EventEmitter {
   }
 }
 
-export const queueEventEmitter = QueueEventEmitter.getInstance();
+// Create singleton instance
+export const queueEventEmitter = new QueueEventEmitter();

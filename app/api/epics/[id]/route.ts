@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 // Epic update schema
@@ -211,7 +211,7 @@ export async function PUT(
     }
 
     // Update epic
-    const updateData: any = { ...validatedData };
+    const updateData: Record<string, unknown> = { ...validatedData };
 
     // Handle date conversions
     if (validatedData.startDate) {

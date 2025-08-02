@@ -1,7 +1,8 @@
+import { taskManager } from '@/lib/tasks/task-manager';
+import { validatePath } from '@/lib/utils/security';
 import { spawn } from 'child_process';
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { taskManager, TaskEvent } from '@/lib/tasks/task-manager';
 
 export interface GitCloneOptions {
   url: string;
@@ -40,6 +41,24 @@ export class GitClient {
         error: 'URL and target path are required',
       };
     }
+    
+    // Validate Git URL
+    const urlValidation = await this.validateGitUrl(url);
+    if (!urlValidation.valid) {
+      return {
+        success: false,
+        error: urlValidation.error,
+      };
+    }
+    
+    // Validate target path
+    const safePath = validatePath(this.reposDir, targetPath);
+    if (!safePath) {
+      return {
+        success: false,
+        error: 'Invalid target path',
+      };
+    }
 
     // Build git clone command
     const args = ['clone', '--progress'];
@@ -52,79 +71,115 @@ export class GitClient {
       args.push('--branch', branch);
     }
 
-    args.push(url, targetPath);
+    args.push(url, safePath);
 
     // Execute with real progress tracking
     return this.executeGitCommandWithProgress(args, undefined, taskId, phaseId);
   }
 
   async pull(repoPath: string): Promise<GitCommandResult> {
-    if (!existsSync(repoPath)) {
+    // Validate repository path
+    const safePath = validatePath(this.reposDir, repoPath);
+    if (!safePath || !existsSync(safePath)) {
       return {
         success: false,
-        error: `Repository path does not exist: ${repoPath}`,
+        error: `Repository path does not exist or is invalid`,
       };
     }
 
-    return this.executeGitCommand(['pull'], repoPath);
+    return this.executeGitCommand(['pull'], safePath);
   }
 
   async status(repoPath: string): Promise<GitCommandResult> {
-    if (!existsSync(repoPath)) {
+    // Validate repository path
+    const safePath = validatePath(this.reposDir, repoPath);
+    if (!safePath || !existsSync(safePath)) {
       return {
         success: false,
-        error: `Repository path does not exist: ${repoPath}`,
+        error: `Repository path does not exist or is invalid`,
       };
     }
 
-    return this.executeGitCommand(['status', '--porcelain'], repoPath);
+    return this.executeGitCommand(['status', '--porcelain'], safePath);
   }
 
   async getCurrentBranch(repoPath: string): Promise<string | null> {
+    // Validate repository path
+    const safePath = validatePath(this.reposDir, repoPath);
+    if (!safePath) {
+      return null;
+    }
+    
     const result = await this.executeGitCommand(
       ['branch', '--show-current'],
-      repoPath
+      safePath
     );
     return result.success ? result.output?.trim() || null : null;
   }
 
   async getRemoteUrl(repoPath: string): Promise<string | null> {
+    // Validate repository path
+    const safePath = validatePath(this.reposDir, repoPath);
+    if (!safePath) {
+      return null;
+    }
+    
     const result = await this.executeGitCommand(
       ['remote', 'get-url', 'origin'],
-      repoPath
+      safePath
     );
     return result.success ? result.output?.trim() || null : null;
   }
 
   async init(repoPath: string): Promise<GitCommandResult> {
+    // Validate repository path
+    const safePath = validatePath(this.reposDir, repoPath);
+    if (!safePath) {
+      return {
+        success: false,
+        error: 'Invalid repository path',
+      };
+    }
+    
     // Ensure directory exists
-    if (!existsSync(repoPath)) {
-      mkdirSync(repoPath, { recursive: true });
+    if (!existsSync(safePath)) {
+      mkdirSync(safePath, { recursive: true });
     }
 
-    return this.executeGitCommand(['init'], repoPath);
+    return this.executeGitCommand(['init'], safePath);
   }
 
   async initialCommit(
     repoPath: string,
     message: string = 'Initial commit'
   ): Promise<GitCommandResult> {
+    // Validate repository path
+    const safePath = validatePath(this.reposDir, repoPath);
+    if (!safePath) {
+      return {
+        success: false,
+        error: 'Invalid repository path',
+      };
+    }
+    
     // Add all files
-    const addResult = await this.executeGitCommand(['add', '.'], repoPath);
+    const addResult = await this.executeGitCommand(['add', '.'], safePath);
     if (!addResult.success) {
       return addResult;
     }
 
     // Create initial commit
-    return this.executeGitCommand(['commit', '-m', message], repoPath);
+    return this.executeGitCommand(['commit', '-m', message], safePath);
   }
 
   async isValidRepository(repoPath: string): Promise<boolean> {
-    if (!existsSync(repoPath)) {
+    // Validate repository path
+    const safePath = validatePath(this.reposDir, repoPath);
+    if (!safePath || !existsSync(safePath)) {
       return false;
     }
 
-    const gitDir = join(repoPath, '.git');
+    const gitDir = join(safePath, '.git');
     return existsSync(gitDir);
   }
 
@@ -226,7 +281,7 @@ export class GitClient {
       const updateProgress = async (
         progress: number,
         message: string,
-        details?: any
+        details?: Record<string, unknown>
       ) => {
         if (taskId && phaseId && progress !== lastProgress) {
           lastProgress = progress;

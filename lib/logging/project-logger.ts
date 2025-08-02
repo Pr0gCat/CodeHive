@@ -132,6 +132,19 @@ class ProjectLogger extends EventEmitter {
 
     // Store in database for persistence
     try {
+      // Verify projectId exists before creating log (except for system logs)
+      if (projectId !== 'system') {
+        const projectExists = await prisma.project.findUnique({
+          where: { id: projectId },
+          select: { id: true }
+        });
+        
+        if (!projectExists) {
+          console.warn(`Attempted to log for non-existent project: ${projectId}`);
+          return; // Skip logging for non-existent projects
+        }
+      }
+      
       await prisma.projectLog.create({
         data: {
           projectId,

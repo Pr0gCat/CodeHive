@@ -17,6 +17,12 @@ export interface PerformanceMetrics {
   }[];
 }
 
+interface PerformanceRecord {
+  timestamp: Date;
+  executionTime: number;
+  success: boolean;
+}
+
 export class PerformanceTracker {
   async recordExecution(
     agentId: string,
@@ -297,7 +303,7 @@ export class PerformanceTracker {
     // For now, we'll rely on real-time calculations
   }
 
-  private calculateTrends(performances: any[]): {
+  private calculateTrends(performances: PerformanceRecord[]): {
     period: string;
     executionTime: number;
     successRate: number;

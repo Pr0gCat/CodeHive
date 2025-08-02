@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  prisma,
-  ProjectSettings,
-  TaskPriority,
-  CodeAnalysisDepth,
-} from '@/lib/db';
+import { prisma } from '@/lib/db';
 import { z } from 'zod';
 import { checkProjectOperationAccess } from '@/lib/project-access-control';
 
@@ -81,7 +76,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       settings = await prisma.projectSettings.findUnique({
         where: { projectId },
       });
-    } catch (tableError) {
+    } catch {
       // If ProjectSettings table doesn't exist, return default values
       console.log('ProjectSettings table not found, returning defaults');
       return NextResponse.json({
@@ -124,7 +119,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             projectId,
           },
         });
-      } catch (createError) {
+      } catch {
         // If creation fails, return default values without persisting
         console.log('Could not create ProjectSettings, returning defaults');
         return NextResponse.json({
@@ -204,7 +199,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
           ...validatedData,
         },
       });
-    } catch (upsertError) {
+    } catch {
       // If ProjectSettings table doesn't exist, just return success with the data
       console.log(
         'ProjectSettings table not found during update, returning data'
@@ -276,7 +271,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
           projectId,
         },
       });
-    } catch (deleteError) {
+    } catch {
       // If ProjectSettings table doesn't exist, return default values
       console.log(
         'ProjectSettings table not found during delete, returning defaults'

@@ -1,5 +1,4 @@
-import { prisma, Query, QueryComment, Cycle } from '@/lib/db';
-import { QueryTypeType, QueryUrgencyType, QueryStatusType } from '@/lib/db';
+import { prisma, Query, QueryComment, QueryStatusType, QueryTypeType, QueryUrgencyType } from '@/lib/db';
 
 export interface QueryCreationData {
   projectId: string;
@@ -7,7 +6,7 @@ export interface QueryCreationData {
   type: QueryTypeType;
   title: string;
   question: string;
-  context: any;
+  context: Record<string, unknown>;
   urgency: QueryUrgencyType;
   priority?: 'LOW' | 'MEDIUM' | 'HIGH';
 }
@@ -71,7 +70,7 @@ export class QueryManager {
    * Get queries with filters
    */
   async getQueries(filters: QueryFilters): Promise<Query[]> {
-    const where: any = {};
+    const where: Record<string, unknown> = {};
 
     if (filters.projectId) where.projectId = filters.projectId;
     if (filters.cycleId) where.cycleId = filters.cycleId;

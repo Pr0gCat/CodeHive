@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma, ProjectStatus } from '@/lib/db';
+import { projectAnalyzer } from '@/lib/analysis/project-analyzer';
+import { prisma } from '@/lib/db';
 import { gitClient } from '@/lib/git';
 import { taskManager, TaskPhase } from '@/lib/tasks/task-manager';
-import { projectAnalyzer } from '@/lib/analysis/project-analyzer';
+import { NextRequest, NextResponse } from 'next/server';
 
 interface ImportRequest {
   gitUrl?: string; // Optional - can import existing local repos
@@ -130,9 +130,9 @@ export async function POST(request: NextRequest) {
           order: 2,
         },
         {
-          phaseId: 'claude_md_generation',
-          title: '生成 CLAUDE.md',
-          description: '使用 Claude Code 生成專案指南',
+          phaseId: 'sprint_setup',
+          title: 'Setup Default Sprint',
+          description: 'Create first sprint and initial work items',
           order: 3,
         },
         {
@@ -267,113 +267,80 @@ export async function POST(request: NextRequest) {
         remoteUrl: actualRemoteUrl,
       });
 
-      // Phase 3.5: Generate CLAUDE.md BEFORE database creation
-      await taskManager.startPhase(taskId, 'claude_md_generation');
+      // Phase 3.5: Sprint Setup - Create default first sprint
+      await taskManager.startPhase(taskId, 'sprint_setup');
 
       try {
-        console.log(`📝 Generating CLAUDE.md for project: ${projectName}...`);
+        console.log(`Setting up default sprint for project: ${projectName}...`);
 
         await taskManager.updatePhaseProgress(
           taskId,
-          'claude_md_generation',
+          'sprint_setup',
           30,
           {
             type: 'PHASE_PROGRESS',
-            message: '生成專案 CLAUDE.md 文件',
+            message: 'Setting up default sprint plan',
           }
         );
 
-        // Check if CLAUDE.md already exists
-        const claudeMdPath = `${finalLocalPath}/CLAUDE.md`;
-        const { promises: fs } = await import('fs');
-        const claudeMdExists = await fs
-          .access(claudeMdPath)
-          .then(() => true)
-          .catch(() => false);
+        // Import and call createDefaultFirstSprint
+        const { createDefaultFirstSprint } = await import('@/lib/sprints/default-sprint');
 
-        if (claudeMdExists) {
-          console.log(
-            `📋 CLAUDE.md already exists at ${claudeMdPath}, skipping generation`
-          );
-          await taskManager.updatePhaseProgress(
-            taskId,
-            'claude_md_generation',
-            100,
-            {
-              type: 'PHASE_PROGRESS',
-              message: 'CLAUDE.md 已存在，跳過生成',
-            }
-          );
-        } else {
-          // Use Claude Code /init to generate CLAUDE.md
-          await taskManager.updatePhaseProgress(
-            taskId,
-            'claude_md_generation',
-            60,
-            {
-              type: 'PHASE_PROGRESS',
-              message: '使用 Claude Code 生成 CLAUDE.md',
-            }
-          );
-
-          const { claudeCode } = await import('@/lib/claude-code');
-
-          const claudeResult = await claudeCode.execute('/init', {
-            workingDirectory: finalLocalPath,
-            timeout: 180000, // 3 minutes
-          });
-
-          if (claudeResult.success) {
-            console.log(
-              `✅ CLAUDE.md generated successfully using Claude Code`
-            );
-            await taskManager.updatePhaseProgress(
-              taskId,
-              'claude_md_generation',
-              100,
-              {
-                type: 'PHASE_PROGRESS',
-                message: 'CLAUDE.md 生成成功',
-              }
-            );
-          } else {
-            console.log(
-              `⚠️ Claude Code generation failed: ${claudeResult.error}`
-            );
-            await taskManager.updatePhaseProgress(
-              taskId,
-              'claude_md_generation',
-              100,
-              {
-                type: 'PHASE_PROGRESS',
-                message: 'CLAUDE.md 生成失敗，將繼續匯入',
-              }
-            );
+        await taskManager.updatePhaseProgress(
+          taskId,
+          'sprint_setup',
+          60,
+          {
+            type: 'PHASE_PROGRESS',
+            message: 'Creating first sprint and work items',
           }
-        }
+        );
 
-        await taskManager.completePhase(taskId, 'claude_md_generation', {
-          claudeMdExists: claudeMdExists,
-          generated: !claudeMdExists,
+        const sprintResult = await createDefaultFirstSprint(projectId, projectName);
+
+        console.log(
+          `✅ Default sprint created successfully for project: ${projectName}`
+        );
+        console.log(`   Sprint: ${sprintResult.sprint.name}`);
+        console.log(`   Epic: ${sprintResult.epic.title}`);
+        console.log(`   Stories created: ${sprintResult.stories.length}`);
+
+        await taskManager.updatePhaseProgress(
+          taskId,
+          'sprint_setup',
+          100,
+          {
+            type: 'PHASE_PROGRESS',
+            message: 'Sprint setup completed',
+          }
+        );
+
+        await taskManager.completePhase(taskId, 'sprint_setup', {
+          sprintId: sprintResult.sprint.id,
+          sprintName: sprintResult.sprint.name,
+          epicId: sprintResult.epic.id,
+          epicTitle: sprintResult.epic.title,
+          storiesCreated: sprintResult.stories.length,
+          totalStoryPoints: sprintResult.stories.reduce((sum, story) => sum + (story.storyPoints || 0), 0),
         });
-      } catch (claudeMdError) {
+      } catch (sprintError) {
         console.error(
-          `❌ Error generating CLAUDE.md for ${projectName}:`,
-          claudeMdError
+          `❌ Error setting up sprint for ${projectName}:`,
+          sprintError
         );
         await taskManager.updatePhaseProgress(
           taskId,
-          'claude_md_generation',
+          'sprint_setup',
           100,
           {
             type: 'ERROR',
-            message: `CLAUDE.md 生成錯誤: ${claudeMdError instanceof Error ? claudeMdError.message : 'Unknown error'}`,
+            message: `Sprint setup error: ${sprintError instanceof Error ? sprintError.message : 'Unknown error'}`,
           }
         );
-        await taskManager.completePhase(taskId, 'claude_md_generation', {
+        await taskManager.completePhase(taskId, 'sprint_setup', {
           error:
-            claudeMdError instanceof Error
-              ? claudeMdError.message
+            sprintError instanceof Error
+              ? sprintError.message
               : 'Unknown error',
         });
       }
@@ -500,7 +467,7 @@ export async function POST(request: NextRequest) {
           if (summaryResult.success && summaryResult.data?.summary) {
             projectDescription = summaryResult.data.summary;
             console.log(
-              `✅ Generated intelligent description: "${projectDescription}"`
+              `Generated intelligent description: "${projectDescription}"`
             );
           }
         }
@@ -523,7 +490,7 @@ export async function POST(request: NextRequest) {
           projectDescription = `${analysisResult.detectedLanguage} project`;
         }
 
-        console.log(`📝 Using fallback description: "${projectDescription}"`);
+        console.log(`Using fallback description: "${projectDescription}"`);
       }
 
       // Step 2: Update project with generated description and complete status
@@ -540,7 +507,7 @@ export async function POST(request: NextRequest) {
       await taskManager.completePhase(taskId, 'completion', {
         projectUpdated: true,
         descriptionGenerated: true,
-        claudeMdGenerated: true,
+        sprintSetupCompleted: true,
         finalDescription: projectDescription,
         initialCards: 3,
       });

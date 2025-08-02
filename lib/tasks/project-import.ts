@@ -161,65 +161,32 @@ export async function runImportAsync(
       recovered: true,
     });
 
-    // Phase 3: Generate CLAUDE.md (if needed)
-    await taskManager.startPhase(taskId, 'claude_md_generation');
+    // Phase 3: Create default first sprint with README task
+    await taskManager.startPhase(taskId, 'sprint_setup');
 
     try {
-      console.log(`📝 Generating CLAUDE.md for project: ${projectName}... (recovery)`);
+      console.log(`Creating default first sprint for project: ${projectName}... (recovery)`);
 
-      const claudeMdPath = `${finalLocalPath}/CLAUDE.md`;
-      const { promises: fs } = await import('fs');
-      const claudeMdExists = await fs
-        .access(claudeMdPath)
-        .then(() => true)
-        .catch(() => false);
+      await taskManager.updatePhaseProgress(taskId, 'sprint_setup', 50, {
+        type: 'PHASE_PROGRESS',
+        message: 'Creating default first sprint with README task (recovery)',
+      });
 
-      if (claudeMdExists) {
-        console.log(`📋 CLAUDE.md already exists, skipping generation`);
-        await taskManager.updatePhaseProgress(
-          taskId,
-          'claude_md_generation',
-          100,
-          {
-            type: 'PHASE_PROGRESS',
-            message: 'CLAUDE.md 已存在，跳過生成 (recovery)',
-          }
-        );
-      } else {
-        // Use Claude Code /init to generate CLAUDE.md
-        await taskManager.updatePhaseProgress(
-          taskId,
-          'claude_md_generation',
-          60,
-          {
-            type: 'PHASE_PROGRESS',
-            message: '使用 Claude Code 生成 CLAUDE.md (recovery)',
-          }
-        );
-
-        const { claudeCode } = await import('@/lib/claude-code');
-
-        const claudeResult = await claudeCode.execute('/init', {
-          workingDirectory: finalLocalPath,
-          timeout: 180000, // 3 minutes
-        });
-
-        if (claudeResult.success) {
-          console.log(`✅ CLAUDE.md generated successfully using Claude Code (recovery)`);
-        } else {
-          console.log(`⚠️ Claude Code generation failed: ${claudeResult.error}`);
-        }
-      }
-
-      await taskManager.completePhase(taskId, 'claude_md_generation', {
-        claudeMdExists: claudeMdExists,
-        generated: !claudeMdExists,
+      const { createDefaultFirstSprint } = await import('@/lib/sprints/default-sprint');
+      const sprintResult = await createDefaultFirstSprint(projectId, projectName);
+      
+      console.log(`🚀 Created default first sprint for imported project: ${projectName}`);
+      
+      await taskManager.completePhase(taskId, 'sprint_setup', {
+        sprintId: sprintResult.sprint.id,
+        epicId: sprintResult.epic.id,
+        storiesCreated: sprintResult.stories.length,
         recovered: true,
       });
-    } catch (claudeMdError) {
-      console.error(`❌ Error generating CLAUDE.md:`, claudeMdError);
-      await taskManager.completePhase(taskId, 'claude_md_generation', {
-        error: claudeMdError instanceof Error ? claudeMdError.message : 'Unknown error',
+    } catch (sprintError) {
+      console.error(`❌ Error creating default sprint:`, sprintError);
+      await taskManager.completePhase(taskId, 'sprint_setup', {
+        error: sprintError instanceof Error ? sprintError.message : 'Unknown error',
         recovered: true,
       });
     }
@@ -295,7 +262,7 @@ export async function runImportAsync(
           const summaryResult = await summaryResponse.json();
           if (summaryResult.success && summaryResult.data?.summary) {
             projectDescription = summaryResult.data.summary + ' (recovered)';
-            console.log(`✅ Generated intelligent description: "${projectDescription}"`);
+            console.log(`Generated intelligent description: "${projectDescription}"`);
           }
         }
       }

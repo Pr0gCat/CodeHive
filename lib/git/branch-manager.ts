@@ -1,8 +1,7 @@
+import { prisma } from '@/lib/db';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { promises as fs } from 'fs';
-import path from 'path';
-import { prisma } from '@/lib/db';
+import { validateGitBranchName, escapeShellArg, safeExec } from '@/lib/utils/security';
 
 const execAsync = promisify(exec);
 
@@ -49,13 +48,22 @@ export class BranchManager {
   ): Promise<GitOperationResult> {
     try {
       const branchName = `feature/cycle-${cycleId}-${featureName.toLowerCase().replace(/\s+/g, '-')}`;
+      
+      // Validate branch name to prevent injection
+      if (!validateGitBranchName(branchName)) {
+        return {
+          success: false,
+          error: 'Invalid branch name format',
+        };
+      }
 
       // 確保在主分支上
       await this.checkoutBranch('main');
 
       // 創建並切換到新分支
-      const { stdout, stderr } = await execAsync(
-        `git checkout -b ${branchName}`,
+      const { stdout, stderr } = await safeExec(
+        'git',
+        ['checkout', '-b', branchName],
         { cwd: this.projectPath }
       );
 
@@ -95,8 +103,9 @@ export class BranchManager {
       const checkpointName = `checkpoint/${phase.toLowerCase()}-phase-start`;
 
       // 創建檢查點分支
-      const { stdout, stderr } = await execAsync(
-        `git branch ${checkpointName}`,
+      const { stdout, stderr } = await safeExec(
+        'git',
+        ['branch', checkpointName],
         { cwd: this.projectPath }
       );
 
@@ -139,9 +148,11 @@ export class BranchManager {
       }
 
       // 切換分支
-      const { stdout, stderr } = await execAsync(`git checkout ${branchName}`, {
-        cwd: this.projectPath,
-      });
+      const { stdout, stderr } = await safeExec(
+        'git',
+        ['checkout', branchName],
+        { cwd: this.projectPath }
+      );
 
       // 恢復工作空間狀態
       await this.restoreWorkspaceState(branchName);
@@ -175,12 +186,13 @@ export class BranchManager {
   ): Promise<GitOperationResult> {
     try {
       // 添加所有變更
-      await execAsync('git add .', { cwd: this.projectPath });
+      await safeExec('git', ['add', '.'], { cwd: this.projectPath });
 
       // 提交變更
       const commitMessage = `${this.getCommitPrefix(phase)}: ${message}`;
-      const { stdout, stderr } = await execAsync(
-        `git commit -m "${commitMessage}"`,
+      const { stdout, stderr } = await safeExec(
+        'git',
+        ['commit', '-m', commitMessage],
         { cwd: this.projectPath }
       );
 
@@ -216,8 +228,9 @@ export class BranchManager {
   ): Promise<GitOperationResult> {
     try {
       // 重置到檢查點
-      const { stdout, stderr } = await execAsync(
-        `git reset --hard ${checkpointBranch}`,
+      const { stdout, stderr } = await safeExec(
+        'git',
+        ['reset', '--hard', checkpointBranch],
         { cwd: this.projectPath }
       );
 
@@ -284,8 +297,9 @@ export class BranchManager {
       }
 
       // 推送分支到遠端
-      const { stdout: pushOutput } = await execAsync(
-        `git push -u origin ${branchState.branchName}`,
+      const { stdout: pushOutput } = await safeExec(
+        'git',
+        ['push', '-u', 'origin', branchState.branchName],
         { cwd: this.projectPath }
       );
 
@@ -302,10 +316,11 @@ export class BranchManager {
       }
 
       const prTitle = `feat: ${cycle.title}`;
-      const prBody = `## Summary\n- Implemented ${cycle.title} using TDD approach\n- Completed all acceptance criteria\n- All tests passing\n\n## TDD Phases Completed\n- ✅ RED: Generated failing tests\n- ✅ GREEN: Implemented minimal code\n- ✅ REFACTOR: Improved code quality\n- ✅ REVIEW: Final validation\n\n🤖 Generated with CodeHive TDD`;
+      const prBody = `## Summary\n- Implemented ${cycle.title} using TDD approach\n- Completed all acceptance criteria\n- All tests passing\n\n## TDD Phases Completed\n- RED: Generated failing tests\n- GREEN: Implemented minimal code\n- REFACTOR: Improved code quality\n- REVIEW: Final validation\n\n🤖 Generated with CodeHive TDD`;
 
-      const { stdout: prOutput } = await execAsync(
-        `gh pr create --title "${prTitle}" --body "${prBody}" --base ${targetBranch}`,
+      const { stdout: prOutput } = await safeExec(
+        'gh',
+        ['pr', 'create', '--title', prTitle, '--body', prBody, '--base', targetBranch],
         { cwd: this.projectPath }
       );
 
@@ -328,9 +343,11 @@ export class BranchManager {
 
   private async getCurrentBranch(): Promise<string> {
     try {
-      const { stdout } = await execAsync('git rev-parse --abbrev-ref HEAD', {
-        cwd: this.projectPath,
-      });
+      const { stdout } = await safeExec(
+        'git',
+        ['rev-parse', '--abbrev-ref', 'HEAD'],
+        { cwd: this.projectPath }
+      );
       return stdout.trim();
     } catch (error) {
       return '';
@@ -339,9 +356,11 @@ export class BranchManager {
 
   private async getCurrentCommit(): Promise<string> {
     try {
-      const { stdout } = await execAsync('git rev-parse HEAD', {
-        cwd: this.projectPath,
-      });
+      const { stdout } = await safeExec(
+        'git',
+        ['rev-parse', 'HEAD'],
+        { cwd: this.projectPath }
+      );
       return stdout.trim();
     } catch (error) {
       return '';
@@ -349,7 +368,7 @@ export class BranchManager {
   }
 
   private async checkoutBranch(branchName: string): Promise<void> {
-    await execAsync(`git checkout ${branchName}`, { cwd: this.projectPath });
+    await safeExec('git', ['checkout', branchName], { cwd: this.projectPath });
   }
 
   private async saveWorkspaceState(branchName: string): Promise<void> {

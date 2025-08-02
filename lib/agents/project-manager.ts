@@ -4,9 +4,9 @@ import { ProjectAnalyzer } from './analyzers/project-analyzer';
 import { AgentExecutor } from './executor';
 import { SpecificationGenerator } from './generators/spec-generator';
 import {
-  checkRateLimit,
-  checkTokenLimit,
-  logTokenUsage,
+    checkRateLimit,
+    checkTokenLimit,
+    logTokenUsage,
 } from './project-settings';
 import { AgentResult, AgentSpec } from './types';
 
@@ -168,7 +168,7 @@ export class ProjectManagerAgent {
           if (claudeResult.success) {
             claudeMdContent = claudeResult.content || '';
             console.log(
-              `✅ CLAUDE.md generated successfully using Claude Code`
+              `CLAUDE.md generated successfully using Claude Code`
             );
 
             // Log token usage from Claude Code execution
@@ -396,7 +396,7 @@ export class ProjectManagerAgent {
           }
         }
 
-        console.log(`✅ Extracted description from /init: "${description}"`);
+        console.log(`Extracted description from /init: "${description}"`);
         return description || 'Software project';
       } else {
         console.warn(
@@ -679,7 +679,7 @@ export class ProjectManagerAgent {
         const data = await response.json();
         if (data.success) {
           taskIds.push(data.data.taskId);
-          console.log(`✅ Queued ${rec.agentType}: ${data.data.taskId}`);
+          console.log(`Queued ${rec.agentType}: ${data.data.taskId}`);
         } else {
           console.error(`❌ Failed to queue ${rec.agentType}:`, data.error);
         }
@@ -918,7 +918,7 @@ Guidelines:
         outputTokens
       );
 
-      console.log(`✅ Feature request analyzed: ${analysis.epicTitle}`);
+      console.log(`Feature request analyzed: ${analysis.epicTitle}`);
       return analysis;
     } catch (error) {
       console.error('Error processing feature request:', error);
@@ -986,7 +986,7 @@ Guidelines:
         },
       });
 
-      console.log(`✅ Created Epic: ${epic.id}`);
+      console.log(`Created Epic: ${epic.id}`);
       return epic.id;
     } catch (error) {
       console.error('Error creating Epic:', error);
@@ -1004,7 +1004,7 @@ Guidelines:
     stories: StoryBreakdown[]
   ): Promise<string[]> {
     try {
-      console.log(`📝 Creating ${stories.length} stories for Epic: ${epicId}`);
+      console.log(`Creating ${stories.length} stories for Epic: ${epicId}`);
 
       const storyIds: string[] = [];
 
@@ -1030,7 +1030,7 @@ Guidelines:
         });
 
         storyIds.push(kanbanCard.id);
-        console.log(`✅ Created Story: ${story.title}`);
+        console.log(`Created Story: ${story.title}`);
       }
 
       // Update Epic phase to IN_PROGRESS
@@ -1053,7 +1053,7 @@ Guidelines:
    */
   async maintainProjectClaudeMd(projectId: string): Promise<void> {
     try {
-      console.log(`📝 Updating CLAUDE.md for project: ${projectId}`);
+      console.log(`Updating CLAUDE.md for project: ${projectId}`);
 
       const project = await prisma.project.findUnique({
         where: { id: projectId },
@@ -1102,7 +1102,7 @@ Guidelines:
         );
       }
 
-      console.log(`✅ CLAUDE.md updated successfully using Claude Code`);
+      console.log(`CLAUDE.md updated successfully using Claude Code`);
     } catch (error) {
       console.error('Error maintaining CLAUDE.md:', error);
       throw new Error(

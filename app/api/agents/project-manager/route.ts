@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { ProjectManagerAgent } from '@/lib/agents/project-manager';
 import { TaskQueue } from '@/lib/agents/queue';
+import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const analyzeProjectSchema = z.object({
@@ -34,13 +34,6 @@ function getProjectManager(): ProjectManagerAgent {
     projectManager = new ProjectManagerAgent();
   }
   return projectManager;
-}
-
-function getTaskQueue(): TaskQueue {
-  if (!taskQueue) {
-    taskQueue = new TaskQueue();
-  }
-  return taskQueue;
 }
 
 export async function POST(request: NextRequest) {

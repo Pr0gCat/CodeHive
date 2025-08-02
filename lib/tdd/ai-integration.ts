@@ -1,12 +1,12 @@
 import { AgentExecutor } from '@/lib/agents/executor';
 import { ProjectContext } from '@/lib/agents/project-manager';
 import {
-  Artifact,
-  prisma,
-  Query,
-  Test,
-  QueryTypeType,
-  QueryUrgencyType,
+    Artifact,
+    prisma,
+    Query,
+    QueryTypeType,
+    QueryUrgencyType,
+    Test,
 } from '@/lib/db';
 
 export interface TestGenerationRequest {
@@ -31,7 +31,7 @@ export interface AIDecisionPoint {
   type: QueryTypeType;
   title: string;
   question: string;
-  context: any;
+  context: Record<string, unknown>;
   urgency: QueryUrgencyType;
 }
 
@@ -496,7 +496,7 @@ Output the refactored code with explanations of improvements made.
     type: string,
     title: string,
     question: string,
-    context: any,
+    context: Record<string, unknown>,
     urgency: 'BLOCKING' | 'ADVISORY'
   ): Promise<Query> {
     return await prisma.query.create({

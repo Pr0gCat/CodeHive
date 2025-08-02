@@ -1,6 +1,6 @@
 import {
-  ProjectManagerAgent,
-  FeatureRequestAnalysis,
+    FeatureRequestAnalysis,
+    ProjectManagerAgent,
 } from '@/lib/agents/project-manager';
 import { prisma } from '@/lib/db';
 import { TDDCycleEngine } from '@/lib/tdd/cycle-engine';
@@ -101,7 +101,7 @@ export class FeatureRequestProcessor {
               });
 
               cycleIds.push(cycle.id);
-              console.log(`✅ Created TDD Cycle for story: ${story.title}`);
+              console.log(`Created TDD Cycle for story: ${story.title}`);
             } catch (cycleError) {
               console.error(
                 `Failed to create cycle for story ${story.title}:`,
@@ -275,7 +275,7 @@ export class FeatureRequestProcessor {
       }
 
       console.log(
-        `✅ Backlog optimized: ${reorderedEpics} Epics, ${reorderedStories} Stories reordered`
+        `Backlog optimized: ${reorderedEpics} Epics, ${reorderedStories} Stories reordered`
       );
 
       return { reorderedEpics, reorderedStories };

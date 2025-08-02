@@ -1,5 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import type {
+  ProjectWithRelations,
+  EpicWithRelations,
+  StoryWithRelations,
+  StoryWithCycles,
+  ProjectStatistics,
+  HierarchicalData,
+  MVPPhaseProgress,
+  Blocker,
+  EpicBlocker,
+  StoryBlocker,
+  HierarchicalEpic,
+  HierarchicalStory,
+} from './types';
+import type { MVPPhase } from '@prisma/client';
 
 // GET /api/projects/[id]/overview - Get complete project overview with all layers
 export async function GET(
@@ -110,20 +125,23 @@ export async function GET(
       );
     }
 
+    // Type assertion for project with all required relations
+    const projectWithRelations = project as ProjectWithRelations;
+
     // Calculate comprehensive statistics
-    const stats = calculateProjectStats(project);
+    const stats = calculateProjectStats(projectWithRelations);
 
     // Organize data by hierarchy
-    const hierarchicalData = organizeHierarchicalData(project);
+    const hierarchicalData = organizeHierarchicalData(projectWithRelations);
 
     // Calculate MVP phase progress
     const mvpPhaseProgress = calculateMVPPhaseProgress(
-      project.mvpPhases,
-      project.epics
+      projectWithRelations.mvpPhases,
+      projectWithRelations.epics
     );
 
     // Identify blockers and risks
-    const blockers = identifyBlockers(project.epics);
+    const blockers = identifyBlockers(projectWithRelations.epics);
 
     return NextResponse.json({
       success: true,
@@ -159,7 +177,7 @@ export async function GET(
   }
 }
 
-function calculateProjectStats(project: any) {
+function calculateProjectStats(project: ProjectWithRelations): ProjectStatistics {
   const epics = project.epics || [];
   const standaloneStories = project.kanbanCards || [];
   const cycles = project.cycles || [];
@@ -167,48 +185,49 @@ function calculateProjectStats(project: any) {
   // Epic statistics
   const epicStats = {
     total: epics.length,
-    byPhase: epics.reduce((acc: any, epic: any) => {
+    byPhase: epics.reduce((acc: Record<string, number>, epic) => {
       acc[epic.phase] = (acc[epic.phase] || 0) + 1;
       return acc;
     }, {}),
-    byPriority: epics.reduce((acc: any, epic: any) => {
+    byPriority: epics.reduce((acc: Record<string, number>, epic) => {
       acc[epic.mvpPriority] = (acc[epic.mvpPriority] || 0) + 1;
       return acc;
     }, {}),
   };
 
   // Story statistics
-  const allStories = epics
-    .flatMap((epic: any) => epic.stories)
-    .concat(standaloneStories);
+  const allStories: (StoryWithRelations | StoryWithCycles)[] = [
+    ...epics.flatMap((epic) => epic.stories),
+    ...standaloneStories,
+  ];
   const storyStats = {
     total: allStories.length,
     withEpics: epics.reduce(
-      (sum: number, epic: any) => sum + epic.stories.length,
+      (sum, epic) => sum + epic.stories.length,
       0
     ),
     standalone: standaloneStories.length,
-    byStatus: allStories.reduce((acc: any, story: any) => {
+    byStatus: allStories.reduce((acc: Record<string, number>, story) => {
       acc[story.status] = (acc[story.status] || 0) + 1;
       return acc;
     }, {}),
     totalStoryPoints: allStories.reduce(
-      (sum: number, story: any) => sum + (story.storyPoints || 0),
+      (sum, story) => sum + (story.storyPoints || 0),
       0
     ),
     completedStoryPoints: allStories
-      .filter((story: any) => story.status === 'DONE')
-      .reduce((sum: number, story: any) => sum + (story.storyPoints || 0), 0),
+      .filter((story) => story.status === 'DONE')
+      .reduce((sum, story) => sum + (story.storyPoints || 0), 0),
   };
 
   // TDD Cycle statistics
   const cycleStats = {
     total: cycles.length,
-    byPhase: cycles.reduce((acc: any, cycle: any) => {
+    byPhase: cycles.reduce((acc: Record<string, number>, cycle) => {
       acc[cycle.phase] = (acc[cycle.phase] || 0) + 1;
       return acc;
     }, {}),
-    byStatus: cycles.reduce((acc: any, cycle: any) => {
+    byStatus: cycles.reduce((acc: Record<string, number>, cycle) => {
       acc[cycle.status] = (acc[cycle.status] || 0) + 1;
       return acc;
     }, {}),
@@ -247,9 +266,9 @@ function calculateProjectStats(project: any) {
   };
 }
 
-function organizeHierarchicalData(project: any) {
+function organizeHierarchicalData(project: ProjectWithRelations): HierarchicalData {
   return {
-    epics: project.epics.map((epic: any) => ({
+    epics: project.epics.map((epic): HierarchicalEpic => ({
       id: epic.id,
       title: epic.title,
       type: epic.type,
@@ -259,23 +278,23 @@ function organizeHierarchicalData(project: any) {
       progress: {
         stories: {
           total: epic.stories.length,
-          completed: epic.stories.filter((s: any) => s.status === 'DONE')
+          completed: epic.stories.filter((s) => s.status === 'DONE')
             .length,
         },
         cycles: {
           total: epic.stories.reduce(
-            (sum: number, s: any) => sum + s.cycles.length,
+            (sum, s) => sum + s.cycles.length,
             0
           ),
           completed: epic.stories.reduce(
-            (sum: number, s: any) =>
+            (sum, s) =>
               sum +
-              s.cycles.filter((c: any) => c.status === 'COMPLETED').length,
+              s.cycles.filter((c) => c.status === 'COMPLETED').length,
             0
           ),
         },
       },
-      stories: epic.stories.map((story: any) => ({
+      stories: epic.stories.map((story): HierarchicalStory => ({
         id: story.id,
         title: story.title,
         status: story.status,
@@ -283,12 +302,12 @@ function organizeHierarchicalData(project: any) {
         tddEnabled: story.tddEnabled,
         cycles: story.cycles,
         hasBlockers: story.dependencies.some(
-          (dep: any) => dep.dependsOn.status !== 'DONE'
+          (dep) => dep.dependsOn.status !== 'DONE'
         ),
       })),
       dependencies: epic.dependencies,
     })),
-    standaloneStories: project.kanbanCards.map((story: any) => ({
+    standaloneStories: project.kanbanCards.map((story) => ({
       id: story.id,
       title: story.title,
       status: story.status,
@@ -299,10 +318,13 @@ function organizeHierarchicalData(project: any) {
   };
 }
 
-function calculateMVPPhaseProgress(mvpPhases: any[], epics: any[]) {
-  return mvpPhases.map(phase => {
-    const coreFeatureIds = JSON.parse(phase.coreFeatures || '[]');
-    const coreEpics = epics.filter(epic => coreFeatureIds.includes(epic.id));
+function calculateMVPPhaseProgress(
+  mvpPhases: MVPPhase[],
+  epics: EpicWithRelations[]
+): MVPPhaseProgress[] {
+  return mvpPhases.map((phase): MVPPhaseProgress => {
+    const coreFeatureIds = JSON.parse(phase.coreFeatures || '[]') as string[];
+    const coreEpics = epics.filter((epic) => coreFeatureIds.includes(epic.id));
 
     const totalStories = coreEpics.reduce(
       (sum, epic) => sum + epic.stories.length,
@@ -310,7 +332,7 @@ function calculateMVPPhaseProgress(mvpPhases: any[], epics: any[]) {
     );
     const completedStories = coreEpics.reduce(
       (sum, epic) =>
-        sum + epic.stories.filter((s: any) => s.status === 'DONE').length,
+        sum + epic.stories.filter((s) => s.status === 'DONE').length,
       0
     );
 
@@ -319,7 +341,7 @@ function calculateMVPPhaseProgress(mvpPhases: any[], epics: any[]) {
       progress: {
         epics: {
           total: coreEpics.length,
-          completed: coreEpics.filter(epic => epic.phase === 'DONE').length,
+          completed: coreEpics.filter((epic) => epic.phase === 'DONE').length,
         },
         stories: {
           total: totalStories,
@@ -330,7 +352,7 @@ function calculateMVPPhaseProgress(mvpPhases: any[], epics: any[]) {
               : 0,
         },
       },
-      coreEpics: coreEpics.map(epic => ({
+      coreEpics: coreEpics.map((epic) => ({
         id: epic.id,
         title: epic.title,
         phase: epic.phase,
@@ -340,47 +362,49 @@ function calculateMVPPhaseProgress(mvpPhases: any[], epics: any[]) {
   });
 }
 
-function identifyBlockers(epics: any[]) {
-  const blockers = [];
+function identifyBlockers(epics: EpicWithRelations[]): Blocker[] {
+  const blockers: Blocker[] = [];
 
   for (const epic of epics) {
     // Check epic-level dependencies
     const blockedBy = epic.dependencies.filter(
-      (dep: any) => dep.dependsOn.phase !== 'DONE'
+      (dep) => dep.dependsOn.phase !== 'DONE'
     );
     if (blockedBy.length > 0) {
-      blockers.push({
+      const epicBlocker: EpicBlocker = {
         type: 'epic',
         id: epic.id,
         title: epic.title,
-        blockedBy: blockedBy.map((dep: any) => ({
+        blockedBy: blockedBy.map((dep) => ({
           id: dep.dependsOn.id,
           title: dep.dependsOn.title,
           phase: dep.dependsOn.phase,
         })),
-      });
+      };
+      blockers.push(epicBlocker);
     }
 
     // Check story-level dependencies
     for (const story of epic.stories) {
       const storyBlockers =
         story.dependencies?.filter(
-          (dep: any) => dep.dependsOn.status !== 'DONE'
+          (dep) => dep.dependsOn.status !== 'DONE'
         ) || [];
       if (storyBlockers.length > 0) {
-        blockers.push({
+        const storyBlocker: StoryBlocker = {
           type: 'story',
           id: story.id,
           title: story.title,
           epicId: epic.id,
           epicTitle: epic.title,
-          blockedBy: storyBlockers.map((dep: any) => ({
+          blockedBy: storyBlockers.map((dep) => ({
             id: dep.dependsOn.id,
             title: dep.dependsOn.title,
             status: dep.dependsOn.status,
             epicId: dep.dependsOn.epicId,
           })),
-        });
+        };
+        blockers.push(storyBlocker);
       }
     }
   }

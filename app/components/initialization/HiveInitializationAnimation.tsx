@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export interface InitializationPhase {
   id: string;
@@ -99,7 +99,7 @@ export default function HiveInitializationAnimation({
         } else if (data.type === 'task_status') {
           // Handle initial task status
           const task = data.task;
-          console.log('📊 Received task status:', task);
+          console.log('Received task status:', task);
         } else if (data.type === 'phase_status') {
           // Handle individual phase status
           const phase = data.phase;
@@ -124,13 +124,13 @@ export default function HiveInitializationAnimation({
                 : [],
             };
 
-            console.log('📝 Processing phase:', phaseData);
+            console.log('Processing phase:', phaseData);
 
             if (phaseIndex >= 0) {
               // Update existing phase
               const updatedPhases = [...prevPhases];
               updatedPhases[phaseIndex] = phaseData;
-              console.log('📝 Updated existing phase:', updatedPhases);
+              console.log('Updated existing phase:', updatedPhases);
               return updatedPhases;
             } else {
               // Add new phase in correct order
@@ -147,9 +147,9 @@ export default function HiveInitializationAnimation({
                   // Fallback to common ordering
                   const phaseOrder: { [key: string]: number } = {
                     validation: 0,
-                    git_clone: 1,
-                    analysis: 2,
-                    setup: 3,
+                    setup: 1,
+                    sprint_setup: 2,
+                    description_generation: 3,
                     completion: 4,
                   };
                   return phaseOrder[phaseId] || 999;
@@ -160,11 +160,11 @@ export default function HiveInitializationAnimation({
                 return orderA - orderB;
               });
               console.log(
-                '📝 Added new phase, total phases:',
+                'Added new phase, total phases:',
                 sortedPhases.length
               );
               console.log(
-                '📝 Phase IDs:',
+                'Phase IDs:',
                 sortedPhases.map(p => `${p.id}(${p.title})`)
               );
               return sortedPhases;
@@ -295,7 +295,7 @@ export default function HiveInitializationAnimation({
 
   const getOverallProgress = () => {
     if (!phases.length) {
-      console.log('📊 No phases available for progress calculation');
+      console.log('No phases available for progress calculation');
       return 0;
     }
 
@@ -306,7 +306,7 @@ export default function HiveInitializationAnimation({
     const totalProgress =
       ((completedPhases + currentProgress / 100) / phases.length) * 100;
 
-    console.log('📊 Progress calculation:', {
+    console.log('Progress calculation:', {
       totalPhases: phases.length,
       completedPhases,
       currentPhaseProgress: currentProgress,

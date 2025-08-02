@@ -1,12 +1,18 @@
-import { BaseAgent, AgentRegistry } from './executors/base-agent';
-import { ProjectContext } from './project-manager';
-import { AgentResult, AgentExecutionOptions } from './types';
+import { AgentResult } from '@/lib/types/shared';
+import { BaseAgent } from './executors/base-agent';
+import { ProjectContext } from './types';
+
+interface AgentCommand {
+  name: string;
+  description: string;
+  examples: string[];
+}
 
 // Import all agent implementations to register them
 import './executors/code-analyzer';
-import './executors/test-runner';
-import './executors/git-operations';
 import './executors/documentation';
+import './executors/git-operations';
+import './executors/test-runner';
 
 export interface AgentExecutionRequest {
   agentType: string;
@@ -110,7 +116,7 @@ export class AgentFactory {
     projectContext: ProjectContext
   ): Promise<{
     capabilities: string[];
-    commands: any[];
+    commands: AgentCommand[];
   } | null> {
     try {
       const agent = await this.createAgent(agentType, projectContext);

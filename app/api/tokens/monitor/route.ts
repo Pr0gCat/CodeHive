@@ -1,5 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { NextRequest, NextResponse } from 'next/server';
+
+interface GlobalSettings {
+  dailyTokenLimit: number;
+  warningThreshold: number;
+  criticalThreshold: number;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +51,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function getGlobalMonitorData(globalSettings: any, todayStart: Date) {
+async function getGlobalMonitorData(globalSettings: GlobalSettings, todayStart: Date) {
   // Get today's total usage across all projects
   const todayUsage = await prisma.tokenUsage.aggregate({
     where: {
@@ -144,7 +150,7 @@ async function getGlobalMonitorData(globalSettings: any, todayStart: Date) {
 
 async function getProjectMonitorData(
   projectId: string,
-  globalSettings: any,
+  globalSettings: GlobalSettings,
   todayStart: Date
 ) {
   // Get project with budget and usage
@@ -255,7 +261,7 @@ async function getHourlyUsage(projectId: string, todayStart: Date) {
   return hourlyData;
 }
 
-function getUsageStatus(usagePercentage: number, globalSettings: any): string {
+function getUsageStatus(usagePercentage: number, globalSettings: GlobalSettings): string {
   if (usagePercentage >= globalSettings.criticalThreshold * 100) {
     return 'critical';
   } else if (usagePercentage >= globalSettings.warningThreshold * 100) {

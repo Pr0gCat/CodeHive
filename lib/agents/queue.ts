@@ -1,16 +1,37 @@
+import { canQueueTask, getProjectSettings } from '@/lib/agents/project-settings';
 import { prisma, TaskStatus } from '@/lib/db';
-import { AgentTask, AgentResult, QueueStatus } from './types';
-import { AgentExecutor } from './executor';
-import { RateLimiter } from './rate-limiter';
-import { PerformanceTracker } from './performance-tracker';
-import { AgentFactory, AgentExecutionRequest } from './agent-factory';
-import { ProjectManagerAgent } from './project-manager';
-import {
-  getProjectSettings,
-  canQueueTask,
-  canRunParallelAgent,
-} from './project-settings';
 import { queueEventEmitter } from '@/lib/events/queue-event-emitter';
+import { AgentResult } from '@/lib/types/shared';
+import { AgentFactory } from './agent-factory';
+import { AgentExecutor } from './executor';
+import { PerformanceTracker } from './performance-tracker';
+import { ProjectManagerAgent } from './project-manager';
+import { RateLimiter } from './rate-limiter';
+import { AgentTask, QueueStatus } from './types';
+
+let projectManager: ProjectManagerAgent | null = null;
+
+interface RateLimitStatus {
+  dailyTokens: {
+    used: number;
+    limit: number;
+    percentage: number;
+    remaining: number;
+  };
+  minuteRequests: {
+    used: number;
+    limit: number;
+    percentage: number;
+    remaining: number;
+  };
+}
+
+interface TaskPayload {
+  command: string;
+  priority: number;
+  context: Record<string, unknown>;
+  agentType: string;
+}
 
 export class TaskQueue {
   private executor: AgentExecutor;
@@ -58,6 +79,7 @@ export class TaskQueue {
           command: task.command,
           priority,
           context: task.context || {},
+          agentType: task.agentType,
         }),
         priority,
         status: 'PENDING',
@@ -82,7 +104,7 @@ export class TaskQueue {
     status: QueueStatus;
     pendingTasks: number;
     activeTasks: number;
-    rateLimitStatus: any;
+    rateLimitStatus: RateLimitStatus;
   }> {
     const [pendingTasks, activeTasks] = await Promise.all([
       prisma.queuedTask.count({
@@ -281,9 +303,23 @@ export class TaskQueue {
 
       // Emit completion/failure event
       if (result.success) {
-        queueEventEmitter.emitTaskCompleted(queuedTask.taskId, result);
+        queueEventEmitter.emitTaskCompleted(queuedTask.taskId, {
+          success: result.success,
+          output: result.output,
+          executionTime: result.executionTime,
+          tokensUsed: result.tokensUsed,
+        });
+
+        // Emit failure event if needed
+        if (!result.success && result.error) {
+          queueEventEmitter.emitTaskFailed(queuedTask.taskId, {
+            error: result.error,
+          });
+        }
       } else {
-        queueEventEmitter.emitTaskFailed(queuedTask.taskId, result.error);
+        queueEventEmitter.emitTaskFailed(queuedTask.taskId, {
+          error: result.error,
+        });
       }
 
       console.log(
@@ -310,7 +346,7 @@ export class TaskQueue {
   }
 
   private async executeTask(
-    payload: any,
+    payload: TaskPayload,
     projectId: string
   ): Promise<AgentResult> {
     try {
@@ -340,7 +376,7 @@ export class TaskQueue {
         const projectManager = new ProjectManagerAgent();
         const projectContext = await projectManager.analyzeProject(projectId);
 
-        const executionRequest: AgentExecutionRequest = {
+        const executionRequest = {
           agentType: payload.agentType,
           command: payload.command,
           projectContext,
@@ -351,7 +387,12 @@ export class TaskQueue {
           },
         };
 
-        return await AgentFactory.executeAgent(executionRequest);
+        const result = await AgentFactory.executeAgent(executionRequest);
+        return {
+          ...result,
+          executionTime: result.executionTime || 0,
+          tokensUsed: result.tokensUsed || 0,
+        };
       } else {
         // Fallback to direct execution for unsupported agents
         const result = await this.executor.execute(payload.command, {
@@ -360,7 +401,11 @@ export class TaskQueue {
           maxRetries: 2,
         });
 
-        return result;
+        return {
+          ...result,
+          executionTime: result.executionTime || 0,
+          tokensUsed: result.tokensUsed || 0,
+        };
       }
     } catch (error) {
       return {

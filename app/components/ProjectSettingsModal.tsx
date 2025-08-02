@@ -1,10 +1,10 @@
 'use client';
 
-import { ProjectSettings } from '@/lib/db';
-import { useEffect, useState } from 'react';
-import { Settings, Lock, Bot, Bell, Wrench } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useToast } from '@/components/ui/ToastManager';
+import { ProjectSettings } from '@/lib/db';
+import { Bell, Bot, Lock, Settings, Wrench } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface ProjectSettingsModalProps {
   projectId: string;
@@ -28,13 +28,7 @@ export default function ProjectSettingsModal({
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [activeTab, setActiveTab] = useState('general');
 
-  useEffect(() => {
-    if (isOpen && projectId) {
-      fetchSettings();
-    }
-  }, [isOpen, projectId]);
-
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(`/api/projects/${projectId}/settings`);
@@ -49,7 +43,13 @@ export default function ProjectSettingsModal({
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
+
+  useEffect(() => {
+    if (isOpen && projectId) {
+      fetchSettings();
+    }
+  }, [isOpen, projectId, fetchSettings]);
 
   const handleSave = async () => {
     if (!settings) return;
@@ -107,7 +107,7 @@ export default function ProjectSettingsModal({
     }
   };
 
-  const updateSetting = (key: keyof ProjectSettings, value: any) => {
+  const updateSetting = (key: keyof ProjectSettings, value: ProjectSettings[keyof ProjectSettings]) => {
     if (!settings) return;
     setSettings({ ...settings, [key]: value });
   };

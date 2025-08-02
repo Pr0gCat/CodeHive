@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { ProjectManagerAgent } from '@/lib/agents/project-manager';
 import { prisma } from '@/lib/db';
 import { promises as fs } from 'fs';
+import { NextRequest, NextResponse } from 'next/server';
 
 // GET /api/projects/[id]/claude-md - Get current project CLAUDE.md content
 export async function GET(
@@ -40,7 +40,7 @@ export async function GET(
           lastModified: (await fs.stat(claudeMdPath)).mtime,
         },
       });
-    } catch (readError) {
+    } catch {
       // File doesn't exist yet
       return NextResponse.json({
         success: true,
@@ -72,7 +72,7 @@ export async function PUT(
   try {
     const projectId = params.id;
 
-    console.log(`📝 Updating CLAUDE.md for project: ${projectId}`);
+    console.log(`Updating CLAUDE.md for project: ${projectId}`);
 
     const projectManager = new ProjectManagerAgent();
     await projectManager.maintainProjectClaudeMd(projectId);

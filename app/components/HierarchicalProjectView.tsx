@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { ActiveSprintWidget } from '@/app/components/sprints/ActiveSprintWidget';
 import { useToast } from '@/components/ui/ToastManager';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
 
 interface ProjectOverview {
   project: {
@@ -150,7 +152,7 @@ export default function HierarchicalProjectView({
       } else {
         showToast(data.error || '無法載入專案概覽', 'error');
       }
-    } catch (error) {
+    } catch (_error) {
       showToast('無法載入專案概覽', 'error');
     } finally {
       setLoading(false);
@@ -366,6 +368,12 @@ export default function HierarchicalProjectView({
           </div>
         </div>
       </div>
+
+      {/* Active Sprint Widget */}
+      <div className="mb-6">
+        <ActiveSprintWidget projectId={projectId} />
+      </div>
+
 
       {/* 阻塞警告 */}
       {overview.blockers.length > 0 && (

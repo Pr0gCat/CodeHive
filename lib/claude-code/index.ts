@@ -294,7 +294,7 @@ class ClaudeCode {
     // Parse the final result from stream-json output
     const lines = streamOutput.split('\n').filter(line => line.trim());
     let resultEvent: any = null;
-    let assistantMessages: string[] = [];
+    const assistantMessages: string[] = [];
     
     // Find the final result event and collect assistant messages
     for (const line of lines) {

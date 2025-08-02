@@ -1,10 +1,23 @@
 /**
- * Hybrid configuration system - uses database config first, falls back to env vars
+ * Unified Configuration System - Main Entry Point
+ * 統一配置系統 - 主要入口點
  */
 
-import { formatShortNumber } from '@/lib/utils';
-import { configCache } from './database-config';
+// Re-export unified configuration system
+export type { UnifiedConfig } from './unified-config';
+export {
+    defaultConfig, getSyncConfig, getUnifiedConfig, validateUnifiedConfig
+} from './unified-config';
 
+// Re-export database configuration for backward compatibility
+export {
+    configCache,
+    getDatabaseConfig,
+    updateDatabaseConfig
+} from './database-config';
+export type { DatabaseConfig } from './database-config';
+
+// Legacy interface for backward compatibility
 export interface Config {
   // Database
   databaseUrl: string;
@@ -24,77 +37,45 @@ export interface Config {
   isDevelopment: boolean;
 }
 
-// Static configuration from environment (fallback only)
-interface StaticConfig {
-  nodeEnv: string;
-  isProduction: boolean;
-  isDevelopment: boolean;
-}
-
-// Static config with sensible defaults (no environment variables required)
-const staticConfig: StaticConfig = {
+// Legacy fallback config for backward compatibility
+export const fallbackConfig: Config = {
+  databaseUrl: 'file:./prisma/codehive.db',
+  claudeCodePath: 'claude',
+  claudeDailyTokenLimit: 100000000,
+  claudeRateLimitPerMinute: 50,
+  appUrl: 'http://localhost:3000',
+  wsUrl: 'ws://localhost:3000',
   nodeEnv: process.env.NODE_ENV || 'development',
   isProduction: process.env.NODE_ENV === 'production',
   isDevelopment: process.env.NODE_ENV !== 'production',
 };
 
-/**
- * Get runtime configuration by merging database config with static config
- */
+// Legacy getConfig function for backward compatibility
 export async function getConfig(): Promise<Config> {
-  const dbConfig = await configCache.getConfig();
-
+  const { getUnifiedConfig } = await import('./unified-config');
+  const unifiedConfig = await getUnifiedConfig();
+  
   return {
-    // Database config takes precedence
-    databaseUrl: fallbackConfig.databaseUrl,
-    claudeCodePath: dbConfig.claudeCodePath,
-    claudeDailyTokenLimit: dbConfig.dailyTokenLimit,
-    claudeRateLimitPerMinute: dbConfig.rateLimitPerMinute,
-    appUrl: fallbackConfig.appUrl,
-    wsUrl: fallbackConfig.wsUrl,
-
-    // Static config from environment
-    nodeEnv: staticConfig.nodeEnv,
-    isProduction: staticConfig.isProduction,
-    isDevelopment: staticConfig.isDevelopment,
+    databaseUrl: unifiedConfig.database.url,
+    claudeCodePath: unifiedConfig.claude.codePath,
+    claudeDailyTokenLimit: unifiedConfig.claude.dailyTokenLimit,
+    claudeRateLimitPerMinute: unifiedConfig.claude.rateLimitPerMinute,
+    appUrl: unifiedConfig.app.url,
+    wsUrl: unifiedConfig.app.wsUrl,
+    nodeEnv: unifiedConfig.environment.nodeEnv,
+    isProduction: unifiedConfig.environment.isProduction,
+    isDevelopment: unifiedConfig.environment.isDevelopment,
   };
 }
 
-/**
- * Synchronous fallback config with sensible defaults
- * No environment variables required - works out of the box
- */
-export const fallbackConfig: Config = {
-  // Database - default SQLite file
-  databaseUrl: 'file:./prisma/codehive.db',
-
-  // Claude Code - sensible defaults
-  claudeCodePath: 'claude',
-  claudeDailyTokenLimit: 100000000, // 100M tokens
-  claudeRateLimitPerMinute: 50,
-
-  // Application - localhost defaults
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-
-  // Runtime environment
-  nodeEnv: staticConfig.nodeEnv,
-  isProduction: staticConfig.isProduction,
-  isDevelopment: staticConfig.isDevelopment,
-};
-
-/**
- * Validate a configuration object
- */
+// Legacy validateConfig function for backward compatibility
 export function validateConfig(config: Config): void {
   const errors: string[] = [];
 
-  // Check required paths
   if (!config.databaseUrl) {
     errors.push('Database URL is required');
   }
 
-  // Check token limits
   if (config.claudeDailyTokenLimit <= 0) {
     errors.push('Claude daily token limit must be positive');
   }
@@ -103,7 +84,6 @@ export function validateConfig(config: Config): void {
     errors.push('Claude rate limit per minute must be positive');
   }
 
-  // Check URLs
   try {
     new URL(config.appUrl);
   } catch {
@@ -115,27 +95,18 @@ export function validateConfig(config: Config): void {
   }
 }
 
-// Validate fallback configuration on module load
-validateConfig(fallbackConfig);
+// Export synchronous config for immediate use (legacy compatibility)
+import unifiedConfig from './unified-config';
 
-// Log configuration in development
-if (staticConfig.isDevelopment) {
-  console.log('📝 Fallback configuration loaded:', {
-    nodeEnv: staticConfig.nodeEnv,
-    appUrl: fallbackConfig.appUrl,
-    claudeCodePath: fallbackConfig.claudeCodePath,
-    tokenLimit: formatShortNumber(fallbackConfig.claudeDailyTokenLimit),
-    rateLimit: fallbackConfig.claudeRateLimitPerMinute,
-  });
-}
+export const config: Config = {
+  databaseUrl: unifiedConfig.database.url,
+  claudeCodePath: unifiedConfig.claude.codePath,
+  claudeDailyTokenLimit: unifiedConfig.claude.dailyTokenLimit,
+  claudeRateLimitPerMinute: unifiedConfig.claude.rateLimitPerMinute,
+  appUrl: unifiedConfig.app.url,
+  wsUrl: unifiedConfig.app.wsUrl,
+  nodeEnv: unifiedConfig.environment.nodeEnv,
+  isProduction: unifiedConfig.environment.isProduction,
+  isDevelopment: unifiedConfig.environment.isDevelopment,
+};
 
-// Export a synchronous config object for immediate use
-export const config = fallbackConfig;
-
-// Export individual functions for config management
-export {
-  configCache,
-  getDatabaseConfig,
-  updateDatabaseConfig,
-} from './database-config';
-export type { DatabaseConfig } from './database-config';

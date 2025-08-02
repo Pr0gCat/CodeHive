@@ -58,7 +58,7 @@ export async function PUT(
     const body = await request.json();
     const { answer, status } = body;
 
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
 
     if (answer !== undefined) {
       updateData.answer = answer;

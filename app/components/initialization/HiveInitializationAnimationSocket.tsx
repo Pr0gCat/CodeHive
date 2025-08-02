@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
 import { useSocket } from '@/lib/socket/client';
+import { AlertTriangle } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export interface InitializationPhase {
   id: string;
@@ -124,13 +124,13 @@ export default function HiveInitializationAnimationSocket({
       }, 2000);
     } else if (errorEvent) {
       console.error('❌ Task failed via WebSocket event:', errorEvent);
-      onError?.(errorEvent.data || 'Task failed');
+      onError?.(errorEvent.data?.error || 'Task failed');
     }
   }, [events, onComplete, onError]);
 
   const getOverallProgress = () => {
     if (!phases.length) {
-      console.log('📊 No phases available for progress calculation');
+      console.log('No phases available for progress calculation');
       return 0;
     }
 
@@ -141,7 +141,7 @@ export default function HiveInitializationAnimationSocket({
     const totalProgress =
       ((completedPhases + currentProgress / 100) / phases.length) * 100;
 
-    console.log('📊 Progress calculation:', {
+    console.log('Progress calculation:', {
       totalPhases: phases.length,
       completedPhases,
       currentPhaseProgress: currentProgress,
@@ -224,7 +224,7 @@ export default function HiveInitializationAnimationSocket({
 
               {/* Phase Details */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                {currentPhase.details.map((detail: string, index: number) => (
+                {currentPhase.details.map((detail: unknown, index: number) => (
                   <div
                     key={index}
                     className={`
@@ -249,7 +249,7 @@ export default function HiveInitializationAnimationSocket({
                         ? '✓'
                         : '○'}
                     </span>
-                    <span>{detail}</span>
+                    <span>{String(detail)}</span>
                   </div>
                 ))}
               </div>

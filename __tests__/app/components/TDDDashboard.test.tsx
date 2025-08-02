@@ -1,18 +1,23 @@
-import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import '@testing-library/jest-dom';
 import TDDDashboard from '@/app/components/TDDDashboard';
+import '@testing-library/jest-dom';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 // Mock the toast hook
 const mockShowToast = jest.fn();
-jest.mock('@/app/components/ui/ToastManager', () => ({
+jest.doMock('@/app/components/ui/ToastManager', () => ({
   useToast: () => ({
     showToast: mockShowToast,
   }),
 }));
 
-// Mock fetch
-global.fetch = jest.fn();
+// Mock fetch with proper typing
+const mockFetch = jest.fn() as unknown as jest.MockedFunction<typeof fetch>;
+global.fetch = mockFetch as any;
+
+// Helper to create mock response
+const createMockResponse = (data: any) => ({
+  json: jest.fn().mockResolvedValue(data),
+} as unknown as Response);
 
 const mockCycles = [
   {
@@ -64,12 +69,12 @@ describe('TDDDashboard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Mock successful fetch by default
-    (global.fetch as jest.Mock).mockResolvedValue({
-      json: jest.fn().mockResolvedValue({
+    mockFetch.mockResolvedValue(
+      createMockResponse({
         success: true,
         data: mockCycles,
-      }),
-    });
+      })
+    );
   });
 
   afterEach(() => {
@@ -140,19 +145,19 @@ describe('TDDDashboard', () => {
   });
 
   it('should execute phase when button clicked', async () => {
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({
-        json: jest.fn().mockResolvedValue({
+    mockFetch
+      .mockResolvedValueOnce(
+        createMockResponse({
           success: true,
           data: mockCycles,
-        }),
-      })
-      .mockResolvedValueOnce({
-        json: jest.fn().mockResolvedValue({
+        })
+      )
+      .mockResolvedValueOnce(
+        createMockResponse({
           success: true,
           data: { nextPhase: 'GREEN' },
-        }),
-      });
+        })
+      );
 
     render(<TDDDashboard projectId="test-project-id" />);
 
@@ -164,7 +169,7 @@ describe('TDDDashboard', () => {
     fireEvent.click(executeButton);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/cycles/cycle-1/execute', {
+      expect(mockFetch).toHaveBeenCalledWith('/api/cycles/cycle-1/execute', {
         method: 'PUT',
       });
     });
@@ -176,19 +181,19 @@ describe('TDDDashboard', () => {
   });
 
   it('should handle execution errors', async () => {
-    (global.fetch as jest.Mock)
-      .mockResolvedValueOnce({
-        json: jest.fn().mockResolvedValue({
+    mockFetch
+      .mockResolvedValueOnce(
+        createMockResponse({
           success: true,
           data: mockCycles,
-        }),
-      })
-      .mockResolvedValueOnce({
-        json: jest.fn().mockResolvedValue({
+        })
+      )
+      .mockResolvedValueOnce(
+        createMockResponse({
           success: false,
           error: 'Execution failed',
-        }),
-      });
+        })
+      );
 
     render(<TDDDashboard projectId="test-project-id" />);
 
@@ -231,12 +236,12 @@ describe('TDDDashboard', () => {
   });
 
   it('should show empty state when no active cycle', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({
-      json: jest.fn().mockResolvedValue({
+    mockFetch.mockResolvedValue(
+      createMockResponse({
         success: true,
         data: [mockCycles[1]], // Only completed cycle
-      }),
-    });
+      })
+    );
 
     render(<TDDDashboard projectId="test-project-id" />);
 
@@ -248,7 +253,7 @@ describe('TDDDashboard', () => {
   });
 
   it('should handle fetch errors', async () => {
-    (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
+    mockFetch.mockRejectedValue(new Error('Network error'));
 
     render(<TDDDashboard projectId="test-project-id" />);
 
@@ -258,12 +263,12 @@ describe('TDDDashboard', () => {
   });
 
   it('should handle API error responses', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({
-      json: jest.fn().mockResolvedValue({
+    mockFetch.mockResolvedValue(
+      createMockResponse({
         success: false,
         error: 'Database connection failed',
-      }),
-    });
+      })
+    );
 
     render(<TDDDashboard projectId="test-project-id" />);
 
@@ -282,12 +287,12 @@ describe('TDDDashboard', () => {
       { ...mockCycles[0], id: 'cycle-3', phase: 'REVIEW' },
     ];
 
-    (global.fetch as jest.Mock).mockResolvedValue({
-      json: jest.fn().mockResolvedValue({
+    mockFetch.mockResolvedValue(
+      createMockResponse({
         success: true,
         data: cyclesWithDifferentPhases,
-      }),
-    });
+      })
+    );
 
     render(<TDDDashboard projectId="test-project-id" />);
 
@@ -310,12 +315,12 @@ describe('TDDDashboard', () => {
       ],
     };
 
-    (global.fetch as jest.Mock).mockResolvedValue({
-      json: jest.fn().mockResolvedValue({
+    mockFetch.mockResolvedValue(
+      createMockResponse({
         success: true,
         data: [cycleWithMixedTests],
-      }),
-    });
+      })
+    );
 
     render(<TDDDashboard projectId="test-project-id" />);
 
@@ -333,14 +338,14 @@ describe('TDDDashboard', () => {
 
     // Initial fetch
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
     // Fast-forward 5 seconds
     jest.advanceTimersByTime(5000);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
     jest.useRealTimers();

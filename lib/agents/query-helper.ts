@@ -6,7 +6,7 @@ export interface QueryContext {
   feature?: string;
   codeContext?: string;
   options?: string[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface CreateQueryOptions {

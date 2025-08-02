@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { prisma, ProjectStatus } from '@/lib/db';
-import { logProjectEvent } from '@/lib/logging/project-logger';
 import { gitClient } from '@/lib/git';
-import { z } from 'zod';
+import { logProjectEvent } from '@/lib/logging/project-logger';
 import { promises as fs } from 'fs';
+import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
+import { z } from 'zod';
 
 const createProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required'),
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
       const reviewData = await reviewResponse.json();
       if (reviewData.success) {
         console.log(
-          `✅ Project review completed successfully for ${project.name}`
+          `Project review completed successfully for ${project.name}`
         );
       } else {
         console.log(

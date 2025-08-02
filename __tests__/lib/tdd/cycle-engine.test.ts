@@ -1,13 +1,12 @@
-import { TDDCycleEngine, FeatureRequest } from '@/lib/tdd/cycle-engine';
+import { TDDCycleEngine } from '@/lib/tdd/cycle-engine';
 import {
-  mockPrisma,
-  mockProject,
-  mockCycle,
-  clearAllMocks,
+    clearAllMocks,
+    mockCycle,
+    mockProject,
 } from '../../helpers/test-utils';
 
 // Mock the AI integration module
-jest.mock('@/lib/tdd/ai-integration', () => ({
+jest.doMock('@/lib/tdd/ai-integration', () => ({
   AITDDIntegration: jest.fn().mockImplementation(() => ({
     generateTestCode: jest.fn().mockResolvedValue({
       test: {
@@ -83,11 +82,11 @@ describe('TDDCycleEngine', () => {
   beforeEach(() => {
     clearAllMocks();
     tddEngine = new TDDCycleEngine(testProjectId, testProjectPath);
-    mockPrisma();
+    // mockPrisma(); // This line is removed as per the edit hint
   });
 
   describe('startCycle', () => {
-    const mockFeatureRequest: FeatureRequest = {
+    const mockFeatureRequest = {
       title: 'User Authentication',
       description: 'Implement user login and registration',
       acceptanceCriteria: [

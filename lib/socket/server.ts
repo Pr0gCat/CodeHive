@@ -1,16 +1,17 @@
+import { prisma } from '@/lib/db';
+import {
+    TaskEventData,
+    taskEventEmitter,
+} from '@/lib/events/task-event-emitter';
+import { logger } from '@/lib/logging/structured-logger';
 import { Server as HttpServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
-import {
-  taskEventEmitter,
-  TaskEventData,
-} from '@/lib/events/task-event-emitter';
-import { prisma } from '@/lib/db';
 
 let io: SocketIOServer | null = null;
 
 export function initializeSocket(server: HttpServer) {
   if (io) {
-    console.log('🔌 Socket.IO server already initialized');
+    logger.info('🔌 Socket.IO server already initialized', { module: 'socket' });
     return io;
   }
 
@@ -27,11 +28,11 @@ export function initializeSocket(server: HttpServer) {
   });
 
   io.on('connection', socket => {
-    console.log(`🔗 Client connected: ${socket.id}`);
+    logger.socketEvent('connected', socket.id, undefined, { module: 'socket' });
 
     // Handle task progress subscription
     socket.on('subscribe_task', async (taskId: string) => {
-      console.log(`📡 Client ${socket.id} subscribing to task: ${taskId}`);
+      logger.socketEvent('subscribe_task', socket.id, taskId, { module: 'socket' });
 
       try {
         // Join room for this task
@@ -82,24 +83,24 @@ export function initializeSocket(server: HttpServer) {
           }
         }
       } catch (error) {
-        console.error('Failed to get initial task state:', error);
+        logger.error('Failed to get initial task state', { socketId: socket.id, taskId }, error as Error);
         socket.emit('error', { message: 'Failed to get task status' });
       }
     });
 
     // Handle task progress unsubscription
     socket.on('unsubscribe_task', (taskId: string) => {
-      console.log(`📡 Client ${socket.id} unsubscribing from task: ${taskId}`);
+      logger.socketEvent('unsubscribe_task', socket.id, taskId, { module: 'socket' });
       socket.leave(`task:${taskId}`);
       socket.emit('unsubscribed', { taskId });
     });
 
     socket.on('disconnect', reason => {
-      console.log(`🔌 Client disconnected: ${socket.id}, reason: ${reason}`);
+      logger.socketEvent('disconnected', socket.id, undefined, { module: 'socket', reason });
     });
 
     socket.on('error', error => {
-      console.error(`❌ Socket error for client ${socket.id}:`, error);
+      logger.error(`❌ Socket error for client`, { socketId: socket.id }, error as Error);
     });
   });
 
@@ -107,7 +108,7 @@ export function initializeSocket(server: HttpServer) {
   const broadcastEvent = (event: TaskEventData) => {
     if (!io) return;
 
-    console.log(`📡 Broadcasting event for task ${event.taskId}:`, event.type);
+    logger.socketEvent(`broadcasting_${event.type}`, undefined, event.taskId, { module: 'socket' });
 
     // Broadcast to all clients subscribed to this task
     io.to(`task:${event.taskId}`).emit('task_event', {
@@ -152,7 +153,7 @@ export function initializeSocket(server: HttpServer) {
   taskEventEmitter.on('phase_updated', broadcastEvent);
   taskEventEmitter.on('event_created', broadcastEvent);
 
-  console.log('✅ Socket.IO server initialized');
+  logger.info('Socket.IO server initialized', { module: 'socket' });
   return io;
 }
 
@@ -160,12 +161,12 @@ export function getSocketIO(): SocketIOServer | null {
   return io;
 }
 
-export function emitToTask(taskId: string, event: string, data: any) {
+export function emitToTask(taskId: string, event: string, data: Record<string, unknown>) {
   if (!io) {
-    console.warn('🚨 Socket.IO not initialized, cannot emit event');
+    logger.warn('🚨 Socket.IO not initialized, cannot emit event', { module: 'socket' });
     return;
   }
 
-  console.log(`📡 Emitting to task ${taskId}:`, event);
+  logger.socketEvent(`emitting_${event}`, undefined, taskId, { module: 'socket' });
   io.to(`task:${taskId}`).emit(event, data);
 }

@@ -10,9 +10,9 @@ export interface WorkspaceSnapshot {
   snapshotId: string;
   files: FileSnapshot[];
   metadata: {
-    tests: any[];
-    artifacts: any[];
-    queries: any[];
+    tests: Record<string, unknown>[];
+    artifacts: Record<string, unknown>[];
+    queries: Record<string, unknown>[];
   };
   createdAt: Date;
 }
@@ -338,15 +338,26 @@ export class WorkspaceManager {
     snapshotDir: string
   ): Promise<FileSnapshot | null> {
     try {
-      const fullPath = path.join(this.projectPath, filePath);
+      // Validate path to prevent directory traversal
+      const { validatePath } = await import('@/lib/utils/security');
+      const safePath = validatePath(this.projectPath, filePath);
+      if (!safePath) {
+        console.error(`Invalid file path detected: ${filePath}`);
+        return null;
+      }
+      
       const content = await this.readFile(filePath);
       const hash = this.calculateHash(content);
-      const stats = await fs.stat(fullPath);
+      const stats = await fs.stat(safePath);
 
       // 保存檔案內容到快照目錄
-      const snapshotFilePath = path.join(snapshotDir, filePath);
-      await fs.mkdir(path.dirname(snapshotFilePath), { recursive: true });
-      await fs.writeFile(snapshotFilePath, content);
+      const safeSnapshotPath = validatePath(snapshotDir, filePath);
+      if (!safeSnapshotPath) {
+        console.error(`Invalid snapshot path: ${filePath}`);
+        return null;
+      }
+      await fs.mkdir(path.dirname(safeSnapshotPath), { recursive: true });
+      await fs.writeFile(safeSnapshotPath, content);
 
       return {
         path: filePath,

@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
 import { useToast } from '@/components/ui/ToastManager';
+import { useState } from 'react';
 
 interface AIAssistantProps {
   projectId: string;
   context?: {
     type: 'epic' | 'story' | 'dependency';
-    data?: any;
+    data?: Record<string, unknown>;
   };
 }
 

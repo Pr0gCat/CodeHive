@@ -301,3 +301,5 @@ CodeHive includes comprehensive usage limit management:
 - **WEBSOCKET EVENTS**: All real-time events use Socket.IO WebSockets for reliable communication
 - **GENUINE OPERATIONS**: Git clones, file scanning, and project analysis must report actual progress
 - **SOCKET.IO ONLY**: Server-Sent Events have been replaced with Socket.IO - use WebSocket for all real-time features
+- This project is not just for frontend developement
+- Treat Claude Code as a normal LLM, just give instructions and it do the job. You must make Claude Code make its questions response in certain format for the program to parse.

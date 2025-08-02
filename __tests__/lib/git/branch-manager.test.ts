@@ -1,5 +1,5 @@
 import { BranchManager } from '@/lib/git/branch-manager';
-import { mockExec, mockPrisma, clearAllMocks } from '../../helpers/test-utils';
+import { clearAllMocks, mockExec, mockPrisma } from '../../helpers/test-utils';
 
 describe('BranchManager', () => {
   let branchManager: BranchManager;
@@ -29,7 +29,7 @@ describe('BranchManager', () => {
     it('should handle git command failures', async () => {
       const { exec } = require('child_process');
       exec.mockImplementation(
-        (command: string, options: any, callback: Function) => {
+        (command: string, options: Record<string, unknown>, callback: Function) => {
           callback(new Error('Git command failed'));
         }
       );
@@ -78,7 +78,7 @@ describe('BranchManager', () => {
     it('should handle checkpoint creation failures', async () => {
       const { exec } = require('child_process');
       exec.mockImplementation(
-        (command: string, options: any, callback: Function) => {
+        (command: string, options: Record<string, unknown>, callback: Function) => {
           callback(new Error('Failed to create checkpoint'));
         }
       );
@@ -106,7 +106,7 @@ describe('BranchManager', () => {
     it('should handle commit failures', async () => {
       const { exec } = require('child_process');
       exec.mockImplementation(
-        (command: string, options: any, callback: Function) => {
+        (command: string, options: Record<string, unknown>, callback: Function) => {
           callback(new Error('Nothing to commit'));
         }
       );
@@ -151,7 +151,7 @@ describe('BranchManager', () => {
     it('should handle rollback failures', async () => {
       const { exec } = require('child_process');
       exec.mockImplementation(
-        (command: string, options: any, callback: Function) => {
+        (command: string, options: Record<string, unknown>, callback: Function) => {
           callback(new Error('Checkpoint not found'));
         }
       );
@@ -274,7 +274,7 @@ describe('BranchManager', () => {
 
       const { exec } = require('child_process');
       exec.mockImplementation(
-        (command: string, options: any, callback: Function) => {
+        (command: string, options: Record<string, unknown>, callback: Function) => {
           if (command.includes('gh pr create')) {
             callback(new Error('gh CLI not authenticated'));
           } else {
@@ -322,7 +322,7 @@ describe('BranchManager', () => {
     it('should handle git checkout failures', async () => {
       const { exec } = require('child_process');
       exec.mockImplementation(
-        (command: string, options: any, callback: Function) => {
+        (command: string, options: Record<string, unknown>, callback: Function) => {
           callback(new Error('Branch not found'));
         }
       );

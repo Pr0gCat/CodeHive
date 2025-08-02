@@ -7,7 +7,7 @@ process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000';
 process.env.NODE_ENV = 'test';
 
 // Mock prisma
-jest.mock('@/lib/db', () => ({
+jest.mock('./lib/db', () => ({
   prisma: {
     project: {
       findUnique: jest.fn(),
@@ -45,9 +45,38 @@ jest.mock('@/lib/db', () => ({
       delete: jest.fn(),
       count: jest.fn(),
       updateMany: jest.fn(),
+      deleteMany: jest.fn(),
     },
     queryComment: {
       create: jest.fn(),
+    },
+    epic: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+    story: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+    sprint: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+    sprintEpic: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
     },
   },
   CyclePhase: {

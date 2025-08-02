@@ -1,7 +1,7 @@
 'use client';
 
 import { formatShortNumber } from '@/lib/utils';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useToast } from '@/components/ui/ToastManager';
 
 interface AgentStatusPanelProps {
@@ -28,20 +28,13 @@ interface QueueStatus {
   };
 }
 
-export default function AgentStatusPanel({ projectId }: AgentStatusPanelProps) {
+export default function AgentStatusPanel({}: AgentStatusPanelProps) {
   const { showToast } = useToast();
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchQueueStatus();
-    const interval = setInterval(fetchQueueStatus, 5000); // Update every 5 seconds
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchQueueStatus = async () => {
+  const fetchQueueStatus = useCallback(async () => {
     try {
       const response = await fetch('/api/agents/queue');
       const data = await response.json();
@@ -53,13 +46,20 @@ export default function AgentStatusPanel({ projectId }: AgentStatusPanelProps) {
         setError('無法載入佇列狀態');
         showToast('無法載入佇列狀態', 'error');
       }
-    } catch (err) {
+    } catch {
       setError('無法載入佇列狀態');
       showToast('無法載入佇列狀態', 'error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [showToast]);
+
+  useEffect(() => {
+    fetchQueueStatus();
+    const interval = setInterval(fetchQueueStatus, 5000); // Update every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [fetchQueueStatus]);
 
   const handleQueueToggle = async () => {
     try {
@@ -78,7 +78,7 @@ export default function AgentStatusPanel({ projectId }: AgentStatusPanelProps) {
       } else {
         showToast(`切換佇列失敗：${data.error}`, 'error');
       }
-    } catch (err) {
+    } catch {
       showToast('切換佇列失敗', 'error');
     }
   };

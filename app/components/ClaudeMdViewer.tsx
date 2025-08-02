@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { FileText, RefreshCw, Settings, Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/components/ui/ToastManager';
+import { Eye, EyeOff, FileText, RefreshCw, Settings } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface ClaudeMdViewerProps {
   projectId: string;
@@ -28,24 +28,22 @@ export default function ClaudeMdViewer({
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [viewMode, setViewMode] = useState<'rendered' | 'raw'>('rendered');
 
-  const fetchClaudeMd = async () => {
+  const fetchClaudeMd = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      setError(null);
       const response = await fetch(`/api/projects/${projectId}/claude-md`);
-      const data = await response.json();
-
-      if (data.success) {
-        setClaudeMdData(data.data);
-      } else {
-        setError(data.error || '無法載入 CLAUDE.md');
+      if (!response.ok) {
+        throw new Error('Failed to fetch CLAUDE.md');
       }
+      const data: ClaudeMdData = await response.json();
+      setClaudeMdData(data);
     } catch (err) {
-      setError('載入 CLAUDE.md 時發生錯誤');
-      console.error('Error fetching CLAUDE.md:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId]);
 
   const handleUpdateClaudeMd = async () => {
     setIsUpdating(true);
@@ -161,7 +159,7 @@ export default function ClaudeMdViewer({
 
   useEffect(() => {
     fetchClaudeMd();
-  }, [projectId]);
+  }, [projectId, fetchClaudeMd]);
 
   if (loading) {
     return (
@@ -265,7 +263,7 @@ export default function ClaudeMdViewer({
             )}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
+          <div className="flex flex-col items-center justify-center min-h-[calc(100vh-16rem)] text-center space-y-4">
             <FileText className="w-16 h-16 text-primary-600" />
             <div>
               <h3 className="text-lg font-medium text-primary-300 mb-2">
@@ -277,7 +275,7 @@ export default function ClaudeMdViewer({
               <button
                 onClick={handleRegenerateClaudeMd}
                 disabled={isRegenerating}
-                className="flex items-center space-x-2 px-4 py-2 bg-accent-600 text-accent-50 rounded hover:bg-accent-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 bg-accent-600 text-accent-50 rounded hover:bg-accent-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors mx-auto"
               >
                 <Settings
                   className={`w-4 h-4 ${isRegenerating ? 'animate-spin' : ''}`}

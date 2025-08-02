@@ -1,8 +1,9 @@
 import { createServer } from 'http';
-import { parse } from 'url';
 import next from 'next';
+import { parse } from 'url';
 import { initializeSocket } from './lib/socket/server';
 import { taskRecoveryService } from './lib/tasks/task-recovery';
+import { logger } from './lib/logging/structured-logger';
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
@@ -19,7 +20,7 @@ app.prepare().then(async () => {
       const parsedUrl = parse(req.url!, true);
       await handle(req, res, parsedUrl);
     } catch (err) {
-      console.error('Error occurred handling', req.url, err);
+      logger.error('Error occurred handling request', { url: req.url }, err as Error);
       res.statusCode = 500;
       res.end('internal server error');
     }
@@ -29,34 +30,34 @@ app.prepare().then(async () => {
   const io = initializeSocket(server);
 
   // Start task recovery process
-  console.log('🔄 Starting task recovery process...');
+  logger.info('🔄 Starting task recovery process...', { module: 'server' });
   try {
     await taskRecoveryService.recoverInterruptedTasks();
-    console.log('✅ Task recovery completed');
+    logger.info('Task recovery completed', { module: 'server' });
   } catch (error) {
-    console.error('❌ Task recovery failed:', error);
+    logger.error('❌ Task recovery failed', { module: 'server' }, error as Error);
     // Don't prevent server startup due to recovery failure
   }
 
   server
     .once('error', err => {
-      console.error('Server error:', err);
+      logger.error('Server error', { module: 'server' }, err);
       process.exit(1);
     })
     .listen(port, () => {
-      console.log(`> Ready on http://${hostname}:${port}`);
-      console.log(`> Socket.IO server initialized`);
-      console.log('> Task recovery system active');
+      logger.info(`> Ready on http://${hostname}:${port}`, { module: 'server' });
+      logger.info(`> Socket.IO server initialized`, { module: 'server' });
+      logger.info('> Task recovery system active', { module: 'server' });
     });
 
   // Graceful shutdown
   process.on('SIGTERM', () => {
-    console.log('SIGTERM signal received: closing HTTP server');
+    logger.info('SIGTERM signal received: closing HTTP server', { module: 'server' });
     server.close(() => {
-      console.log('HTTP server closed');
+      logger.info('HTTP server closed', { module: 'server' });
       if (io) {
         io.close(() => {
-          console.log('Socket.IO server closed');
+          logger.info('Socket.IO server closed', { module: 'server' });
           process.exit(0);
         });
       } else {
@@ -66,12 +67,12 @@ app.prepare().then(async () => {
   });
 
   process.on('SIGINT', () => {
-    console.log('SIGINT signal received: closing HTTP server');
+    logger.info('SIGINT signal received: closing HTTP server', { module: 'server' });
     server.close(() => {
-      console.log('HTTP server closed');
+      logger.info('HTTP server closed', { module: 'server' });
       if (io) {
         io.close(() => {
-          console.log('Socket.IO server closed');
+          logger.info('Socket.IO server closed', { module: 'server' });
           process.exit(0);
         });
       } else {
