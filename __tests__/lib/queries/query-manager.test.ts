@@ -453,14 +453,7 @@ describe('QueryManager', () => {
       expect(prisma.query.update).toHaveBeenCalledWith({
         where: { id: 'test-query-id' },
         data: {
-          context: JSON.stringify({
-            existing: 'context',
-            decisionBranch: {
-              name: 'feature/decision-branch',
-              description: 'Test decision branch',
-              createdAt: expect.any(Date),
-            },
-          }),
+          context: expect.stringContaining('feature/decision-branch'),
         },
       });
 

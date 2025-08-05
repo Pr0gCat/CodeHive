@@ -6,6 +6,9 @@ process.env.CLAUDE_RATE_LIMIT_PER_MINUTE = '50';
 process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000';
 process.env.NODE_ENV = 'test';
 
+// Setup testing-library/jest-dom
+import '@testing-library/jest-dom';
+
 // Mock prisma
 jest.mock('./lib/db', () => ({
   prisma: {
@@ -77,6 +80,34 @@ jest.mock('./lib/db', () => ({
       create: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+    },
+    taskExecution: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+    taskPhase: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+    taskEvent: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    },
+    globalSettings: {
+      findFirst: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      upsert: jest.fn(),
     },
   },
   CyclePhase: {

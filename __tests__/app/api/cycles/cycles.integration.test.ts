@@ -1,7 +1,7 @@
 import { PUT as executePhase } from '@/app/api/cycles/[id]/execute/route';
 import {
-    DELETE as deleteCycle,
-    GET as getCycle,
+  DELETE as deleteCycle,
+  GET as getCycle,
 } from '@/app/api/cycles/[id]/route';
 import { GET, POST } from '@/app/api/projects/[id]/cycles/route';
 import { NextRequest } from 'next/server';

@@ -53,8 +53,8 @@ export async function createDefaultFirstSprint(projectId: string, projectName: s
 - Establish coding standards and conventions
 
 This task will leverage Claude Code's intelligent project initialization to create a solid foundation for ${projectName}.`,
+        type: "STORY",
         status: "TODO",
-        position: 1,
         priority: "CRITICAL",
         storyPoints: 2,
         acceptanceCriteria: JSON.stringify([
@@ -65,7 +65,7 @@ This task will leverage Claude Code's intelligent project initialization to crea
           "Initial project files are created",
           "Configuration files are properly structured"
         ]),
-        assignedAgent: "Project Manager Agent",
+        assignee: "Project Manager Agent",
         tddEnabled: false, // This is a setup task, not a feature requiring TDD
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -89,9 +89,9 @@ This task will leverage Claude Code's intelligent project initialization to crea
 - Tech stack documentation
 
 This README should serve as the primary entry point for understanding and working with the project.`,
+        type: "STORY",
         status: "TODO",
-        position: 2,
-        priority: "HIGH",
+        mvpPriority: "HIGH",
         storyPoints: 3,
         acceptanceCriteria: JSON.stringify([
           "README.md contains comprehensive project overview",
@@ -101,7 +101,7 @@ This README should serve as the primary entry point for understanding and workin
           "Contributing guidelines are included",
           "Project structure is explained"
         ]),
-        assignedAgent: "Project Manager Agent",
+        assignee: "Project Manager Agent",
         createdAt: new Date(),
         updatedAt: new Date(),
       },
@@ -122,8 +122,8 @@ This README should serve as the primary entry point for understanding and workin
 - Deployment procedures
 
 This will create a foundation for ongoing documentation efforts.`,
+        type: "STORY",
         status: "TODO",
-        position: 3,
         priority: "MEDIUM",
         storyPoints: 2,
         acceptanceCriteria: JSON.stringify([
@@ -133,7 +133,7 @@ This will create a foundation for ongoing documentation efforts.`,
           "Development guidelines are documented",
           "Testing documentation is outlined"
         ]),
-        assignedAgent: "Documentation Agent",
+        assignee: "Documentation Agent",
         createdAt: new Date(),
         updatedAt: new Date(),
       },

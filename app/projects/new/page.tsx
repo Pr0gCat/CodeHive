@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { FolderOpen, AlertTriangle, CheckCircle, Plus } from 'lucide-react';
-import Navbar from '../../components/Navbar';
+import Navbar from '@/components/Navbar';
 
 interface AvailableRepo {
   name: string;

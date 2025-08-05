@@ -43,10 +43,7 @@ export async function POST(request: NextRequest, { params }: SprintParams) {
     });
 
     if (!sprint) {
-      return NextResponse.json(
-        { error: 'Sprint not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Sprint not found' }, { status: 404 });
     }
 
     // Calculate current burndown metrics
@@ -61,7 +58,8 @@ export async function POST(request: NextRequest, { params }: SprintParams) {
     // Calculate ideal burndown
     const today = new Date();
     const sprintDuration = Math.ceil(
-      (sprint.endDate.getTime() - sprint.startDate.getTime()) / (1000 * 60 * 60 * 24)
+      (sprint.endDate.getTime() - sprint.startDate.getTime()) /
+        (1000 * 60 * 60 * 24)
     );
     const daysElapsed = Math.ceil(
       (today.getTime() - sprint.startDate.getTime()) / (1000 * 60 * 60 * 24)
@@ -69,7 +67,7 @@ export async function POST(request: NextRequest, { params }: SprintParams) {
     const dailyVelocity = sprint.commitedStoryPoints / sprintDuration;
     const idealRemainingPoints = Math.max(
       0,
-      sprint.commitedStoryPoints - (dailyVelocity * daysElapsed)
+      sprint.commitedStoryPoints - dailyVelocity * daysElapsed
     );
 
     // Create or update today's burndown record

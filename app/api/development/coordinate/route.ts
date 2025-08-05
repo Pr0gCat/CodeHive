@@ -8,8 +8,8 @@ export async function POST(request: NextRequest) {
     const { projectId: providedProjectId, action } = body;
 
     // Use provided project ID or get default
-    const projectId = providedProjectId || await getDefaultProjectId();
-    
+    const projectId = providedProjectId || (await getDefaultProjectId());
+
     if (!projectId) {
       return NextResponse.json(
         {
@@ -20,7 +20,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`🎼 Starting development coordination for project: ${projectId}`);
+    console.log(
+      `🎼 Starting development coordination for project: ${projectId}`
+    );
     console.log(`Action: ${action || 'coordinate'}`);
 
     let result;
@@ -37,7 +39,10 @@ export async function POST(request: NextRequest) {
         const { cycleId } = body;
         if (!cycleId) {
           return NextResponse.json(
-            { success: false, error: 'cycleId required for execute_cycle action' },
+            {
+              success: false,
+              error: 'cycleId required for execute_cycle action',
+            },
             { status: 400 }
           );
         }
@@ -49,7 +54,10 @@ export async function POST(request: NextRequest) {
         const { queryId, decision } = body;
         if (!queryId || !decision) {
           return NextResponse.json(
-            { success: false, error: 'queryId and decision required for resolve_query action' },
+            {
+              success: false,
+              error: 'queryId and decision required for resolve_query action',
+            },
             { status: 400 }
           );
         }
@@ -66,13 +74,15 @@ export async function POST(request: NextRequest) {
       },
       timestamp: new Date().toISOString(),
     });
-
   } catch (error) {
     console.error('Error in development coordination:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to coordinate development',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to coordinate development',
       },
       { status: 500 }
     );
@@ -82,8 +92,9 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const projectId = searchParams.get('projectId') || await getDefaultProjectId();
-    
+    const projectId =
+      searchParams.get('projectId') || (await getDefaultProjectId());
+
     if (!projectId) {
       return NextResponse.json(
         {
@@ -95,7 +106,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Get current workflow state
-    const workflowState = await coordinationSystem.coordinateProjectWork(projectId);
+    const workflowState =
+      await coordinationSystem.coordinateProjectWork(projectId);
 
     return NextResponse.json({
       success: true,
@@ -105,13 +117,15 @@ export async function GET(request: NextRequest) {
       },
       timestamp: new Date().toISOString(),
     });
-
   } catch (error) {
     console.error('Error getting workflow state:', error);
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to get workflow state',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to get workflow state',
       },
       { status: 500 }
     );

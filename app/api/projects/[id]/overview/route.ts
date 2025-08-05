@@ -177,7 +177,9 @@ export async function GET(
   }
 }
 
-function calculateProjectStats(project: ProjectWithRelations): ProjectStatistics {
+function calculateProjectStats(
+  project: ProjectWithRelations
+): ProjectStatistics {
   const epics = project.epics || [];
   const standaloneStories = project.kanbanCards || [];
   const cycles = project.cycles || [];
@@ -197,15 +199,12 @@ function calculateProjectStats(project: ProjectWithRelations): ProjectStatistics
 
   // Story statistics
   const allStories: (StoryWithRelations | StoryWithCycles)[] = [
-    ...epics.flatMap((epic) => epic.stories),
+    ...epics.flatMap(epic => epic.stories),
     ...standaloneStories,
   ];
   const storyStats = {
     total: allStories.length,
-    withEpics: epics.reduce(
-      (sum, epic) => sum + epic.stories.length,
-      0
-    ),
+    withEpics: epics.reduce((sum, epic) => sum + epic.stories.length, 0),
     standalone: standaloneStories.length,
     byStatus: allStories.reduce((acc: Record<string, number>, story) => {
       acc[story.status] = (acc[story.status] || 0) + 1;
@@ -216,7 +215,7 @@ function calculateProjectStats(project: ProjectWithRelations): ProjectStatistics
       0
     ),
     completedStoryPoints: allStories
-      .filter((story) => story.status === 'DONE')
+      .filter(story => story.status === 'DONE')
       .reduce((sum, story) => sum + (story.storyPoints || 0), 0),
   };
 
@@ -266,48 +265,49 @@ function calculateProjectStats(project: ProjectWithRelations): ProjectStatistics
   };
 }
 
-function organizeHierarchicalData(project: ProjectWithRelations): HierarchicalData {
+function organizeHierarchicalData(
+  project: ProjectWithRelations
+): HierarchicalData {
   return {
-    epics: project.epics.map((epic): HierarchicalEpic => ({
-      id: epic.id,
-      title: epic.title,
-      type: epic.type,
-      phase: epic.phase,
-      status: epic.status,
-      mvpPriority: epic.mvpPriority,
-      progress: {
-        stories: {
-          total: epic.stories.length,
-          completed: epic.stories.filter((s) => s.status === 'DONE')
-            .length,
+    epics: project.epics.map(
+      (epic): HierarchicalEpic => ({
+        id: epic.id,
+        title: epic.title,
+        type: epic.type,
+        phase: epic.phase,
+        status: epic.status,
+        mvpPriority: epic.mvpPriority,
+        progress: {
+          stories: {
+            total: epic.stories.length,
+            completed: epic.stories.filter(s => s.status === 'DONE').length,
+          },
+          cycles: {
+            total: epic.stories.reduce((sum, s) => sum + s.cycles.length, 0),
+            completed: epic.stories.reduce(
+              (sum, s) =>
+                sum + s.cycles.filter(c => c.status === 'COMPLETED').length,
+              0
+            ),
+          },
         },
-        cycles: {
-          total: epic.stories.reduce(
-            (sum, s) => sum + s.cycles.length,
-            0
-          ),
-          completed: epic.stories.reduce(
-            (sum, s) =>
-              sum +
-              s.cycles.filter((c) => c.status === 'COMPLETED').length,
-            0
-          ),
-        },
-      },
-      stories: epic.stories.map((story): HierarchicalStory => ({
-        id: story.id,
-        title: story.title,
-        status: story.status,
-        storyPoints: story.storyPoints,
-        tddEnabled: story.tddEnabled,
-        cycles: story.cycles,
-        hasBlockers: story.dependencies.some(
-          (dep) => dep.dependsOn.status !== 'DONE'
+        stories: epic.stories.map(
+          (story): HierarchicalStory => ({
+            id: story.id,
+            title: story.title,
+            status: story.status,
+            storyPoints: story.storyPoints,
+            tddEnabled: story.tddEnabled,
+            cycles: story.cycles,
+            hasBlockers: story.dependencies.some(
+              dep => dep.dependsOn.status !== 'DONE'
+            ),
+          })
         ),
-      })),
-      dependencies: epic.dependencies,
-    })),
-    standaloneStories: project.kanbanCards.map((story) => ({
+        dependencies: epic.dependencies,
+      })
+    ),
+    standaloneStories: project.kanbanCards.map(story => ({
       id: story.id,
       title: story.title,
       status: story.status,
@@ -324,15 +324,14 @@ function calculateMVPPhaseProgress(
 ): MVPPhaseProgress[] {
   return mvpPhases.map((phase): MVPPhaseProgress => {
     const coreFeatureIds = JSON.parse(phase.coreFeatures || '[]') as string[];
-    const coreEpics = epics.filter((epic) => coreFeatureIds.includes(epic.id));
+    const coreEpics = epics.filter(epic => coreFeatureIds.includes(epic.id));
 
     const totalStories = coreEpics.reduce(
       (sum, epic) => sum + epic.stories.length,
       0
     );
     const completedStories = coreEpics.reduce(
-      (sum, epic) =>
-        sum + epic.stories.filter((s) => s.status === 'DONE').length,
+      (sum, epic) => sum + epic.stories.filter(s => s.status === 'DONE').length,
       0
     );
 
@@ -341,7 +340,7 @@ function calculateMVPPhaseProgress(
       progress: {
         epics: {
           total: coreEpics.length,
-          completed: coreEpics.filter((epic) => epic.phase === 'DONE').length,
+          completed: coreEpics.filter(epic => epic.phase === 'DONE').length,
         },
         stories: {
           total: totalStories,
@@ -352,7 +351,7 @@ function calculateMVPPhaseProgress(
               : 0,
         },
       },
-      coreEpics: coreEpics.map((epic) => ({
+      coreEpics: coreEpics.map(epic => ({
         id: epic.id,
         title: epic.title,
         phase: epic.phase,
@@ -368,14 +367,14 @@ function identifyBlockers(epics: EpicWithRelations[]): Blocker[] {
   for (const epic of epics) {
     // Check epic-level dependencies
     const blockedBy = epic.dependencies.filter(
-      (dep) => dep.dependsOn.phase !== 'DONE'
+      dep => dep.dependsOn.phase !== 'DONE'
     );
     if (blockedBy.length > 0) {
       const epicBlocker: EpicBlocker = {
         type: 'epic',
         id: epic.id,
         title: epic.title,
-        blockedBy: blockedBy.map((dep) => ({
+        blockedBy: blockedBy.map(dep => ({
           id: dep.dependsOn.id,
           title: dep.dependsOn.title,
           phase: dep.dependsOn.phase,
@@ -387,9 +386,8 @@ function identifyBlockers(epics: EpicWithRelations[]): Blocker[] {
     // Check story-level dependencies
     for (const story of epic.stories) {
       const storyBlockers =
-        story.dependencies?.filter(
-          (dep) => dep.dependsOn.status !== 'DONE'
-        ) || [];
+        story.dependencies?.filter(dep => dep.dependsOn.status !== 'DONE') ||
+        [];
       if (storyBlockers.length > 0) {
         const storyBlocker: StoryBlocker = {
           type: 'story',
@@ -397,7 +395,7 @@ function identifyBlockers(epics: EpicWithRelations[]): Blocker[] {
           title: story.title,
           epicId: epic.id,
           epicTitle: epic.title,
-          blockedBy: storyBlockers.map((dep) => ({
+          blockedBy: storyBlockers.map(dep => ({
             id: dep.dependsOn.id,
             title: dep.dependsOn.title,
             status: dep.dependsOn.status,

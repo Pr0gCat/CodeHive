@@ -17,7 +17,6 @@ export async function POST(
         id: true,
         title: true,
         description: true,
-        tags: true,
         projectId: true,
         status: true,
       },
@@ -99,7 +98,10 @@ export async function POST(
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to execute Claude Code task',
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to execute Claude Code task',
       },
       { status: 500 }
     );

@@ -1,8 +1,8 @@
 import { TDDCycleEngine } from '@/lib/tdd/cycle-engine';
 import {
-    clearAllMocks,
-    mockCycle,
-    mockProject,
+  clearAllMocks,
+  mockCycle,
+  mockProject,
 } from '../../helpers/test-utils';
 
 // Mock the AI integration module

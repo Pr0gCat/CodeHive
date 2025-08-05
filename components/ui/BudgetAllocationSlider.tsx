@@ -47,6 +47,7 @@ export default function BudgetAllocationSlider({
     setTotalAllocated(total);
   }, [projects]);
 
+  // Handle visual changes during dragging (no API call)
   const handleAllocationChange = (projectId: string, newPercentage: number) => {
     if (disabled) return;
 
@@ -90,10 +91,20 @@ export default function BudgetAllocationSlider({
     setAllocations(newAllocations);
     setTotalAllocated(finalTotal);
 
-    // Convert to array format for onChange
+    // Don't call onChange here - only update visual state
+  };
+
+  // Handle drag end (make API call)
+  const handleAllocationChangeEnd = (
+    projectId: string,
+    newPercentage: number
+  ) => {
+    if (disabled) return;
+
+    // Call onChange only when dragging ends
     const allocationArray = projects.map(project => ({
       projectId: project.projectId,
-      allocatedPercentage: newAllocations[project.projectId] || 0,
+      allocatedPercentage: allocations[project.projectId] || 0,
     }));
 
     onChange(allocationArray);
@@ -290,6 +301,9 @@ export default function BudgetAllocationSlider({
                 value={allocation}
                 onChange={value =>
                   handleAllocationChange(project.projectId, value)
+                }
+                onChangeEnd={value =>
+                  handleAllocationChangeEnd(project.projectId, value)
                 }
                 step={0.01}
                 disabled={disabled}

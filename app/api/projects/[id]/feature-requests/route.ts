@@ -123,7 +123,7 @@ export async function POST(
         executionTime: result.executionTime,
         analysis: {
           epicTitle: result.analysis?.epicTitle,
-          storyTitles: result.analysis?.stories.map(s => s.title) || [],
+          storyTitles: result.analysis?.stories.map((s: any) => s.title) || [],
           estimatedComplexity: result.analysis?.estimatedComplexity,
         },
       },

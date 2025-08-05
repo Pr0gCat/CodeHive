@@ -20,8 +20,8 @@ export async function POST(request: NextRequest) {
     const { message, conversationId, projectId } = validatedData;
 
     // Use provided project ID or get default project
-    const targetProjectId = projectId || await getDefaultProjectId();
-    
+    const targetProjectId = projectId || (await getDefaultProjectId());
+
     if (!targetProjectId) {
       return NextResponse.json(
         {
@@ -40,10 +40,10 @@ export async function POST(request: NextRequest) {
 
     // Process the input through the feature request system
     const processor = new FeatureRequestProcessor();
-    
+
     // Validate the input quality
     const validation = processor.validateFeatureRequest(message);
-    
+
     if (!validation.isValid) {
       return NextResponse.json(
         {
@@ -85,7 +85,11 @@ export async function POST(request: NextRequest) {
         id: result.epicId,
         title: result.analysis?.epicTitle || 'New Feature',
         estimatedCycles: result.cycleIds?.length || 0,
-        estimatedCompletion: new Date(Date.now() + (result.cycleIds?.length || 1) * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Rough estimate
+        estimatedCompletion: new Date(
+          Date.now() + (result.cycleIds?.length || 1) * 24 * 60 * 60 * 1000
+        )
+          .toISOString()
+          .split('T')[0], // Rough estimate
       },
       conversation: {
         id: conversationId || `conv-${Date.now()}`,
@@ -117,7 +121,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to process input',
+        error:
+          error instanceof Error ? error.message : 'Failed to process input',
       },
       { status: 500 }
     );

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { z } from 'zod';
 import { checkProjectOperationAccess } from '@/lib/project-access-control';
+import { projectLogger } from '@/lib/logging/project-logger';
 
 const createCardSchema = z.object({
   title: z.string().min(1, 'Card title is required'),
@@ -120,6 +121,59 @@ export async function POST(
         },
       },
     });
+
+    // Log the card creation
+    projectLogger.info(
+      params.id,
+      'kanban-card-create',
+      `📋 New card created: "${card.title}"`,
+      {
+        action: 'card_created',
+        cardId: card.id,
+        cardTitle: card.title,
+        cardData: {
+          status: card.status,
+          position: card.position,
+          priority: card.priority,
+          tddEnabled: card.tddEnabled,
+          storyPoints: card.storyPoints,
+          assignedAgent: card.assignedAgent,
+          epicId: card.epicId
+        },
+        updateSource: 'manual'
+      }
+    );
+
+    // TODO: Trigger automatic Kanban board optimization after adding new card
+    // setImmediate(async () => {
+    //   try {
+    //     const { ProjectManagerAgent } = await import('@/lib/agents/project-manager');
+    //     const projectManager = new ProjectManagerAgent();
+    //     
+    //     projectLogger.info(
+    //       params.id,
+    //       'kanban-auto-optimize',
+    //       '🎯 Triggering automatic Kanban optimization after card creation',
+    //       { action: 'auto_optimization_trigger', cardId: card.id }
+    //     );
+    //     
+    //     // await projectManager.manageKanbanBoard(params.id);
+    //     
+    //     projectLogger.info(
+    //       params.id,
+    //       'kanban-auto-optimize',
+    //       '✅ Automatic Kanban optimization completed',
+    //       { action: 'auto_optimization_complete', cardId: card.id }
+    //     );
+    //   } catch (error) {
+    //     projectLogger.error(
+    //       params.id,
+    //       'kanban-auto-optimize',
+    //       `❌ Automatic Kanban optimization failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    //       { action: 'auto_optimization_error', cardId: card.id }
+    //     );
+    //   }
+    // });
 
     return NextResponse.json(
       {

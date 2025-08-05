@@ -1,12 +1,11 @@
-import Navbar from '../components/Navbar';
-import { ProjectMonitoring } from '../components/oversight/ProjectMonitoring';
+import Navbar from '@/components/Navbar';
+import { ProjectMonitoring } from '@/components/oversight/ProjectMonitoring';
 
 export default function OversightPage() {
-
   return (
     <div className="min-h-screen bg-primary-950">
       <Navbar />
-      
+
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">

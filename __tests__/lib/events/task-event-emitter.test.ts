@@ -1,4 +1,7 @@
-import { TaskEventData, taskEventEmitter } from '@/lib/events/task-event-emitter';
+import {
+  TaskEventData,
+  taskEventEmitter,
+} from '@/lib/events/task-event-emitter';
 
 describe('TaskEventEmitter', () => {
   beforeEach(() => {
@@ -24,10 +27,10 @@ describe('TaskEventEmitter', () => {
   it('should emit and receive phase updated events', done => {
     const taskId = 'test-task-2';
     const phaseId = 'phase-1';
-    const details = { 
-      progress: 50, 
-      message: 'Processing files', 
-      filesProcessed: 10 
+    const details = {
+      progress: 50,
+      message: 'Processing files',
+      filesProcessed: 10,
     };
 
     taskEventEmitter.on('phase_updated', (event: TaskEventData) => {
@@ -73,9 +76,9 @@ describe('TaskEventEmitter', () => {
 
   it('should emit and receive event created events', done => {
     const taskId = 'test-task-5';
-    const eventDetails = { 
-      eventType: 'custom_event', 
-      message: 'Custom event message' 
+    const eventDetails = {
+      eventType: 'custom_event',
+      message: 'Custom event message',
     };
 
     taskEventEmitter.on('event_created', (event: TaskEventData) => {

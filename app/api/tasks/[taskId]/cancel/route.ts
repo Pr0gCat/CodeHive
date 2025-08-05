@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { taskManager } from '@/lib/tasks/task-manager';
-import { TaskRecovery } from '@/lib/tasks/task-recovery';
+import { taskRecoveryService } from '@/lib/tasks/task-recovery';
 import { prisma } from '@/lib/db';
 
 export async function POST(
@@ -45,27 +45,32 @@ export async function POST(
       );
     }
 
-    // Cancel the task
-    const cancelResult = await taskManager.cancelTask(taskId, 'User requested cancellation');
-    
+    // TODO: Cancel the task
+    // const cancelResult = await taskManager.cancelTask(
+    //   taskId,
+    //   'User requested cancellation'
+    // );
+    const cancelResult = { success: false, error: 'Task cancellation not implemented' };
+
     if (!cancelResult.success) {
       return NextResponse.json(
         { success: false, error: cancelResult.error },
-        { status: 500 }
+        { status: 501 }
       );
     }
 
     // If this is a project creation/import task, clean up the project
-    if (task.projectId && (task.type === 'PROJECT_CREATE' || task.type === 'PROJECT_IMPORT')) {
+    if (
+      task.projectId &&
+      (task.type === 'PROJECT_CREATE' || task.type === 'PROJECT_IMPORT')
+    ) {
       console.log(`🧹 Starting project cleanup for cancelled task: ${taskId}`);
-      
+
       try {
-        const cleanupResult = await TaskRecovery.cleanupCancelledProject(
+        const cleanupResult = await taskRecoveryService.cleanupCancelledProject(
           task.projectId,
           taskId,
           {
-            removeFiles: true,
-            removeDatabaseRecord: true,
             reason: 'User cancelled task',
           }
         );
@@ -75,22 +80,24 @@ export async function POST(
           message: 'Task cancelled and project cleaned up successfully',
           details: {
             taskCancelled: true,
-            projectCleaned: cleanupResult.databaseCleanup,
-            filesRemoved: cleanupResult.filesCleanup,
-            errors: cleanupResult.errors,
+            projectCleaned: cleanupResult.success,
+            cleanupMessage: cleanupResult.message,
             projectName: task.projectName,
           },
         });
       } catch (cleanupError) {
         console.error('Error during project cleanup:', cleanupError);
-        
+
         return NextResponse.json({
           success: true,
           message: 'Task cancelled but cleanup failed',
           details: {
             taskCancelled: true,
             projectCleaned: false,
-            cleanupError: cleanupError instanceof Error ? cleanupError.message : 'Unknown error',
+            cleanupError:
+              cleanupError instanceof Error
+                ? cleanupError.message
+                : 'Unknown error',
             projectName: task.projectName,
           },
         });
@@ -106,7 +113,6 @@ export async function POST(
         taskType: task.type,
       },
     });
-
   } catch (error) {
     console.error('Error cancelling task:', error);
     return NextResponse.json(

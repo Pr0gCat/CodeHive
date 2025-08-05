@@ -35,9 +35,11 @@ CodeHive is a multi-agent software development platform where users provide feat
 - ✅ **ACTUAL FILE SCANNING**: Real project analysis with file-by-file progress updates
 - ✅ **NO FAKE PROGRESS**: All progress indicators reflect real operations, no setTimeout simulations
 - ✅ Improved UI layout with better information organization
-- 🔄 Epic/Story management system (needed)
-- 🔄 Autonomous backlog management (needed)
-- 🔄 Feature request processing pipeline (needed)
+- ✅ **Epic/Story Management**: Complete Epic and Story data models with detailed views
+- ✅ **Kanban Integration**: Serializable kanban boards with real-time optimization
+- ✅ **Epic Generation API**: Automated epic creation and breakdown system
+- 🔄 Autonomous backlog management (in progress)
+- 🔄 Feature request processing pipeline (in progress)
 
 ## Core Development Commands
 
@@ -109,7 +111,10 @@ bun test:ci             # Run tests in CI environment
 
 - `/app` - Next.js 14 App Router pages and API routes
   - `/app/api` - REST API endpoints with real progress tracking
+    - `/app/api/projects/[id]/epics` - Epic generation and management endpoints
+    - `/app/api/projects/[id]/kanban` - Kanban board serialization and optimization
   - `/app/components` - Reusable React components
+    - `EpicDetailView.tsx` - Detailed epic and story viewer modal
   - `/app/projects` - Project-specific pages
 - `/lib` - Core business logic organized by domain:
   - `/lib/config` - Database-driven configuration system
@@ -120,6 +125,7 @@ bun test:ci             # Run tests in CI environment
   - `/lib/tasks` - Task management and real progress tracking
   - `/lib/usage` - Token usage monitoring
   - `/lib/socket` - WebSocket server and client utilities
+  - `/lib/kanban` - Kanban board serialization and Claude Code integration
 - `/repos` - Local storage for managed project git repositories
 - `/prisma` - Database schema, migrations, and seed data
 - `/docs` - Project documentation and guides
@@ -290,6 +296,49 @@ CodeHive includes comprehensive usage limit management:
 - **Usage Analytics**: Historical usage data and trend analysis
 - **Limit Enforcement**: Automatic throttling when approaching limits
 
+## Epic and Story Management
+
+### Epic Generation System
+
+- **Automated Epic Creation**: AI-powered epic generation from feature requests
+- **Story Breakdown**: Epics automatically broken into manageable user stories
+- **Acceptance Criteria**: AI-generated acceptance criteria for each story
+- **Priority Assignment**: Intelligent MVP priority assignment based on business value
+
+### Kanban Board Integration
+
+- **Serializable Boards**: Complete board state can be serialized for Claude Code analysis
+- **Real-time Optimization**: AI can analyze and optimize card positioning and priorities
+- **Progress Tracking**: Story points and completion tracking across the board
+- **Agent Assignment**: Stories can be assigned to specific Claude Code agents
+
+### Epic Data Structure
+
+```typescript
+interface Epic {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  type: string; // FEATURE, BUG, REFACTOR, etc.
+  mvpPriority: string; // HIGH, MEDIUM, LOW
+  estimatedStoryPoints: number;
+  actualStoryPoints: number;
+  stories: Story[];
+}
+
+interface Story {
+  id: string;
+  title: string;
+  description: string;
+  status: string; // BACKLOG, TODO, IN_PROGRESS, REVIEW, DONE
+  storyPoints: number;
+  priority: string;
+  acceptanceCriteria: string[];
+  assignedAgent?: string;
+}
+```
+
 ## Memories
 
 - Update TASKS.md after finished tasks
@@ -303,3 +352,4 @@ CodeHive includes comprehensive usage limit management:
 - **SOCKET.IO ONLY**: Server-Sent Events have been replaced with Socket.IO - use WebSocket for all real-time features
 - This project is not just for frontend developement
 - Treat Claude Code as a normal LLM, just give instructions and it do the job. You must make Claude Code make its questions response in certain format for the program to parse.
+- Do not change too much of the project unless it is really needed to

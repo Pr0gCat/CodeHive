@@ -51,7 +51,10 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function getGlobalMonitorData(globalSettings: GlobalSettings, todayStart: Date) {
+async function getGlobalMonitorData(
+  globalSettings: GlobalSettings,
+  todayStart: Date
+) {
   // Get today's total usage across all projects
   const todayUsage = await prisma.tokenUsage.aggregate({
     where: {
@@ -261,7 +264,10 @@ async function getHourlyUsage(projectId: string, todayStart: Date) {
   return hourlyData;
 }
 
-function getUsageStatus(usagePercentage: number, globalSettings: GlobalSettings): string {
+function getUsageStatus(
+  usagePercentage: number,
+  globalSettings: GlobalSettings
+): string {
   if (usagePercentage >= globalSettings.criticalThreshold * 100) {
     return 'critical';
   } else if (usagePercentage >= globalSettings.warningThreshold * 100) {

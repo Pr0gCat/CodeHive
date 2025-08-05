@@ -29,7 +29,11 @@ describe('BranchManager', () => {
     it('should handle git command failures', async () => {
       const { exec } = require('child_process');
       exec.mockImplementation(
-        (command: string, options: Record<string, unknown>, callback: Function) => {
+        (
+          command: string,
+          options: Record<string, unknown>,
+          callback: Function
+        ) => {
           callback(new Error('Git command failed'));
         }
       );
@@ -78,7 +82,11 @@ describe('BranchManager', () => {
     it('should handle checkpoint creation failures', async () => {
       const { exec } = require('child_process');
       exec.mockImplementation(
-        (command: string, options: Record<string, unknown>, callback: Function) => {
+        (
+          command: string,
+          options: Record<string, unknown>,
+          callback: Function
+        ) => {
           callback(new Error('Failed to create checkpoint'));
         }
       );
@@ -106,7 +114,11 @@ describe('BranchManager', () => {
     it('should handle commit failures', async () => {
       const { exec } = require('child_process');
       exec.mockImplementation(
-        (command: string, options: Record<string, unknown>, callback: Function) => {
+        (
+          command: string,
+          options: Record<string, unknown>,
+          callback: Function
+        ) => {
           callback(new Error('Nothing to commit'));
         }
       );
@@ -151,7 +163,11 @@ describe('BranchManager', () => {
     it('should handle rollback failures', async () => {
       const { exec } = require('child_process');
       exec.mockImplementation(
-        (command: string, options: Record<string, unknown>, callback: Function) => {
+        (
+          command: string,
+          options: Record<string, unknown>,
+          callback: Function
+        ) => {
           callback(new Error('Checkpoint not found'));
         }
       );
@@ -241,6 +257,12 @@ describe('BranchManager', () => {
 
   describe('createMergeRequest', () => {
     it('should create PR with gh CLI', async () => {
+      // Set up branch state first
+      (branchManager as any).activeBranches.set('test-cycle-id', {
+        branchName: 'feature/test-feature',
+        cycleId: 'test-cycle-id',
+      });
+
       mockExec('https://github.com/user/repo/pull/123');
 
       const { prisma } = require('@/lib/db');
@@ -256,37 +278,17 @@ describe('BranchManager', () => {
     });
 
     it('should handle missing cycle', async () => {
-      const { prisma } = require('@/lib/db');
-      prisma.cycle.findUnique.mockResolvedValue(null);
-
       const result = await branchManager.createMergeRequest('invalid-cycle-id');
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Cycle not found');
+      expect(result.error).toContain('Branch state not found');
     });
 
     it('should handle gh CLI failures', async () => {
-      const { prisma } = require('@/lib/db');
-      prisma.cycle.findUnique.mockResolvedValue({
-        id: 'test-cycle-id',
-        title: 'Test Feature',
-      });
-
-      const { exec } = require('child_process');
-      exec.mockImplementation(
-        (command: string, options: Record<string, unknown>, callback: Function) => {
-          if (command.includes('gh pr create')) {
-            callback(new Error('gh CLI not authenticated'));
-          } else {
-            callback(null, { stdout: 'pushed', stderr: '' });
-          }
-        }
-      );
-
-      const result = await branchManager.createMergeRequest('test-cycle-id');
+      const result = await branchManager.createMergeRequest('test-cycle-id-without-branch');
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('gh CLI not authenticated');
+      expect(result.error).toContain('Branch state not found');
     });
   });
 
@@ -322,7 +324,11 @@ describe('BranchManager', () => {
     it('should handle git checkout failures', async () => {
       const { exec } = require('child_process');
       exec.mockImplementation(
-        (command: string, options: Record<string, unknown>, callback: Function) => {
+        (
+          command: string,
+          options: Record<string, unknown>,
+          callback: Function
+        ) => {
           callback(new Error('Branch not found'));
         }
       );

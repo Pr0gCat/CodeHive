@@ -4,15 +4,15 @@ import { Project, ProjectSettings } from '@/lib/db';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import AgentStatusPanel from '../../components/AgentStatusPanel';
-import ProjectLogsModal from '../../components/ProjectLogsModal';
-import ProjectSettingsModal from '../../components/ProjectSettingsModal';
+import AgentStatusPanel from '@/components/AgentStatusPanel';
+import ProjectLogsModal from '@/components/ProjectLogsModal';
+import ProjectSettingsModal from '@/components/ProjectSettingsModal';
 import { useToast } from '@/components/ui/ToastManager';
-import ClaudeMdViewer from '../../components/ClaudeMdViewer';
-import { UnifiedProjectOverview } from '../../components/UnifiedProjectOverview';
-import UserQueriesPanel from '../../components/UserQueriesPanel';
-import EpicCreateModal from '../../components/EpicCreateModal';
-import KanbanBoard from '../../components/KanbanBoard';
+import ClaudeMdViewer from '@/components/ClaudeMdViewer';
+import { UnifiedProjectOverview } from '@/components/UnifiedProjectOverview';
+import UserQueriesPanel from '@/components/UserQueriesPanel';
+import EpicCreateModal from '@/components/EpicCreateModal';
+import KanbanBoard from '@/components/KanbanBoard';
 
 interface ProjectPageProps {
   params: { id: string };
@@ -32,7 +32,13 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   const [agentStatus, setAgentStatus] = useState<string>('unknown');
   const [epics, setEpics] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'epics' | 'stories' | 'tasks' | 'cycles' | 'queries' | 'claude-md'
+    | 'overview'
+    | 'epics'
+    | 'stories'
+    | 'tasks'
+    | 'cycles'
+    | 'queries'
+    | 'claude-md'
   >('overview');
   const [claudeMdLastUpdate, setClaudeMdLastUpdate] = useState<Date | null>(
     null
@@ -121,10 +127,13 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     setIsCancelling(true);
 
     try {
-      const response = await fetch(`/api/tasks/${initializationProgress.taskId}/cancel`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
+      const response = await fetch(
+        `/api/tasks/${initializationProgress.taskId}/cancel`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
 
       const result = await response.json();
 
@@ -438,7 +447,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
             >
               返回專案列表
             </Link>
-            
+
             {/* Cancel Button */}
             {initializationProgress?.taskId && (
               <button
@@ -613,7 +622,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                 </svg>
                 專案總覽
               </button>
-              
+
               <button
                 onClick={() => setActiveTab('epics')}
                 className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
@@ -637,7 +646,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                 </svg>
                 Epic 規劃
               </button>
-              
+
               {/* 2. DEVELOPMENT PHASE */}
               <button
                 onClick={() => setActiveTab('stories')}
@@ -662,7 +671,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                 </svg>
                 Story 開發
               </button>
-              
+
               <button
                 onClick={() => setActiveTab('cycles')}
                 className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
@@ -686,7 +695,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                 </svg>
                 TDD 週期
               </button>
-              
+
               {/* 3. EXECUTION PHASE */}
               <button
                 onClick={() => setActiveTab('tasks')}
@@ -711,7 +720,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                 </svg>
                 任務執行
               </button>
-              
+
               {/* 4. COMMUNICATION PHASE */}
               <button
                 onClick={() => setActiveTab('queries')}
@@ -736,7 +745,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                 </svg>
                 AI 諮詢
               </button>
-              
+
               {/* 5. DOCUMENTATION PHASE */}
               <button
                 onClick={() => setActiveTab('claude-md')}
@@ -795,68 +804,108 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                 <div className="max-w-7xl mx-auto">
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <h2 className="text-2xl font-bold text-accent-50">Epic 規劃</h2>
-                      <p className="text-primary-300 mt-1">規劃專案的主要功能模組和大型需求</p>
+                      <h2 className="text-2xl font-bold text-accent-50">
+                        Epic 規劃
+                      </h2>
+                      <p className="text-primary-300 mt-1">
+                        規劃專案的主要功能模組和大型需求
+                      </p>
                     </div>
-                    <button 
+                    <button
                       onClick={() => setEpicCreateModalOpen(true)}
                       className="px-4 py-2 bg-accent-600 text-accent-50 rounded-lg hover:bg-accent-700 flex items-center gap-2"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 4v16m8-8H4"
+                        />
                       </svg>
                       新增 Epic
                     </button>
                   </div>
-                  
+
                   {/* Epic List */}
                   {epics.length > 0 ? (
                     <div className="space-y-4">
-                      {epics.map((epic) => (
-                        <div key={epic.id} className="bg-primary-900 border border-primary-700 rounded-lg p-6">
+                      {epics.map(epic => (
+                        <div
+                          key={epic.id}
+                          className="bg-primary-900 border border-primary-700 rounded-lg p-6"
+                        >
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex-1">
                               <div className="flex items-center gap-3 mb-2">
-                                <h3 className="text-xl font-semibold text-accent-50">{epic.title}</h3>
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  epic.type === 'MVP' ? 'bg-purple-900 text-purple-200' :
-                                  epic.type === 'FEATURE' ? 'bg-blue-900 text-blue-200' :
-                                  epic.type === 'ENHANCEMENT' ? 'bg-green-900 text-green-200' :
-                                  'bg-orange-900 text-orange-200'
-                                }`}>
+                                <h3 className="text-xl font-semibold text-accent-50">
+                                  {epic.title}
+                                </h3>
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    epic.type === 'MVP'
+                                      ? 'bg-purple-900 text-purple-200'
+                                      : epic.type === 'FEATURE'
+                                        ? 'bg-blue-900 text-blue-200'
+                                        : epic.type === 'ENHANCEMENT'
+                                          ? 'bg-green-900 text-green-200'
+                                          : 'bg-orange-900 text-orange-200'
+                                  }`}
+                                >
                                   {epic.type}
                                 </span>
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  epic.mvpPriority === 'CRITICAL' ? 'bg-red-900 text-red-200' :
-                                  epic.mvpPriority === 'HIGH' ? 'bg-orange-900 text-orange-200' :
-                                  epic.mvpPriority === 'MEDIUM' ? 'bg-yellow-900 text-yellow-200' :
-                                  epic.mvpPriority === 'LOW' ? 'bg-blue-900 text-blue-200' :
-                                  'bg-gray-900 text-gray-200'
-                                }`}>
+                                <span
+                                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    epic.mvpPriority === 'CRITICAL'
+                                      ? 'bg-red-900 text-red-200'
+                                      : epic.mvpPriority === 'HIGH'
+                                        ? 'bg-orange-900 text-orange-200'
+                                        : epic.mvpPriority === 'MEDIUM'
+                                          ? 'bg-yellow-900 text-yellow-200'
+                                          : epic.mvpPriority === 'LOW'
+                                            ? 'bg-blue-900 text-blue-200'
+                                            : 'bg-gray-900 text-gray-200'
+                                  }`}
+                                >
                                   {epic.mvpPriority}
                                 </span>
                               </div>
                               {epic.description && (
-                                <p className="text-primary-300 mb-3">{epic.description}</p>
+                                <p className="text-primary-300 mb-3">
+                                  {epic.description}
+                                </p>
                               )}
                               {epic.coreValue && (
                                 <p className="text-sm text-accent-200 mb-3">
-                                  <span className="font-medium">核心價值：</span> {epic.coreValue}
+                                  <span className="font-medium">
+                                    核心價值：
+                                  </span>{' '}
+                                  {epic.coreValue}
                                 </p>
                               )}
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                                epic.phase === 'PLANNING' ? 'bg-blue-900 text-blue-200' :
-                                epic.phase === 'IN_PROGRESS' ? 'bg-green-900 text-green-200' :
-                                epic.phase === 'DONE' ? 'bg-gray-900 text-gray-200' :
-                                'bg-red-900 text-red-200'
-                              }`}>
+                              <span
+                                className={`px-3 py-1 rounded-full text-sm font-medium ${
+                                  epic.phase === 'PLANNING'
+                                    ? 'bg-blue-900 text-blue-200'
+                                    : epic.phase === 'IN_PROGRESS'
+                                      ? 'bg-green-900 text-green-200'
+                                      : epic.phase === 'DONE'
+                                        ? 'bg-gray-900 text-gray-200'
+                                        : 'bg-red-900 text-red-200'
+                                }`}
+                              >
                                 {epic.phase}
                               </span>
                             </div>
                           </div>
-                          
+
                           {/* Progress Bar */}
                           <div className="mb-4">
                             <div className="flex justify-between text-sm text-primary-300 mb-2">
@@ -866,21 +915,39 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                             <div className="w-full bg-primary-700 rounded-full h-2">
                               <div
                                 className="bg-accent-500 h-2 rounded-full transition-all duration-300"
-                                style={{ width: `${epic.progress?.percentage || 0}%` }}
+                                style={{
+                                  width: `${epic.progress?.percentage || 0}%`,
+                                }}
                               />
                             </div>
                             <div className="flex justify-between text-xs text-primary-400 mt-1">
-                              <span>{epic.progress?.storiesCompleted || 0} / {epic.progress?.storiesTotal || 0} Stories</span>
-                              <span>{epic.progress?.storyPointsCompleted || 0} / {epic.progress?.storyPointsTotal || 0} 點數</span>
+                              <span>
+                                {epic.progress?.storiesCompleted || 0} /{' '}
+                                {epic.progress?.storiesTotal || 0} Stories
+                              </span>
+                              <span>
+                                {epic.progress?.storyPointsCompleted || 0} /{' '}
+                                {epic.progress?.storyPointsTotal || 0} 點數
+                              </span>
                             </div>
                           </div>
 
                           {/* Metadata */}
                           <div className="flex items-center justify-between text-sm text-primary-400">
                             <div className="flex items-center gap-4">
-                              <span>建立於：{new Date(epic.createdAt).toLocaleDateString('zh-TW')}</span>
+                              <span>
+                                建立於：
+                                {new Date(epic.createdAt).toLocaleDateString(
+                                  'zh-TW'
+                                )}
+                              </span>
                               {epic.dueDate && (
-                                <span>目標完成：{new Date(epic.dueDate).toLocaleDateString('zh-TW')}</span>
+                                <span>
+                                  目標完成：
+                                  {new Date(epic.dueDate).toLocaleDateString(
+                                    'zh-TW'
+                                  )}
+                                </span>
                               )}
                             </div>
                             <div className="flex items-center gap-2">
@@ -893,13 +960,27 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                   ) : (
                     <div className="bg-primary-900 border border-primary-700 rounded-lg p-8 text-center">
                       <div className="text-primary-400 mb-4">
-                        <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        <svg
+                          className="w-12 h-12 mx-auto"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                          />
                         </svg>
                       </div>
-                      <h3 className="text-lg font-medium text-primary-200 mb-2">尚無 Epic</h3>
-                      <p className="text-primary-400 text-sm mb-4">建立您的第一個 Epic 來組織專案功能</p>
-                      <button 
+                      <h3 className="text-lg font-medium text-primary-200 mb-2">
+                        尚無 Epic
+                      </h3>
+                      <p className="text-primary-400 text-sm mb-4">
+                        建立您的第一個 Epic 來組織專案功能
+                      </p>
+                      <button
                         onClick={() => setEpicCreateModalOpen(true)}
                         className="px-4 py-2 bg-accent-600 text-accent-50 rounded-lg hover:bg-accent-700"
                       >
@@ -928,8 +1009,12 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                 <div className="max-w-7xl mx-auto">
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <h2 className="text-2xl font-bold text-accent-50">任務執行</h2>
-                      <p className="text-primary-300 mt-1">監控代理程式執行的任務狀態與進度</p>
+                      <h2 className="text-2xl font-bold text-accent-50">
+                        任務執行
+                      </h2>
+                      <p className="text-primary-300 mt-1">
+                        監控代理程式執行的任務狀態與進度
+                      </p>
                     </div>
                     <div className="flex gap-2">
                       <button className="px-3 py-1 text-sm border border-primary-600 text-primary-300 rounded hover:bg-primary-800">
@@ -943,16 +1028,30 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                       </button>
                     </div>
                   </div>
-                  
+
                   {/* Task List Placeholder */}
                   <div className="bg-primary-900 border border-primary-700 rounded-lg p-8 text-center">
                     <div className="text-primary-400 mb-4">
-                      <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      <svg
+                        className="w-12 h-12 mx-auto"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
                       </svg>
                     </div>
-                    <h3 className="text-lg font-medium text-primary-200 mb-2">尚無執行任務</h3>
-                    <p className="text-primary-400 text-sm">代理程式執行的任務將顯示在這裡</p>
+                    <h3 className="text-lg font-medium text-primary-200 mb-2">
+                      尚無執行任務
+                    </h3>
+                    <p className="text-primary-400 text-sm">
+                      代理程式執行的任務將顯示在這裡
+                    </p>
                   </div>
                 </div>
               </div>
@@ -964,28 +1063,44 @@ export default function ProjectPage({ params }: ProjectPageProps) {
             >
               <div className="p-6 h-full overflow-y-auto">
                 <div className="max-w-7xl mx-auto">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h2 className="text-2xl font-bold text-accent-50">TDD 週期管理</h2>
-                      <p className="text-primary-300 mt-1">追蹤測試驅動開發的 RED-GREEN-REFACTOR-REVIEW 週期</p>
-                    </div>
-                    <button className="px-4 py-2 bg-accent-600 text-accent-50 rounded-lg hover:bg-accent-700 flex items-center gap-2">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                      新增週期
-                    </button>
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-accent-50">
+                      TDD 週期管理
+                    </h2>
+                    <p className="text-primary-300 mt-1">
+                      追蹤測試驅動開發的 RED-GREEN-REFACTOR-REVIEW 週期
+                    </p>
                   </div>
-                  
+
                   {/* TDD Cycle Phases */}
                   <div className="grid grid-cols-4 gap-4 mb-8">
                     {[
-                      { name: 'RED', desc: '編寫失敗測試', color: 'bg-red-900 border-red-700 text-red-200' },
-                      { name: 'GREEN', desc: '實作最少代碼', color: 'bg-green-900 border-green-700 text-green-200' },
-                      { name: 'REFACTOR', desc: '重構優化代碼', color: 'bg-blue-900 border-blue-700 text-blue-200' },
-                      { name: 'REVIEW', desc: '代碼審查', color: 'bg-purple-900 border-purple-700 text-purple-200' }
+                      {
+                        name: 'RED',
+                        desc: '編寫失敗測試',
+                        color: 'bg-red-900 border-red-700 text-red-200',
+                      },
+                      {
+                        name: 'GREEN',
+                        desc: '實作最少代碼',
+                        color: 'bg-green-900 border-green-700 text-green-200',
+                      },
+                      {
+                        name: 'REFACTOR',
+                        desc: '重構優化代碼',
+                        color: 'bg-blue-900 border-blue-700 text-blue-200',
+                      },
+                      {
+                        name: 'REVIEW',
+                        desc: '代碼審查',
+                        color:
+                          'bg-purple-900 border-purple-700 text-purple-200',
+                      },
                     ].map((phase, index) => (
-                      <div key={index} className={`border rounded-lg p-4 ${phase.color}`}>
+                      <div
+                        key={index}
+                        className={`border rounded-lg p-4 ${phase.color}`}
+                      >
                         <h3 className="font-bold text-lg mb-2">{phase.name}</h3>
                         <p className="text-sm opacity-90">{phase.desc}</p>
                         <div className="mt-3 text-center py-4">
@@ -994,16 +1109,30 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                       </div>
                     ))}
                   </div>
-                  
+
                   {/* Cycle History Placeholder */}
                   <div className="bg-primary-900 border border-primary-700 rounded-lg p-8 text-center">
                     <div className="text-primary-400 mb-4">
-                      <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      <svg
+                        className="w-12 h-12 mx-auto"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                        />
                       </svg>
                     </div>
-                    <h3 className="text-lg font-medium text-primary-200 mb-2">尚無 TDD 週期</h3>
-                    <p className="text-primary-400 text-sm">開始您的第一個測試驅動開發週期</p>
+                    <h3 className="text-lg font-medium text-primary-200 mb-2">
+                      尚無 TDD 週期
+                    </h3>
+                    <p className="text-primary-400 text-sm">
+                      開始您的第一個測試驅動開發週期
+                    </p>
                   </div>
                 </div>
               </div>

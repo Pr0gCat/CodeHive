@@ -1,15 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Navbar from '../components/Navbar';
+import Navbar from '@/components/Navbar';
 import BudgetAllocationSlider from '@/components/ui/BudgetAllocationSlider';
 import DualRangeSlider from '@/components/ui/DualRangeSlider';
 import PercentageSlider from '@/components/ui/PercentageSlider';
 import TokenLimitSlider from '@/components/ui/TokenLimitSlider';
 import RateLimitSlider from '@/components/ui/RateLimitSlider';
 import { useToast } from '@/components/ui/ToastManager';
-import TaskRecoveryStatus from '../components/admin/TaskRecoveryStatus';
-import { SystemManagement } from '../components/oversight/SystemManagement';
+import TaskRecoveryStatus from '@/components/admin/TaskRecoveryStatus';
+import { SystemManagement } from '@/components/oversight/SystemManagement';
 import { Settings, Database, Monitor } from 'lucide-react';
 
 interface ProjectBudget {
@@ -336,20 +336,20 @@ export default function SettingsPage() {
       id: 'settings' as const,
       name: '系統設定',
       icon: Settings,
-      description: '全域設定和預算分配'
+      description: '全域設定和預算分配',
     },
     {
       id: 'system' as const,
       name: '系統管理',
       icon: Database,
-      description: '維護和監控'
+      description: '維護和監控',
     },
     {
       id: 'debug' as const,
       name: '除錯工具',
       icon: Monitor,
-      description: '連接測試和恢復'
-    }
+      description: '連接測試和恢復',
+    },
   ];
 
   const renderTabContent = () => {
@@ -434,9 +434,7 @@ export default function SettingsPage() {
         <div className="space-y-6">
           <div className="bg-primary-900 border border-primary-800 rounded-lg shadow p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-accent-50">
-                自動管理
-              </h3>
+              <h3 className="text-lg font-semibold text-accent-50">自動管理</h3>
             </div>
 
             <div className="space-y-4">
@@ -532,16 +530,10 @@ export default function SettingsPage() {
                   type="text"
                   value={claudeSettings.claudeCodePath}
                   onChange={e =>
-                    handleClaudeSettingChange(
-                      'claudeCodePath',
-                      e.target.value
-                    )
+                    handleClaudeSettingChange('claudeCodePath', e.target.value)
                   }
                   onBlur={e =>
-                    handleClaudeSettingSave(
-                      'claudeCodePath',
-                      e.target.value
-                    )
+                    handleClaudeSettingSave('claudeCodePath', e.target.value)
                   }
                   className="w-full px-3 py-2 bg-primary-800 border border-primary-700 rounded-md text-primary-100 focus:outline-none focus:ring-2 focus:ring-accent-600 focus:border-accent-600"
                   placeholder="claude"
@@ -623,7 +615,7 @@ export default function SettingsPage() {
           {/* Tab Navigation */}
           <div className="bg-primary-900 rounded-lg border border-primary-700 mb-8">
             <div className="flex overflow-x-auto">
-              {tabs.map((tab) => {
+              {tabs.map(tab => {
                 const Icon = tab.icon;
                 return (
                   <button
@@ -649,9 +641,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Tab Content */}
-          <div className="min-h-[600px]">
-            {renderTabContent()}
-          </div>
+          <div className="min-h-[600px]">{renderTabContent()}</div>
         </div>
       </div>
     </div>

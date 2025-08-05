@@ -1,6 +1,7 @@
 import { AgentResult } from '@/lib/types/shared';
 import { BaseAgent } from './executors/base-agent';
-import { ProjectContext } from './types';
+import { ProjectContext } from './project-manager';
+import { AgentExecutionOptions } from './types';
 
 interface AgentCommand {
   name: string;

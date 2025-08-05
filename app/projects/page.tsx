@@ -4,9 +4,9 @@ import { Project } from '@/lib/db';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
-import Navbar from '../components/Navbar';
-import ProjectImportModal from '../components/ProjectImportModal';
-import ConfirmationModal from '../components/ConfirmationModal';
+import Navbar from '@/components/Navbar';
+import ProjectImportModal from '@/components/ProjectImportModal';
+import ConfirmationModal from '@/components/ConfirmationModal';
 
 interface ProjectTask {
   taskId: string;
@@ -23,8 +23,12 @@ export default function ProjectsPage() {
   const [error, setError] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [agentStatus, setAgentStatus] = useState<string>('unknown');
-  const [projectTasks, setProjectTasks] = useState<Record<string, ProjectTask>>({});
-  const [cancellingProjects, setCancellingProjects] = useState<Set<string>>(new Set());
+  const [projectTasks, setProjectTasks] = useState<Record<string, ProjectTask>>(
+    {}
+  );
+  const [cancellingProjects, setCancellingProjects] = useState<Set<string>>(
+    new Set()
+  );
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     projectId: string;
@@ -105,13 +109,15 @@ export default function ProjectsPage() {
 
   const handleCancelProject = (projectId: string, projectName: string) => {
     const task = projectTasks[projectId];
-    
+
     // If already cancelling, ignore
     if (cancellingProjects.has(projectId)) return;
-    
+
     // For INITIALIZING projects without active tasks, we can still attempt cleanup
     if (!task) {
-      console.log(`No active task found for project ${projectId}, but attempting cleanup for INITIALIZING project`);
+      console.log(
+        `No active task found for project ${projectId}, but attempting cleanup for INITIALIZING project`
+      );
     }
 
     // Show confirmation modal
@@ -132,7 +138,7 @@ export default function ProjectsPage() {
 
     try {
       let response, result;
-      
+
       if (task && task.taskId) {
         // If we have an active task, cancel it via task endpoint
         response = await fetch(`/api/tasks/${task.taskId}/cancel`, {
@@ -328,19 +334,21 @@ export default function ProjectsPage() {
                               <div className="animate-spin rounded-full h-4 w-4 border border-blue-300 border-t-transparent"></div>
                             </div>
                           </div>
-                          
+
                           {/* Initialization Progress */}
                           {projectTasks[project.id] && (
                             <div className="mb-3">
-                              <div className={`text-sm mb-1 ${
-                                projectTasks[project.id].status === 'FAILED' 
-                                  ? 'text-red-300' 
-                                  : 'text-blue-300'
-                              }`}>
+                              <div
+                                className={`text-sm mb-1 ${
+                                  projectTasks[project.id].status === 'FAILED'
+                                    ? 'text-red-300'
+                                    : 'text-blue-300'
+                                }`}
+                              >
                                 {projectTasks[project.id].status === 'FAILED'
                                   ? 'Initialization Failed'
-                                  : projectTasks[project.id].currentPhase || 'Initializing...'
-                                }
+                                  : projectTasks[project.id].currentPhase ||
+                                    'Initializing...'}
                               </div>
                               <div className="text-xs text-primary-400 mb-2">
                                 {projectTasks[project.id].message}
@@ -352,23 +360,26 @@ export default function ProjectsPage() {
                                       ? 'bg-red-500'
                                       : 'bg-blue-500'
                                   }`}
-                                  style={{ width: `${projectTasks[project.id].progress}%` }}
+                                  style={{
+                                    width: `${projectTasks[project.id].progress}%`,
+                                  }}
                                 />
                               </div>
                               <div className="text-xs text-primary-400 mt-1">
                                 {projectTasks[project.id].status === 'FAILED'
                                   ? 'Failed - click Cancel to clean up'
-                                  : `${projectTasks[project.id].progress}% complete`
-                                }
+                                  : `${projectTasks[project.id].progress}% complete`}
                               </div>
                             </div>
                           )}
                         </div>
-                        
+
                         {/* Cancel Button */}
                         <div className="ml-4">
                           <button
-                            onClick={() => handleCancelProject(project.id, project.name)}
+                            onClick={() =>
+                              handleCancelProject(project.id, project.name)
+                            }
                             disabled={cancellingProjects.has(project.id)}
                             className={`
                               inline-flex items-center px-4 py-2 border border-red-600 
@@ -381,20 +392,21 @@ export default function ProjectsPage() {
                             `}
                           >
                             <X className="w-4 h-4 mr-2" />
-                            {cancellingProjects.has(project.id) 
-                              ? 'Cleaning up...' 
-                              : (projectTasks[project.id]?.status === 'FAILED' ? 'Clean up' : 'Cancel')
-                            }
+                            {cancellingProjects.has(project.id)
+                              ? 'Cleaning up...'
+                              : projectTasks[project.id]?.status === 'FAILED'
+                                ? 'Clean up'
+                                : 'Cancel'}
                           </button>
                         </div>
                       </div>
-                      
+
                       {project.summary && (
                         <p className="text-sm text-primary-300 mb-3 line-clamp-2">
                           {project.summary}
                         </p>
                       )}
-                      
+
                       {/* Tech Stack Info */}
                       <div className="flex items-center gap-4 text-sm text-primary-400 mb-3">
                         {project.language && (
@@ -416,14 +428,18 @@ export default function ProjectsPage() {
                           </span>
                         )}
                       </div>
-                      
+
                       {/* Git Info & Path */}
                       <div className="pt-3 border-t border-primary-800">
                         <div className="flex items-center gap-4 text-xs">
                           {project.gitUrl && (
                             <span className="flex items-center gap-1 text-primary-400">
-                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.30 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                              <svg
+                                className="w-3 h-3"
+                                fill="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.30 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
                               </svg>
                               Remote
                             </span>
@@ -436,10 +452,7 @@ export default function ProjectsPage() {
                     </div>
                   ) : (
                     // Active projects - clickable
-                    <Link
-                      href={`/projects/${project.id}`}
-                      className="block"
-                    >
+                    <Link href={`/projects/${project.id}`} className="block">
                       <div className="bg-primary-900 rounded-lg shadow-sm border border-primary-800 p-6 hover:shadow-md hover:border-primary-700 transition-all">
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">
@@ -453,103 +466,116 @@ export default function ProjectsPage() {
                                 {project.status}
                               </span>
                             </div>
-                        {project.summary && (
-                          <p className="text-sm text-primary-300 mb-3 line-clamp-2">
-                            {project.summary}
-                          </p>
-                        )}
-                        
-                        {/* Tech Stack Info */}
-                        <div className="flex items-center gap-4 text-sm text-primary-400 mb-3">
-                          {project.language && (
-                            <span className="flex items-center gap-1">
-                              <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                              {project.language}
-                            </span>
-                          )}
-                          {project.framework && (
-                            <span className="flex items-center gap-1">
-                              <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                              {project.framework}
-                            </span>
-                          )}
-                          {project.packageManager && (
-                            <span className="flex items-center gap-1">
-                              <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                              {project.packageManager}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="text-right">
-                        <div className="text-sm font-medium text-accent-50 mb-1">
-                          Last updated: {new Date(project.updatedAt).toLocaleDateString()}
-                        </div>
-                        <div className="text-xs text-primary-400">
-                          {new Date(project.updatedAt).toLocaleTimeString()}
-                        </div>
-                      </div>
-                    </div>
+                            {project.summary && (
+                              <p className="text-sm text-primary-300 mb-3 line-clamp-2">
+                                {project.summary}
+                              </p>
+                            )}
 
-                    {/* Detailed Stats Row */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-accent-50">
-                          {project._count?.kanbanCards || 0}
-                        </div>
-                        <div className="text-xs text-primary-400">Total Cards</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-green-400">
-                          0
-                        </div>
-                        <div className="text-xs text-primary-400">Completed</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-yellow-400">
-                          0
-                        </div>
-                        <div className="text-xs text-primary-400">In Progress</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-lg font-semibold text-blue-400">
-                          {project._count?.tokenUsage || 0}
-                        </div>
-                        <div className="text-xs text-primary-400">Token Usage</div>
-                      </div>
-                    </div>
+                            {/* Tech Stack Info */}
+                            <div className="flex items-center gap-4 text-sm text-primary-400 mb-3">
+                              {project.language && (
+                                <span className="flex items-center gap-1">
+                                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                  {project.language}
+                                </span>
+                              )}
+                              {project.framework && (
+                                <span className="flex items-center gap-1">
+                                  <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                  {project.framework}
+                                </span>
+                              )}
+                              {project.packageManager && (
+                                <span className="flex items-center gap-1">
+                                  <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                                  {project.packageManager}
+                                </span>
+                              )}
+                            </div>
+                          </div>
 
-                    {/* Progress Bar */}
-                    <div className="mb-4">
-                      <div className="flex items-center justify-between text-sm mb-2">
-                        <span className="text-primary-300">Progress</span>
-                        <span className="text-accent-50">0%</span>
-                      </div>
-                      <div className="w-full bg-primary-700 rounded-full h-2">
-                        <div
-                          className="bg-accent-500 h-2 rounded-full transition-all duration-300"
-                          style={{ width: '0%' }}
-                        />
-                      </div>
-                    </div>
+                          <div className="text-right">
+                            <div className="text-sm font-medium text-accent-50 mb-1">
+                              Last updated:{' '}
+                              {new Date(project.updatedAt).toLocaleDateString()}
+                            </div>
+                            <div className="text-xs text-primary-400">
+                              {new Date(project.updatedAt).toLocaleTimeString()}
+                            </div>
+                          </div>
+                        </div>
 
-                    {/* Git Info & Path */}
-                    <div className="pt-3 border-t border-primary-800">
-                      <div className="flex items-center gap-4 text-xs">
-                        {project.gitUrl && (
-                          <span className="flex items-center gap-1 text-primary-400">
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.30 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                            </svg>
-                            Remote
-                          </span>
-                        )}
-                        <span className="text-primary-400 font-mono truncate max-w-md">
-                          {project.localPath}
-                        </span>
-                      </div>
-                    </div>
+                        {/* Detailed Stats Row */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-accent-50">
+                              {project._count?.kanbanCards || 0}
+                            </div>
+                            <div className="text-xs text-primary-400">
+                              Total Cards
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-green-400">
+                              0
+                            </div>
+                            <div className="text-xs text-primary-400">
+                              Completed
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-yellow-400">
+                              0
+                            </div>
+                            <div className="text-xs text-primary-400">
+                              In Progress
+                            </div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-blue-400">
+                              {project._count?.tokenUsage || 0}
+                            </div>
+                            <div className="text-xs text-primary-400">
+                              Token Usage
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="mb-4">
+                          <div className="flex items-center justify-between text-sm mb-2">
+                            <span className="text-primary-300">Progress</span>
+                            <span className="text-accent-50">0%</span>
+                          </div>
+                          <div className="w-full bg-primary-700 rounded-full h-2">
+                            <div
+                              className="bg-accent-500 h-2 rounded-full transition-all duration-300"
+                              style={{ width: '0%' }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Git Info & Path */}
+                        <div className="pt-3 border-t border-primary-800">
+                          <div className="flex items-center gap-4 text-xs">
+                            {project.gitUrl && (
+                              <span className="flex items-center gap-1 text-primary-400">
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.30 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                                </svg>
+                                Remote
+                              </span>
+                            )}
+                            <span className="text-primary-400 font-mono truncate max-w-md">
+                              {project.localPath}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </Link>
                   )}
@@ -569,13 +595,17 @@ export default function ProjectsPage() {
         isOpen={confirmModal.isOpen}
         onClose={handleCancelModalClose}
         onConfirm={handleConfirmCancel}
-        title={confirmModal.isFailed ? "Clean Up Failed Project" : "Cancel Project Initialization"}
+        title={
+          confirmModal.isFailed
+            ? 'Clean Up Failed Project'
+            : 'Cancel Project Initialization'
+        }
         message={
           confirmModal.isFailed
             ? `Are you sure you want to clean up the failed project "${confirmModal.projectName}"?\n\nThis will remove all created files and database records.`
             : `Are you sure you want to cancel the initialization of "${confirmModal.projectName}"?\n\nThis will stop the process and clean up all created files and database records.`
         }
-        confirmText={confirmModal.isFailed ? "Clean Up" : "Cancel Project"}
+        confirmText={confirmModal.isFailed ? 'Clean Up' : 'Cancel Project'}
         cancelText="Keep Project"
         variant="danger"
         isLoading={cancellingProjects.has(confirmModal.projectId)}

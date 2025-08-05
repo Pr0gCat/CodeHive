@@ -25,7 +25,8 @@ describe('Queries API', () => {
       data: {
         name: 'Test Project',
         description: 'Test project for queries',
-        repositoryUrl: 'https://github.com/test/project',
+        gitUrl: 'https://github.com/test/project',
+        localPath: '/test/project/path',
       },
     });
     testProjectId = project.id;
@@ -58,7 +59,8 @@ describe('Queries API', () => {
     const query = await prisma.query.create({
       data: {
         title: 'Test Query',
-        description: 'Test query description',
+        question: 'Test query question',
+        context: 'Test query context',
         type: 'ARCHITECTURE',
         urgency: 'ADVISORY',
         projectId: testProjectId,
@@ -112,4 +114,4 @@ describe('Queries API', () => {
       where: { projectId: testProjectId },
     });
   });
-}); 
+});

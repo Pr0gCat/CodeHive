@@ -64,7 +64,8 @@ export async function PUT(request: NextRequest) {
 
     const status = await queue.getQueueStatus();
     const currentStatus = queue.getStatus();
-    const actionPerformed = currentStatus === QueueStatus.ACTIVE ? 'resumed' : 'paused';
+    const actionPerformed =
+      currentStatus === QueueStatus.ACTIVE ? 'resumed' : 'paused';
 
     return NextResponse.json({
       success: true,

@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
         status: 'completed',
         lastRun: new Date(Date.now() - 86400000).toISOString(),
         nextRun: new Date(Date.now() + 86400000).toISOString(),
-        duration: '2m 15s'
+        duration: '2m 15s',
       },
       {
         id: '2',
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
         status: 'pending',
         lastRun: new Date(Date.now() - 172800000).toISOString(),
         nextRun: new Date(Date.now() + 3600000).toISOString(),
-        duration: '5m 30s'
+        duration: '5m 30s',
       },
       {
         id: '3',
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
         status: 'completed',
         lastRun: new Date(Date.now() - 259200000).toISOString(),
         nextRun: new Date(Date.now() + 604800000).toISOString(),
-        duration: '15m 45s'
+        duration: '15m 45s',
       },
       {
         id: '4',
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
         status: 'pending',
         lastRun: new Date(Date.now() - 345600000).toISOString(),
         nextRun: new Date(Date.now() + 7200000).toISOString(),
-        duration: '8m 12s'
+        duration: '8m 12s',
       },
       {
         id: '5',
@@ -49,20 +49,20 @@ export async function GET(request: NextRequest) {
         status: 'completed',
         lastRun: new Date(Date.now() - 432000000).toISOString(),
         nextRun: new Date(Date.now() + 86400000).toISOString(),
-        duration: '3m 45s'
-      }
+        duration: '3m 45s',
+      },
     ];
 
     return NextResponse.json({
       success: true,
-      data: maintenanceTasks
+      data: maintenanceTasks,
     });
   } catch (error) {
     console.error('Error fetching maintenance tasks:', error);
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to fetch maintenance tasks'
+        error: 'Failed to fetch maintenance tasks',
       },
       { status: 500 }
     );

@@ -11,8 +11,14 @@ const createProjectSchema = z.object({
     .string()
     .min(1, 'Project name is required')
     .max(100, 'Project name must be less than 100 characters')
-    .regex(/^[a-zA-Z0-9\s\-_\.]+$/, 'Project name can only contain letters, numbers, spaces, hyphens, underscores, and dots')
-    .refine(val => val.trim().length > 0, 'Project name cannot be empty or only whitespace'),
+    .regex(
+      /^[a-zA-Z0-9\s\-_\.]+$/,
+      'Project name can only contain letters, numbers, spaces, hyphens, underscores, and dots'
+    )
+    .refine(
+      val => val.trim().length > 0,
+      'Project name cannot be empty or only whitespace'
+    ),
   description: z.string().optional(),
   gitUrl: z
     .string()
@@ -251,13 +257,7 @@ async function createProjectAsync(
     buildTool?: string;
   }
 ) {
-  const {
-    name,
-    description,
-    gitUrl,
-    localPath,
-    initializeGit,
-  } = data;
+  const { name, description, gitUrl, localPath, initializeGit } = data;
 
   try {
     // Phase 1: Validation
@@ -330,7 +330,9 @@ async function createProjectAsync(
     });
 
     try {
-      const { createDefaultFirstSprint } = await import('@/lib/sprints/default-sprint');
+      const { createDefaultFirstSprint } = await import(
+        '@/lib/sprints/default-sprint'
+      );
       const sprintResult = await createDefaultFirstSprint(projectId, name);
 
       await taskManager.updatePhaseProgress(taskId, sprintSetupPhaseId, 100, {
@@ -351,40 +353,58 @@ async function createProjectAsync(
     const descriptionGenerationPhaseId = 'description_generation';
     await taskManager.startPhase(taskId, descriptionGenerationPhaseId);
 
-    await taskManager.updatePhaseProgress(taskId, descriptionGenerationPhaseId, 20, {
-      type: 'PHASE_PROGRESS',
-      message: 'Analyzing project for description generation...',
-    });
+    await taskManager.updatePhaseProgress(
+      taskId,
+      descriptionGenerationPhaseId,
+      20,
+      {
+        type: 'PHASE_PROGRESS',
+        message: 'Analyzing project for description generation...',
+      }
+    );
 
     // Use code analyzer for description generation
     let finalDescription = description || 'Software project';
     try {
-      console.log(
-        `🔍 Analyzing project structure for description: ${name}...`
+      console.log(`🔍 Analyzing project structure for description: ${name}...`);
+
+      const { projectAnalyzer } = await import(
+        '@/lib/analysis/project-analyzer'
       );
+      const finalAnalysisResult =
+        await projectAnalyzer.analyzeProject(localPath);
 
-      const { projectAnalyzer } = await import('@/lib/analysis/project-analyzer');
-      const finalAnalysisResult = await projectAnalyzer.analyzeProject(localPath);
-
-      await taskManager.updatePhaseProgress(taskId, descriptionGenerationPhaseId, 60, {
-        type: 'PHASE_PROGRESS',
-        message: 'Generating intelligent project description...',
-      });
+      await taskManager.updatePhaseProgress(
+        taskId,
+        descriptionGenerationPhaseId,
+        60,
+        {
+          type: 'PHASE_PROGRESS',
+          message: 'Generating intelligent project description...',
+        }
+      );
 
       // Generate description based on analysis results
       const techStack = [];
-      if (finalAnalysisResult.detectedLanguage) techStack.push(finalAnalysisResult.detectedLanguage);
-      if (finalAnalysisResult.detectedFramework) techStack.push(finalAnalysisResult.detectedFramework);
-      if (finalAnalysisResult.detectedPackageManager) techStack.push(finalAnalysisResult.detectedPackageManager);
-      
-      const techStackText = techStack.length > 0 ? ` using ${techStack.join(', ')}` : '';
-      const fileCountText = finalAnalysisResult.totalFiles > 0 ? ` with ${finalAnalysisResult.totalFiles} files` : '';
-      
-      finalDescription = description || `${finalAnalysisResult.detectedLanguage || 'Software'} project${techStackText}${fileCountText}. Managed by CodeHive with AI-Native TDD development.`;
-      
-      console.log(
-        `Generated description from analysis: "${finalDescription}"`
-      );
+      if (finalAnalysisResult.detectedLanguage)
+        techStack.push(finalAnalysisResult.detectedLanguage);
+      if (finalAnalysisResult.detectedFramework)
+        techStack.push(finalAnalysisResult.detectedFramework);
+      if (finalAnalysisResult.detectedPackageManager)
+        techStack.push(finalAnalysisResult.detectedPackageManager);
+
+      const techStackText =
+        techStack.length > 0 ? ` using ${techStack.join(', ')}` : '';
+      const fileCountText =
+        finalAnalysisResult.totalFiles > 0
+          ? ` with ${finalAnalysisResult.totalFiles} files`
+          : '';
+
+      finalDescription =
+        description ||
+        `${finalAnalysisResult.detectedLanguage || 'Software'} project${techStackText}${fileCountText}. Managed by CodeHive with AI-Native TDD development.`;
+
+      console.log(`Generated description from analysis: "${finalDescription}"`);
     } catch (descriptionError) {
       console.error(
         `⚠️ Failed to analyze project for description ${name}:`,
@@ -393,13 +413,18 @@ async function createProjectAsync(
       // Continue with default description
     }
 
-    await taskManager.updatePhaseProgress(taskId, descriptionGenerationPhaseId, 100, {
-      type: 'PHASE_COMPLETE',
-      message: 'Project description generated with code analyzer',
-    });
+    await taskManager.updatePhaseProgress(
+      taskId,
+      descriptionGenerationPhaseId,
+      100,
+      {
+        type: 'PHASE_COMPLETE',
+        message: 'Project description generated with code analyzer',
+      }
+    );
     await taskManager.completePhase(taskId, descriptionGenerationPhaseId);
 
-    // Phase 5: Complete initialization 
+    // Phase 5: Complete initialization
     const completionPhaseId = 'completion';
     await taskManager.startPhase(taskId, completionPhaseId);
 
@@ -447,6 +472,19 @@ async function createProjectAsync(
         localPath: localPath,
       },
     });
+
+    // TODO: Trigger automatic Kanban board optimization after project creation completion
+    // setImmediate(async () => {
+    //   try {
+    //     console.log(`🎯 Triggering automatic Kanban optimization after project creation completion`);
+    //     const { ProjectManagerAgent } = await import('@/lib/agents/project-manager');
+    //     const projectManager = new ProjectManagerAgent();
+    //     // await projectManager.manageKanbanBoard(projectId);
+    //     console.log(`✅ Automatic Kanban optimization completed after project creation`);
+    //   } catch (error) {
+    //     console.error(`❌ Automatic Kanban optimization failed after project creation: ${error}`);
+    //   }
+    // });
   } catch (error) {
     console.error('Error in createProjectAsync:', error);
     await taskManager.updatePhaseProgress(taskId, 'complete', 100, {

@@ -117,7 +117,6 @@ Please update CLAUDE.md to document this decision and the user's preferences for
 
       // Execute the Claude Code command to update CLAUDE.md
       const result = await claudeCode.execute(command, {
-        expectedResponse: 'CLAUDE.md_UPDATE_CONFIRMATION',
         timeout: 1800000, // 30 minutes timeout for documentation updates
       });
 

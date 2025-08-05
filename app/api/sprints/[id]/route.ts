@@ -52,10 +52,7 @@ export async function GET(request: NextRequest, { params }: SprintParams) {
     });
 
     if (!sprint) {
-      return NextResponse.json(
-        { error: 'Sprint not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Sprint not found' }, { status: 404 });
     }
 
     return NextResponse.json(sprint);
@@ -78,10 +75,7 @@ export async function PATCH(request: NextRequest, { params }: SprintParams) {
     });
 
     if (!sprint) {
-      return NextResponse.json(
-        { error: 'Sprint not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Sprint not found' }, { status: 404 });
     }
 
     // Update sprint
@@ -91,11 +85,12 @@ export async function PATCH(request: NextRequest, { params }: SprintParams) {
         ...body,
         startDate: body.startDate ? new Date(body.startDate) : undefined,
         endDate: body.endDate ? new Date(body.endDate) : undefined,
-        completedAt: body.status === 'COMPLETED' && !sprint.completedAt
-          ? new Date()
-          : body.status !== 'COMPLETED'
-          ? null
-          : undefined,
+        completedAt:
+          body.status === 'COMPLETED' && !sprint.completedAt
+            ? new Date()
+            : body.status !== 'COMPLETED'
+              ? null
+              : undefined,
       },
       include: {
         stories: true,
@@ -129,10 +124,7 @@ export async function DELETE(request: NextRequest, { params }: SprintParams) {
     });
 
     if (!sprint) {
-      return NextResponse.json(
-        { error: 'Sprint not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Sprint not found' }, { status: 404 });
     }
 
     // Check if sprint has stories

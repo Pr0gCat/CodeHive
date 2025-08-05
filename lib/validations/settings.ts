@@ -40,7 +40,7 @@ export const usageTrackingSchema = z.object({
   tokensUsed: z.number().min(0, 'Tokens used cannot be negative'),
   operationType: z.enum(['TDD_CYCLE', 'CODE_REVIEW', 'DOCUMENTATION', 'ANALYSIS', 'QUERY_RESPONSE']),
   timestamp: z.date().default(() => new Date()),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
 });
 
 export type UsageTrackingInput = z.infer<typeof usageTrackingSchema>;

@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { prisma as db } from '@/lib/db';
-import { SprintList } from '@/app/components/sprints/SprintList';
+import { SprintList } from '@/components/sprints/SprintList';
 
 interface SprintsPageProps {
   params: Promise<{ id: string }>;

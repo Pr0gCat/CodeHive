@@ -1,16 +1,18 @@
 import { notFound } from 'next/navigation';
 import { format } from 'date-fns';
 import { prisma as db } from '@/lib/db';
-import { SprintBoard } from '@/app/components/sprints/SprintBoard';
-import { SprintBurndown } from '@/app/components/sprints/SprintBurndown';
-import { SprintActions } from '@/app/components/sprints/SprintActions';
-import { SprintPlanningWrapper } from '@/app/components/sprints/SprintPlanningWrapper';
+import { SprintBoard } from '@/components/sprints/SprintBoard';
+import { SprintBurndown } from '@/components/sprints/SprintBurndown';
+import { SprintActions } from '@/components/sprints/SprintActions';
+import { SprintPlanningWrapper } from '@/components/sprints/SprintPlanningWrapper';
 
 interface SprintDetailPageProps {
   params: Promise<{ id: string; sprintId: string }>;
 }
 
-export default async function SprintDetailPage({ params }: SprintDetailPageProps) {
+export default async function SprintDetailPage({
+  params,
+}: SprintDetailPageProps) {
   const { id: projectId, sprintId } = await params;
 
   const sprint = await db.sprint.findUnique({
@@ -81,12 +83,11 @@ export default async function SprintDetailPage({ params }: SprintDetailPageProps
               {getStatusBadge()}
             </h1>
             <p className="mt-1 text-sm text-gray-600">
-              {sprint.project.name} • {format(new Date(sprint.startDate), 'MMM d')} -{' '}
+              {sprint.project.name} •{' '}
+              {format(new Date(sprint.startDate), 'MMM d')} -{' '}
               {format(new Date(sprint.endDate), 'MMM d, yyyy')}
             </p>
-            {sprint.goal && (
-              <p className="mt-2 text-gray-700">{sprint.goal}</p>
-            )}
+            {sprint.goal && <p className="mt-2 text-gray-700">{sprint.goal}</p>}
           </div>
           <SprintActions sprint={sprint} />
         </div>
@@ -131,7 +132,9 @@ export default async function SprintDetailPage({ params }: SprintDetailPageProps
       {/* Sprint Planning for PLANNING status */}
       {sprint.status === 'PLANNING' && (
         <div className="mb-8 bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Sprint 規劃</h2>
+          <h2 className="text-lg font-medium text-gray-900 mb-4">
+            Sprint 規劃
+          </h2>
           <SprintPlanningWrapper sprint={sprint} projectId={projectId} />
         </div>
       )}
@@ -175,7 +178,8 @@ export default async function SprintDetailPage({ params }: SprintDetailPageProps
                         className="bg-indigo-600 h-2 rounded-full"
                         style={{
                           width: `${
-                            (se.completedStoryPoints / se.plannedStoryPoints) * 100
+                            (se.completedStoryPoints / se.plannedStoryPoints) *
+                            100
                           }%`,
                         }}
                       />

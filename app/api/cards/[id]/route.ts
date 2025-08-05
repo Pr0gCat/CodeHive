@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { projectLogger } from '@/lib/logging/project-logger';
+import { coordinationSystem } from '@/lib/agents/coordination-system';
 import { z } from 'zod';
 
 const updateCardSchema = z.object({
@@ -135,6 +136,19 @@ export async function PUT(
       }
     }
 
+    // Get original card state for comparison
+    const originalCard = await prisma.kanbanCard.findUnique({
+      where: { id: params.id },
+      select: {
+        title: true,
+        status: true,
+        position: true,
+        priority: true,
+        assignedAgent: true,
+        sequence: true,
+      }
+    });
+
     const updatedCard = await prisma.kanbanCard.update({
       where: { id: params.id },
       data: validatedData,
@@ -158,14 +172,94 @@ export async function PUT(
       },
     });
 
-    // Log the card update
-    const changes = Object.keys(validatedData);
-    projectLogger.info(
-      updatedCard.project.id,
-      'kanban',
-      `Card "${updatedCard.title}" updated (${changes.join(', ')})`,
-      { cardId: params.id, changes: validatedData }
-    );
+    // Log detailed changes for each field
+    const changes: string[] = [];
+    const changeDetails: any = {};
+
+    if (validatedData.status && originalCard?.status !== validatedData.status) {
+      changes.push(`status: ${originalCard?.status} → ${validatedData.status}`);
+      changeDetails.statusChange = {
+        from: originalCard?.status,
+        to: validatedData.status
+      };
+    }
+
+    if (validatedData.position !== undefined && originalCard?.position !== validatedData.position) {
+      changes.push(`position: ${originalCard?.position} → ${validatedData.position}`);
+      changeDetails.positionChange = {
+        from: originalCard?.position,
+        to: validatedData.position
+      };
+    }
+
+    if (validatedData.priority && originalCard?.priority !== validatedData.priority) {
+      changes.push(`priority: ${originalCard?.priority} → ${validatedData.priority}`);
+      changeDetails.priorityChange = {
+        from: originalCard?.priority,
+        to: validatedData.priority
+      };
+    }
+
+    if (validatedData.assignedAgent && originalCard?.assignedAgent !== validatedData.assignedAgent) {
+      changes.push(`agent: ${originalCard?.assignedAgent || 'unassigned'} → ${validatedData.assignedAgent}`);
+      changeDetails.agentChange = {
+        from: originalCard?.assignedAgent || null,
+        to: validatedData.assignedAgent
+      };
+    }
+
+    if (validatedData.title && originalCard?.title !== validatedData.title) {
+      changes.push(`title: "${originalCard?.title}" → "${validatedData.title}"`);
+      changeDetails.titleChange = {
+        from: originalCard?.title,
+        to: validatedData.title
+      };
+    }
+
+    // Log the card update with detailed changes
+    if (changes.length > 0) {
+      projectLogger.info(
+        updatedCard.project.id,
+        'kanban-card-update',
+        `📋 Card "${updatedCard.title}" updated: ${changes.join(', ')}`,
+        { 
+          action: 'manual_card_update',
+          cardId: params.id,
+          cardTitle: updatedCard.title,
+          changes: changeDetails,
+          updateSource: 'manual'
+        }
+      );
+    }
+
+    // If status changed to IN_PROGRESS, trigger coordination
+    if (validatedData.status === 'IN_PROGRESS') {
+      projectLogger.info(
+        updatedCard.project.id,
+        'kanban',
+        `Story moved to IN_PROGRESS, triggering coordination for: "${updatedCard.title}"`,
+        { cardId: params.id, storyTitle: updatedCard.title }
+      );
+
+      // Trigger coordination in the background (don't block the response)
+      setImmediate(async () => {
+        try {
+          await coordinationSystem.coordinateProjectWork(
+            updatedCard.project.id
+          );
+        } catch (error) {
+          projectLogger.error(
+            updatedCard.project.id,
+            'kanban',
+            `Failed to trigger coordination for story: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            {
+              cardId: params.id,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            }
+          );
+        }
+      });
+    }
 
     return NextResponse.json({
       success: true,
@@ -201,7 +295,7 @@ export async function DELETE(
   try {
     const card = await prisma.kanbanCard.findUnique({
       where: { id: params.id },
-      select: { projectId: true, position: true, title: true },
+      select: { projectId: true, position: true, title: true, status: true, priority: true },
     });
 
     if (!card) {
@@ -233,9 +327,19 @@ export async function DELETE(
     // Log the card deletion
     projectLogger.info(
       card.projectId,
-      'kanban',
-      `Card "${card.title}" deleted`,
-      { cardId: params.id }
+      'kanban-card-delete',
+      `📋 Card deleted: "${card.title}"`,
+      { 
+        action: 'card_deleted',
+        cardId: params.id,
+        cardTitle: card.title,
+        originalData: {
+          status: card.status,
+          position: card.position,
+          priority: card.priority
+        },
+        updateSource: 'manual'
+      }
     );
 
     return NextResponse.json({

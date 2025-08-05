@@ -170,12 +170,21 @@ export interface ProjectOverviewResponse {
   data: {
     project: Pick<
       Project,
-      'id' | 'name' | 'description' | 'summary' | 'status' | 'createdAt' | 'updatedAt'
+      | 'id'
+      | 'name'
+      | 'description'
+      | 'summary'
+      | 'status'
+      | 'createdAt'
+      | 'updatedAt'
     >;
     hierarchy: HierarchicalData;
     mvpPhases: MVPPhaseProgress[];
     statistics: ProjectStatistics;
     blockers: Blocker[];
-    recentQueries: Pick<Query, 'id' | 'type' | 'title' | 'urgency' | 'createdAt'>[];
+    recentQueries: Pick<
+      Query,
+      'id' | 'type' | 'title' | 'urgency' | 'createdAt'
+    >[];
   };
 }

@@ -71,13 +71,15 @@ export async function GET(request: NextRequest) {
       .reduce((sum: number, story: Story) => sum + (story.storyPoints || 0), 0);
 
     const daysElapsed = Math.ceil(
-      (new Date().getTime() - activeSprint.startDate.getTime()) / (1000 * 60 * 60 * 24)
+      (new Date().getTime() - activeSprint.startDate.getTime()) /
+        (1000 * 60 * 60 * 24)
     );
     const totalDays = activeSprint.duration;
     const timeElapsedPercentage = Math.round((daysElapsed / totalDays) * 100);
-    const workCompletedPercentage = totalStoryPoints > 0
-      ? Math.round((completedStoryPoints / totalStoryPoints) * 100)
-      : 0;
+    const workCompletedPercentage =
+      totalStoryPoints > 0
+        ? Math.round((completedStoryPoints / totalStoryPoints) * 100)
+        : 0;
 
     // Determine sprint health
     let health = 'ON_TRACK';

@@ -9,7 +9,7 @@ export async function POST(
 
     // In a real implementation, this would trigger actual maintenance tasks
     // For now, we'll simulate the task execution
-    
+
     console.log(`Running maintenance task: ${taskId}`);
 
     // Execute maintenance task immediately
@@ -43,15 +43,15 @@ export async function POST(
         status: 'completed',
         duration: result.duration,
         message: result.message,
-        details: result.details
-      }
+        details: result.details,
+      },
     });
   } catch (error) {
     console.error('Error running maintenance task:', error);
     return NextResponse.json(
       {
         success: false,
-        error: `Failed to run maintenance task: ${error instanceof Error ? error.message : 'Unknown error'}`
+        error: `Failed to run maintenance task: ${error instanceof Error ? error.message : 'Unknown error'}`,
       },
       { status: 500 }
     );
@@ -66,8 +66,8 @@ async function runTaskRecovery() {
     details: {
       recoveredTasks: 3,
       failedRecoveries: 0,
-      totalChecked: 15
-    }
+      totalChecked: 15,
+    },
   };
 }
 
@@ -79,8 +79,8 @@ async function runDatabaseCleanup() {
     details: {
       deletedRecords: 45620,
       freedSpace: '1.2GB',
-      tablesOptimized: 8
-    }
+      tablesOptimized: 8,
+    },
   };
 }
 
@@ -92,8 +92,8 @@ async function runPerformanceOptimization() {
     details: {
       optimizedQueries: 23,
       indexesCreated: 5,
-      performanceImprovement: '12%'
-    }
+      performanceImprovement: '12%',
+    },
   };
 }
 
@@ -105,8 +105,8 @@ async function runTokenAnalysis() {
     details: {
       projectsAnalyzed: 12,
       optimizationSuggestions: 7,
-      potentialSavings: '15%'
-    }
+      potentialSavings: '15%',
+    },
   };
 }
 
@@ -118,7 +118,7 @@ async function runBackupVerification() {
     details: {
       backupsChecked: 7,
       integrityPassed: 7,
-      integrityFailed: 0
-    }
+      integrityFailed: 0,
+    },
   };
 }

@@ -20,7 +20,11 @@ app.prepare().then(async () => {
       const parsedUrl = parse(req.url!, true);
       await handle(req, res, parsedUrl);
     } catch (err) {
-      logger.error('Error occurred handling request', { url: req.url }, err as Error);
+      logger.error(
+        'Error occurred handling request',
+        { url: req.url },
+        err as Error
+      );
       res.statusCode = 500;
       res.end('internal server error');
     }
@@ -35,7 +39,11 @@ app.prepare().then(async () => {
     await taskRecoveryService.recoverInterruptedTasks();
     logger.info('Task recovery completed', { module: 'server' });
   } catch (error) {
-    logger.error('❌ Task recovery failed', { module: 'server' }, error as Error);
+    logger.error(
+      '❌ Task recovery failed',
+      { module: 'server' },
+      error as Error
+    );
     // Don't prevent server startup due to recovery failure
   }
 
@@ -45,29 +53,37 @@ app.prepare().then(async () => {
       process.exit(1);
     })
     .listen(port, () => {
-      logger.info(`> Ready on http://${hostname}:${port}`, { module: 'server' });
+      logger.info(`> Ready on http://${hostname}:${port}`, {
+        module: 'server',
+      });
       logger.info(`> Socket.IO server initialized`, { module: 'server' });
       logger.info('> Task recovery system active', { module: 'server' });
     });
 
   // Graceful shutdown
   let isShuttingDown = false;
-  
+
   const gracefulShutdown = (signal: string) => {
     if (isShuttingDown) {
-      logger.warn(`${signal} signal received again, forcing exit`, { module: 'server' });
+      logger.warn(`${signal} signal received again, forcing exit`, {
+        module: 'server',
+      });
       process.exit(1);
     }
-    
+
     isShuttingDown = true;
-    logger.info(`${signal} signal received: closing HTTP server`, { module: 'server' });
-    
+    logger.info(`${signal} signal received: closing HTTP server`, {
+      module: 'server',
+    });
+
     // Set a timeout to force exit if shutdown takes too long
     const forceExitTimeout = setTimeout(() => {
-      logger.error('Shutdown timeout reached, forcing exit', { module: 'server' });
+      logger.error('Shutdown timeout reached, forcing exit', {
+        module: 'server',
+      });
       process.exit(1);
     }, 5000);
-    
+
     server.close(() => {
       logger.info('HTTP server closed', { module: 'server' });
       if (io) {

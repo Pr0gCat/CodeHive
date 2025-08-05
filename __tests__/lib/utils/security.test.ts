@@ -1,12 +1,11 @@
-
 import {
-    escapeShellArg,
-    safeExec,
-    sanitizeShellInput,
-    validateApiInput,
-    validateFileName,
-    validateGitBranchName,
-    validatePath,
+  escapeShellArg,
+  safeExec,
+  sanitizeShellInput,
+  validateApiInput,
+  validateFileName,
+  validateGitBranchName,
+  validatePath,
 } from '@/lib/utils/security';
 
 describe('Security Utilities', () => {
@@ -94,7 +93,9 @@ describe('Security Utilities', () => {
     });
 
     it('should reject non-whitelisted commands', async () => {
-      await expect(safeExec('rm', ['-rf', '/'])).rejects.toThrow("Command 'rm' is not allowed");
+      await expect(safeExec('rm', ['-rf', '/'])).rejects.toThrow(
+        "Command 'rm' is not allowed"
+      );
     });
 
     it('should escape arguments', async () => {

@@ -22,10 +22,7 @@ export async function POST(request: NextRequest, { params }: SprintParams) {
     });
 
     if (!sprint) {
-      return NextResponse.json(
-        { error: 'Sprint not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Sprint not found' }, { status: 404 });
     }
 
     if (sprint.status !== 'PLANNING') {
@@ -82,7 +79,9 @@ export async function POST(request: NextRequest, { params }: SprintParams) {
       data: {
         sprintId: id,
         date: new Date(new Date().toISOString().split('T')[0]),
-        storiesInProgress: sprint.stories.filter((s: Story) => s.status === 'IN_PROGRESS').length,
+        storiesInProgress: sprint.stories.filter(
+          (s: Story) => s.status === 'IN_PROGRESS'
+        ).length,
         storiesCompleted: 0,
         notes: 'Sprint started',
       },

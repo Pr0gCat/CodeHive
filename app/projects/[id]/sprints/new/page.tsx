@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { prisma as db } from '@/lib/db';
-import { SprintForm } from '@/app/components/sprints/SprintForm';
+import { SprintForm } from '@/components/sprints/SprintForm';
 
 interface NewSprintPageProps {
   params: Promise<{ id: string }>;

@@ -1,8 +1,8 @@
-import CodeHiveLogo from './components/CodeHiveLogo';
-import Navbar from './components/Navbar';
-import ProjectProgressDashboard from './components/ProjectProgressDashboard';
-import TokenMonitor from './components/TokenMonitor';
-import { OverviewDashboard } from './components/oversight/OverviewDashboard';
+import CodeHiveLogo from '@/components/CodeHiveLogo';
+import Navbar from '@/components/Navbar';
+import ProjectProgressDashboard from '@/components/ProjectProgressDashboard';
+import TokenMonitor from '@/components/TokenMonitor';
+import { OverviewDashboard } from '@/components/oversight/OverviewDashboard';
 
 export default function Home() {
   return (

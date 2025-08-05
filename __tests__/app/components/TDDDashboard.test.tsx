@@ -1,10 +1,10 @@
-import TDDDashboard from '@/app/components/TDDDashboard';
+import TDDDashboard from '@/components/TDDDashboard';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 // Mock the toast hook
 const mockShowToast = jest.fn();
-jest.doMock('@/app/components/ui/ToastManager', () => ({
+jest.doMock('@/components/ui/ToastManager', () => ({
   useToast: () => ({
     showToast: mockShowToast,
   }),
@@ -15,9 +15,10 @@ const mockFetch = jest.fn() as unknown as jest.MockedFunction<typeof fetch>;
 global.fetch = mockFetch as any;
 
 // Helper to create mock response
-const createMockResponse = (data: any) => ({
-  json: jest.fn().mockResolvedValue(data),
-} as unknown as Response);
+const createMockResponse = (data: any) =>
+  ({
+    json: jest.fn().mockResolvedValue(data),
+  }) as unknown as Response;
 
 const mockCycles = [
   {

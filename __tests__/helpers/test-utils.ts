@@ -6,7 +6,9 @@ export const createMockProject = (overrides = {}) => ({
   id: 'test-project-id',
   name: 'Test Project',
   description: 'Test project description',
-  repositoryUrl: 'https://github.com/test/project',
+  gitUrl: 'https://github.com/test/project',
+  localPath: '/test/project/path',
+  status: 'ACTIVE',
   createdAt: new Date(),
   updatedAt: new Date(),
   ...overrides,
@@ -135,7 +137,11 @@ export const mockQuery = {
 export const mockExec = (stdout: string = '', stderr: string = '') => {
   const { exec } = require('child_process');
   exec.mockImplementation(
-    (command: string, options: Record<string, unknown>, callback?: Function) => {
+    (
+      command: string,
+      options: Record<string, unknown>,
+      callback?: Function
+    ) => {
       const result = { stdout, stderr };
       if (callback) {
         callback(null, result);
@@ -148,7 +154,7 @@ export const mockExec = (stdout: string = '', stderr: string = '') => {
 // Mock fs functions
 export const mockFs = () => {
   const fs = require('fs');
-  
+
   // Ensure fs.promises methods are mocked
   if (!fs.promises.mkdir.mockResolvedValue) {
     fs.promises.mkdir = jest.fn().mockResolvedValue(undefined);
@@ -174,7 +180,7 @@ export const mockFs = () => {
   if (!fs.promises.rm.mockResolvedValue) {
     fs.promises.rm = jest.fn().mockResolvedValue(undefined);
   }
-  
+
   return {
     mkdir: fs.promises.mkdir,
     writeFile: fs.promises.writeFile,
@@ -265,11 +271,11 @@ describe('Test Utilities', () => {
   describe('createMockProject', () => {
     it('should create a mock project with default values', () => {
       const project = createMockProject();
-      
+
       expect(project.id).toBe('test-project-id');
       expect(project.name).toBe('Test Project');
       expect(project.description).toBe('Test project description');
-      expect(project.repositoryUrl).toBe('https://github.com/test/project');
+      expect(project.gitUrl).toBe('https://github.com/test/project');
       expect(project.createdAt).toBeInstanceOf(Date);
       expect(project.updatedAt).toBeInstanceOf(Date);
     });
@@ -279,7 +285,7 @@ describe('Test Utilities', () => {
         name: 'Custom Project',
         description: 'Custom description',
       });
-      
+
       expect(project.name).toBe('Custom Project');
       expect(project.description).toBe('Custom description');
       expect(project.id).toBe('test-project-id'); // Default value preserved
@@ -289,7 +295,7 @@ describe('Test Utilities', () => {
   describe('createMockCycle', () => {
     it('should create a mock cycle with default values', () => {
       const cycle = createMockCycle();
-      
+
       expect(cycle.id).toBe('test-cycle-id');
       expect(cycle.projectId).toBe('test-project-id');
       expect(cycle.name).toBe('Test Cycle');
@@ -302,7 +308,7 @@ describe('Test Utilities', () => {
         phase: 'GREEN',
         status: 'COMPLETED',
       });
-      
+
       expect(cycle.phase).toBe('GREEN');
       expect(cycle.status).toBe('COMPLETED');
     });
@@ -311,7 +317,7 @@ describe('Test Utilities', () => {
   describe('createMockTest', () => {
     it('should create a mock test with default values', () => {
       const test = createMockTest();
-      
+
       expect(test.id).toBe('test-test-id');
       expect(test.cycleId).toBe('test-cycle-id');
       expect(test.name).toBe('should work correctly');
@@ -324,7 +330,7 @@ describe('Test Utilities', () => {
         status: 'PASSING',
         name: 'should pass the test',
       });
-      
+
       expect(test.status).toBe('PASSING');
       expect(test.name).toBe('should pass the test');
     });
@@ -333,7 +339,7 @@ describe('Test Utilities', () => {
   describe('createMockArtifact', () => {
     it('should create a mock artifact with default values', () => {
       const artifact = createMockArtifact();
-      
+
       expect(artifact.id).toBe('test-artifact-id');
       expect(artifact.cycleId).toBe('test-cycle-id');
       expect(artifact.name).toBe('test-implementation');
@@ -347,7 +353,7 @@ describe('Test Utilities', () => {
         type: 'DOCUMENTATION',
         phase: 'REFACTOR',
       });
-      
+
       expect(artifact.type).toBe('DOCUMENTATION');
       expect(artifact.phase).toBe('REFACTOR');
     });

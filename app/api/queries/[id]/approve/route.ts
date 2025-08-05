@@ -4,7 +4,10 @@ import { z } from 'zod';
 import { updateCLAUDEMDAfterQuery } from '@/lib/claude-md/auto-update';
 
 const approveSchema = z.object({
-  proposal: z.string().min(1, 'Proposal cannot be empty').max(2000, 'Proposal too long'),
+  proposal: z
+    .string()
+    .min(1, 'Proposal cannot be empty')
+    .max(2000, 'Proposal too long'),
 });
 
 export async function POST(
@@ -19,21 +22,17 @@ export async function POST(
     // Get the existing query
     const existingQuery = await prisma.query.findUnique({
       where: { id: queryId },
-      include: { 
+      include: {
         cycle: {
           include: {
-            task: {
+            story: {
               include: {
-                story: {
-                  include: {
-                    epic: true
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                epic: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     if (!existingQuery) {
@@ -50,8 +49,8 @@ export async function POST(
         answer: proposal,
         status: 'APPROVED',
         answeredAt: new Date(),
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
 
     // Add approval comment
@@ -60,20 +59,20 @@ export async function POST(
         queryId,
         content: `Approved proposal: ${proposal}`,
         author: 'USER',
-      }
+      },
     });
 
     // Find blocked cycles that can now resume
     const resumedWork: string[] = [];
-    
+
     if (existingQuery.cycle) {
       // Resume the blocked cycle
       await prisma.cycle.update({
         where: { id: existingQuery.cycle.id },
         data: {
           status: 'IN_PROGRESS',
-          updatedAt: new Date()
-        }
+          updatedAt: new Date(),
+        },
       });
       resumedWork.push(existingQuery.cycle.id);
     }
@@ -86,7 +85,9 @@ export async function POST(
         proposal,
         {
           userDecisions: [`User approved: ${proposal}`],
-          implementationDetails: [`Resolution for query: ${existingQuery.question}`],
+          implementationDetails: [
+            `Resolution for query: ${existingQuery.question}`,
+          ],
         }
       );
     } catch (error) {
@@ -100,7 +101,7 @@ export async function POST(
       query: {
         id: queryId,
         status: 'APPROVED',
-        answer: proposal
+        answer: proposal,
       },
       message: 'Query approved successfully. Development work will resume.',
     });
@@ -121,7 +122,8 @@ export async function POST(
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to approve query',
+        error:
+          error instanceof Error ? error.message : 'Failed to approve query',
       },
       { status: 500 }
     );

@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,208 +8,160 @@ datasource db {
 }
 
 model Project {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  summary     String?  // AI-generated project summary from review
-  gitUrl      String?
-  localPath   String   @unique
-  status      String @default("INITIALIZING")  // INITIALIZING, ACTIVE, PAUSED, COMPLETED, ARCHIVED
-  
-  // Tech Stack Configuration
-  framework   String?  // e.g., "Next.js", "React", "Vue.js", "Angular"
-  language    String?  // e.g., "typescript", "javascript", "python"
-  packageManager String? // e.g., "npm", "yarn", "pnpm", "bun"
-  testFramework String? // e.g., "jest", "vitest", "cypress"
-  lintTool    String?  // e.g., "eslint", "tslint", "pylint"
-  buildTool   String?  // e.g., "webpack", "vite", "rollup"
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  kanbanCards KanbanCard[]
-  tokenUsage  TokenUsage[]
-  queuedTasks QueuedTask[]
-  milestones  RoadmapMilestone[]
-  agentSpecs  AgentSpecification[]
-  settings    ProjectSettings?
-  budget      ProjectBudget?
-  cycles      Cycle[]
-  queries     Query[]
-  epics       Epic[]
-  mvpPhases   MVPPhase[]
+  id             String               @id @default(cuid())
+  name           String
+  description    String?
+  summary        String?
+  gitUrl         String?
+  localPath      String               @unique
+  status         String               @default("INITIALIZING")
+  framework      String?
+  language       String?
+  packageManager String?
+  testFramework  String?
+  lintTool       String?
+  buildTool      String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  agentSpecs     AgentSpecification[]
+  cycles         Cycle[]
+  epics          Epic[]
+  kanbanCards    KanbanCard[]
+  mvpPhases      MVPPhase[]
+  budget         ProjectBudget?
+  logs           ProjectLog[]
+  settings       ProjectSettings?
+  queries        Query[]
+  queuedTasks    QueuedTask[]
+  milestones     RoadmapMilestone[]
+  sprints        Sprint[]
   taskExecutions TaskExecution[]
-  logs        ProjectLog[]
-  sprints     Sprint[]
+  tokenUsage     TokenUsage[]
 
   @@map("projects")
 }
 
 model GlobalSettings {
-  id          String   @id @default("global")
-  
-  // Token Limit Settings (managed by sliders)
-  dailyTokenLimit      Int      @default(100000000) // 100M tokens default
-  warningThreshold     Float    @default(0.75)      // 75% warning threshold
-  criticalThreshold    Float    @default(0.90)      // 90% critical threshold
-  
-  // Budget Allocation Strategy (0.0 = equal, 1.0 = usage-based)
-  allocationStrategy   Float    @default(0.5)        // 50% mix
-  
-  // Auto-management Settings
-  autoResumeEnabled    Boolean  @default(true)       // Auto-resume when limits reset
-  pauseOnWarning       Boolean  @default(false)      // Pause at warning threshold
-  
-  // Claude API Configuration
-  claudeCodePath       String   @default("claude")   // Path to claude command
-  rateLimitPerMinute   Int      @default(50)         // API calls per minute
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                 String   @id @default("global")
+  dailyTokenLimit    Int      @default(100000000)
+  warningThreshold   Float    @default(0.75)
+  criticalThreshold  Float    @default(0.90)
+  allocationStrategy Float    @default(0.5)
+  autoResumeEnabled  Boolean  @default(true)
+  pauseOnWarning     Boolean  @default(false)
+  claudeCodePath     String   @default("claude")
+  rateLimitPerMinute Int      @default(50)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@map("global_settings")
 }
 
 model ProjectBudget {
-  id        String   @id @default(cuid())
-  projectId String   @unique
-  
-  // Budget Allocation (percentage of global daily limit)
-  allocatedPercentage Float    @default(0.0)         // 0.0-1.0
-  dailyTokenBudget   Int      @default(0)           // Calculated tokens
-  usedTokens         Int      @default(0)           // Used today
-  
-  // Budget tracking
-  lastResetAt        DateTime @default(now())
-  warningNotified    Boolean  @default(false)
-  criticalNotified   Boolean  @default(false)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id                  String   @id @default(cuid())
+  projectId           String   @unique
+  allocatedPercentage Float    @default(0.0)
+  dailyTokenBudget    Int      @default(0)
+  usedTokens          Int      @default(0)
+  lastResetAt         DateTime @default(now())
+  warningNotified     Boolean  @default(false)
+  criticalNotified    Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  project             Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("project_budgets")
 }
 
 model ProjectSettings {
-  id          String   @id @default(cuid())
-  projectId   String   @unique
-  
-  // Token and Rate Limiting Settings
-  maxTokensPerDay        Int      @default(10000)
-  maxTokensPerRequest    Int      @default(4000)
-  maxRequestsPerMinute   Int      @default(20)
-  maxRequestsPerHour     Int      @default(100)
-  
-  // Agent Execution Settings
-  agentTimeout           Int      @default(300000)  // 5 minutes in milliseconds
-  maxRetries             Int      @default(3)
-  parallelAgentLimit     Int      @default(2)
-  autoReviewOnImport     Boolean  @default(true)
-  
-  // Task Queue Settings
-  maxQueueSize           Int      @default(50)
-  taskPriority           String   @default("NORMAL") // LOW, NORMAL, HIGH, CRITICAL
-  autoExecuteTasks       Boolean  @default(true)
-  
-  // Notification Settings
-  emailNotifications     Boolean  @default(false)
-  slackWebhookUrl        String?
-  discordWebhookUrl      String?
-  notifyOnTaskComplete   Boolean  @default(true)
-  notifyOnTaskFail       Boolean  @default(true)
-  
-  // Agent Behavior Settings
-  codeAnalysisDepth      String   @default("STANDARD") // LIGHT, STANDARD, DEEP
-  testCoverageThreshold  Float    @default(80.0)
-  enforceTypeChecking    Boolean  @default(true)
-  autoFixLintErrors      Boolean  @default(false)
-  
-  // Advanced Settings
-  claudeModel            String   @default("claude-3-5-sonnet-20241022")
-  customInstructions     String?
-  excludePatterns        String?  // JSON array of file patterns to exclude
-  includeDependencies    Boolean  @default(true)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id                    String   @id @default(cuid())
+  projectId             String   @unique
+  maxTokensPerDay       Int      @default(10000)
+  maxTokensPerRequest   Int      @default(4000)
+  maxRequestsPerMinute  Int      @default(20)
+  maxRequestsPerHour    Int      @default(100)
+  agentTimeout          Int      @default(300000)
+  maxRetries            Int      @default(3)
+  parallelAgentLimit    Int      @default(2)
+  autoReviewOnImport    Boolean  @default(true)
+  maxQueueSize          Int      @default(50)
+  taskPriority          String   @default("NORMAL")
+  autoExecuteTasks      Boolean  @default(true)
+  emailNotifications    Boolean  @default(false)
+  slackWebhookUrl       String?
+  discordWebhookUrl     String?
+  notifyOnTaskComplete  Boolean  @default(true)
+  notifyOnTaskFail      Boolean  @default(true)
+  codeAnalysisDepth     String   @default("STANDARD")
+  testCoverageThreshold Float    @default(80.0)
+  enforceTypeChecking   Boolean  @default(true)
+  autoFixLintErrors     Boolean  @default(false)
+  claudeModel           String   @default("claude-3-5-sonnet-20241022")
+  customInstructions    String?
+  excludePatterns       String?
+  includeDependencies   Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  project               Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("project_settings")
 }
 
 model KanbanCard {
-  id          String     @id @default(cuid())
-  projectId   String
-  epicId      String?    // Optional: which epic this story belongs to
-  sprintId    String?    // Optional: which sprint this story is assigned to
-  title       String
-  description String?
-  status      String @default("BACKLOG")
-  position    Int
-  assignedAgent String?
-  targetBranch String?   // Target Git branch for this card
-  
-  // Story details
-  storyPoints Int?       // Estimation in story points
-  priority    String     @default("MEDIUM") // LOW, MEDIUM, HIGH
-  sequence    Int        @default(0) // Order within epic
-  tddEnabled  Boolean    @default(false) // Whether to use TDD for this story
-  
-  // Acceptance criteria
-  acceptanceCriteria String? // JSON array of criteria
-  
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-
-  // Relations
-  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  epic        Epic?        @relation(fields: [epicId], references: [id], onDelete: SetNull)
-  sprint      Sprint?      @relation(fields: [sprintId], references: [id], onDelete: SetNull)
-  agentTasks  AgentTask[]
-  queuedTasks QueuedTask[]
-  cycles      Cycle[]      // TDD cycles for this story
-  dependencies StoryDependency[] @relation("StoryDependencies")
-  dependents   StoryDependency[] @relation("StoryDependents")
+  id                 String            @id @default(cuid())
+  projectId          String
+  epicId             String?
+  sprintId           String?
+  title              String
+  description        String?
+  status             String            @default("BACKLOG")
+  position           Int
+  assignedAgent      String?
+  targetBranch       String?
+  storyPoints        Int?
+  priority           String            @default("MEDIUM")
+  sequence           Int               @default(0)
+  tddEnabled         Boolean           @default(false)
+  acceptanceCriteria String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  agentTasks         AgentTask[]
+  cycles             Cycle[]
+  sprint             Sprint?           @relation(fields: [sprintId], references: [id])
+  epic               Epic?             @relation(fields: [epicId], references: [id])
+  project            Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  queuedTasks        QueuedTask[]
+  dependents         StoryDependency[] @relation("StoryDependents")
+  dependencies       StoryDependency[] @relation("StoryDependencies")
 
   @@map("kanban_cards")
 }
 
 model StoryDependency {
   id          String     @id @default(cuid())
-  storyId     String     // Story that depends on another
-  dependsOnId String     // Story that this story depends on
-  type        String     @default("BLOCKS") // BLOCKS, RELATES_TO
-  description String?    // Why this dependency exists
-  
+  storyId     String
+  dependsOnId String
+  type        String     @default("BLOCKS")
+  description String?
   createdAt   DateTime   @default(now())
-
-  // Relations
-  story       KanbanCard @relation("StoryDependencies", fields: [storyId], references: [id], onDelete: Cascade)
   dependsOn   KanbanCard @relation("StoryDependents", fields: [dependsOnId], references: [id], onDelete: Cascade)
+  story       KanbanCard @relation("StoryDependencies", fields: [storyId], references: [id], onDelete: Cascade)
 
   @@unique([storyId, dependsOnId])
   @@map("story_dependencies")
 }
 
 model AgentTask {
-  id          String    @id @default(cuid())
+  id          String     @id @default(cuid())
   cardId      String
   agentType   String
   command     String
-  status      String @default("PENDING")
+  status      String     @default("PENDING")
   output      String?
   error       String?
   startedAt   DateTime?
   completedAt DateTime?
-  createdAt   DateTime  @default(now())
-
-  // Relations
+  createdAt   DateTime   @default(now())
   card        KanbanCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
 
   @@map("agent_tasks")
@@ -226,107 +175,82 @@ model TokenUsage {
   inputTokens  Int
   outputTokens Int
   timestamp    DateTime @default(now())
-
-  // Relations
   project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("token_usage")
 }
 
 model RoadmapMilestone {
-  id          String          @id @default(cuid())
+  id          String    @id @default(cuid())
   projectId   String
   title       String
   description String?
   dueDate     DateTime?
-  status      String @default("PLANNED")
-  createdAt   DateTime        @default(now())
-
-  // Relations
-  project     Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status      String    @default("PLANNED")
+  createdAt   DateTime  @default(now())
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("roadmap_milestones")
 }
 
-// Real-time task tracking for actual progress monitoring
 model TaskExecution {
-  id            String    @id @default(cuid())
-  taskId        String    @unique // Unique identifier for the task
-  type          String    // "PROJECT_IMPORT", "PROJECT_CREATE", "ANALYSIS", etc.
-  status        String    @default("PENDING") // PENDING, RUNNING, COMPLETED, FAILED
-  progress      Float     @default(0) // 0-100 actual progress percentage
-  currentPhase  String?   // Current phase ID
-  totalPhases   Int       @default(1)
-  
-  // Metadata
+  id            String      @id @default(cuid())
+  taskId        String      @unique
+  type          String
+  status        String      @default("PENDING")
+  progress      Float       @default(0)
+  currentPhase  String?
+  totalPhases   Int         @default(1)
   projectId     String?
   projectName   String?
-  initiatedBy   String?   // User or system identifier
-  
-  // Timing
+  initiatedBy   String?
   startedAt     DateTime?
-  lastUpdatedAt DateTime  @default(now())
+  lastUpdatedAt DateTime    @default(now())
   completedAt   DateTime?
-  
-  // Result data
-  result        String?   // Success result data (JSON string)
-  error         String?   // Error message if failed
-  
-  createdAt     DateTime  @default(now())
-
-  // Relations
-  project       Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  phases        TaskPhase[]
+  result        String?
+  error         String?
+  createdAt     DateTime    @default(now())
   events        TaskEvent[]
+  project       Project?    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  phases        TaskPhase[]
 
   @@map("task_executions")
 }
 
-// Individual phases of a task with real progress tracking
 model TaskPhase {
-  id            String    @id @default(cuid())
-  taskId        String
-  phaseId       String    // "validation", "git_clone", "analysis", etc.
-  title         String
-  description   String
-  status        String    @default("PENDING") // PENDING, ACTIVE, COMPLETED, FAILED, SKIPPED
-  progress      Float     @default(0) // 0-100 actual progress
-  order         Int       // Execution order
-  
-  // Timing
-  startedAt     DateTime?
-  completedAt   DateTime?
-  duration      Int?      // Milliseconds
-  
-  // Details
-  details       String?   // Current step details, file counts, etc. (JSON string)
-  metrics       String?   // Performance metrics, file sizes, etc. (JSON string)
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  // Relations
-  task          TaskExecution @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
-  events        TaskEvent[]
+  id          String        @id @default(cuid())
+  taskId      String
+  phaseId     String
+  title       String
+  description String
+  status      String        @default("PENDING")
+  progress    Float         @default(0)
+  order       Int
+  startedAt   DateTime?
+  completedAt DateTime?
+  duration    Int?
+  details     String?
+  metrics     String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  events      TaskEvent[]
+  task        TaskExecution @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
 
   @@unique([taskId, phaseId])
   @@map("task_phases")
 }
 
-// Granular events for detailed progress tracking
 model TaskEvent {
-  id          String    @id @default(cuid())
-  taskId      String
-  phaseId     String?
-  type        String    // "PHASE_START", "PHASE_PROGRESS", "PHASE_COMPLETE", "FILE_PROCESSED", "ERROR", etc.
-  message     String
-  details     String?   // Structured event data (JSON string)
-  progress    Float?    // Progress at time of event
-  timestamp   DateTime  @default(now())
-
-  // Relations
-  task        TaskExecution @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
-  phase       TaskPhase? @relation(fields: [taskId, phaseId], references: [taskId, phaseId], onDelete: Cascade)
+  id        String        @id @default(cuid())
+  taskId    String
+  phaseId   String?
+  type      String
+  message   String
+  details   String?
+  progress  Float?
+  timestamp DateTime      @default(now())
+  phase     TaskPhase?    @relation(fields: [taskId, phaseId], references: [taskId, phaseId], onDelete: Cascade)
+  task      TaskExecution @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
 
   @@map("task_events")
 }
@@ -337,431 +261,321 @@ model QueuedTask {
   cardId      String?
   taskId      String
   agentType   String
-  payload     String      // JSON payload
+  payload     String
   priority    Int         @default(0)
-  status      String  @default("PENDING")
+  status      String      @default("PENDING")
   createdAt   DateTime    @default(now())
   pausedAt    DateTime?
   resumedAt   DateTime?
   completedAt DateTime?
   error       String?
-
-  // Relations
+  card        KanbanCard? @relation(fields: [cardId], references: [id])
   project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  card        KanbanCard? @relation(fields: [cardId], references: [id], onDelete: SetNull)
 
   @@map("queued_tasks")
 }
 
 model AgentSpecification {
-  id           String   @id @default(cuid())
+  id           String             @id @default(cuid())
   projectId    String
   name         String
   type         String
   purpose      String
-  capabilities String   // JSON array
-  dependencies String   // JSON array
+  capabilities String
+  dependencies String
   prompt       String
-  constraints  String   // JSON object
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  createdBy    String   @default("project-manager-agent")
-
-  // Relations
-  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  performance  AgentPerformance[]
+  constraints  String
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  createdBy    String             @default("project-manager-agent")
   evolution    AgentEvolution[]
+  performance  AgentPerformance[]
+  project      Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, name], name: "projectId_name")
   @@map("agent_specifications")
 }
 
 model AgentPerformance {
-  id             String    @id @default(cuid())
+  id             String             @id @default(cuid())
   agentId        String
   executionTime  Int
   tokensUsed     Int
   success        Boolean
   errorMessage   String?
   taskComplexity String?
-  timestamp      DateTime  @default(now())
-
-  // Relations
+  timestamp      DateTime           @default(now())
   agent          AgentSpecification @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   @@map("agent_performance")
 }
 
 model AgentEvolution {
-  id                String   @id @default(cuid())
+  id                String             @id @default(cuid())
   agentId           String
   version           Int
-  changes           String   // JSON object
-  performanceBefore String   // JSON object
-  performanceAfter  String?  // JSON object
+  changes           String
+  performanceBefore String
+  performanceAfter  String?
   reason            String
-  timestamp         DateTime @default(now())
-
-  // Relations
+  timestamp         DateTime           @default(now())
   agent             AgentSpecification @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   @@map("agent_evolution")
 }
 
 model UsageTracking {
-  id          String   @id @default(cuid())
-  timestamp   DateTime @default(now())
-  tokenCount  Int
-  requestCount Int     @default(1)
-  projectId   String?
-  agentType   String?
-  resetPeriod String   // 'minute', 'hour', 'day'
+  id           String   @id @default(cuid())
+  timestamp    DateTime @default(now())
+  tokenCount   Int
+  requestCount Int      @default(1)
+  projectId    String?
+  agentType    String?
+  resetPeriod  String
 
   @@map("usage_tracking")
 }
 
 model UsageLimit {
-  id          String   @id @default(cuid())
-  limitType   String   @unique // 'tokens_per_day', 'requests_per_minute', etc.
-  limitValue  Int
-  currentUsage Int     @default(0)
-  resetAt     DateTime
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(cuid())
+  limitType    String   @unique
+  limitValue   Int
+  currentUsage Int      @default(0)
+  resetAt      DateTime
+  updatedAt    DateTime @updatedAt
 
   @@map("usage_limits")
 }
 
-// Epic-Kanban-TDD Integration Models
 model Epic {
-  id          String   @id @default(cuid())
-  projectId   String
-  title       String   // "電商購物車系統"
-  description String?  // Optional detailed description
-  type        String   @default("FEATURE") // MVP, ENHANCEMENT, FEATURE, BUGFIX
-  phase       String   @default("PLANNING") // PLANNING, IN_PROGRESS, DONE, CANCELLED
-  status      String   @default("ACTIVE") // ACTIVE, PAUSED, COMPLETED, ARCHIVED
-  
-  // MVP and prioritization
-  mvpPriority String   @default("MEDIUM") // CRITICAL, HIGH, MEDIUM, LOW, FUTURE
-  coreValue   String?  // Core business value description
-  sequence    Int      @default(0) // Order within project
-  
-  // Estimation and tracking
-  estimatedStoryPoints Int     @default(0)
-  actualStoryPoints    Int     @default(0)
+  id                   String           @id @default(cuid())
+  projectId            String
+  title                String
+  description          String?
+  type                 String           @default("FEATURE")
+  phase                String           @default("PLANNING")
+  status               String           @default("ACTIVE")
+  mvpPriority          String           @default("MEDIUM")
+  coreValue            String?
+  sequence             Int              @default(0)
+  estimatedStoryPoints Int              @default(0)
+  actualStoryPoints    Int              @default(0)
   startDate            DateTime?
   dueDate              DateTime?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  completedAt DateTime?
-
-  // Relations
-  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  stories     KanbanCard[] // Epic contains multiple stories/cards
-  dependencies EpicDependency[] @relation("EpicDependencies")
-  dependents   EpicDependency[] @relation("EpicDependents")
-  sprintEpics SprintEpic[] // Epics can span multiple sprints
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  completedAt          DateTime?
+  dependents           EpicDependency[] @relation("EpicDependents")
+  dependencies         EpicDependency[] @relation("EpicDependencies")
+  project              Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stories              KanbanCard[]
+  sprintEpics          SprintEpic[]
 
   @@map("epics")
 }
 
 model EpicDependency {
   id          String   @id @default(cuid())
-  epicId      String   // Epic that depends on another
-  dependsOnId String   // Epic that this epic depends on
-  type        String   @default("BLOCKS") // BLOCKS, RELATES_TO, SIMILAR_TO
-  description String?  // Why this dependency exists
-  
+  epicId      String
+  dependsOnId String
+  type        String   @default("BLOCKS")
+  description String?
   createdAt   DateTime @default(now())
-
-  // Relations
-  epic        Epic     @relation("EpicDependencies", fields: [epicId], references: [id], onDelete: Cascade)
   dependsOn   Epic     @relation("EpicDependents", fields: [dependsOnId], references: [id], onDelete: Cascade)
+  epic        Epic     @relation("EpicDependencies", fields: [epicId], references: [id], onDelete: Cascade)
 
   @@unique([epicId, dependsOnId])
   @@map("epic_dependencies")
 }
 
 model MVPPhase {
-  id          String   @id @default(cuid())
-  projectId   String
-  name        String   // "Core MVP", "Enhanced MVP v1"
-  description String?  // Phase description
-  sequence    Int      @default(0) // Phase order
-  status      String   @default("PLANNING") // PLANNING, IN_PROGRESS, COMPLETED, CANCELLED
-  
-  // Phase targets
-  targetDate  DateTime?
-  coreFeatures String  // JSON array of Epic IDs that are core to this phase
-  
-  // Progress tracking
-  plannedStoryPoints Int @default(0)
-  completedStoryPoints Int @default(0)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  releasedAt  DateTime?
-
-  // Relations
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id                   String    @id @default(cuid())
+  projectId            String
+  name                 String
+  description          String?
+  sequence             Int       @default(0)
+  status               String    @default("PLANNING")
+  targetDate           DateTime?
+  coreFeatures         String
+  plannedStoryPoints   Int       @default(0)
+  completedStoryPoints Int       @default(0)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  releasedAt           DateTime?
+  project              Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("mvp_phases")
 }
 
-// AI-Native TDD Development Models
 model Cycle {
-  id          String   @id @default(cuid())
-  projectId   String
-  storyId     String?  // Optional: which story/card this cycle belongs to
-  title       String   // "Add user authentication"
-  description String?  // Optional detailed description
-  phase       String   @default("RED") // RED, GREEN, REFACTOR, REVIEW
-  status      String   @default("ACTIVE") // ACTIVE, PAUSED, COMPLETED, FAILED
-  sequence    Int      @default(0) // Order within story
-  
-  // Feature definition
-  acceptanceCriteria String // JSON array of criteria
-  constraints        String? // JSON array of technical constraints
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  completedAt DateTime?
-
-  // Relations
-  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  story       KanbanCard? @relation(fields: [storyId], references: [id], onDelete: SetNull)
-  tests       Test[]
-  queries     Query[]
-  artifacts   Artifact[]
+  id                 String      @id @default(cuid())
+  projectId          String
+  storyId            String?
+  title              String
+  description        String?
+  phase              String      @default("RED")
+  status             String      @default("ACTIVE")
+  sequence           Int         @default(0)
+  acceptanceCriteria String
+  constraints        String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  completedAt        DateTime?
+  artifacts          Artifact[]
+  story              KanbanCard? @relation(fields: [storyId], references: [id])
+  project            Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  queries            Query[]
+  tests              Test[]
 
   @@map("cycles")
 }
 
 model Test {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   cycleId     String
-  name        String   // "should validate user credentials"
-  description String?  // Optional test description
-  code        String   // Actual test code
-  filePath    String?  // Where the test file should be located
-  status      String   @default("FAILING") // FAILING, PASSING, SKIPPED, BROKEN
-  
-  // Test execution details
+  name        String
+  description String?
+  code        String
+  filePath    String?
+  status      String    @default("FAILING")
   lastRun     DateTime?
-  duration    Int?     // Execution time in milliseconds
-  errorOutput String?  // Error message if test failed
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  cycle       Cycle    @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  duration    Int?
+  errorOutput String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  cycle       Cycle     @relation(fields: [cycleId], references: [id], onDelete: Cascade)
 
   @@map("tests")
 }
 
 model Query {
-  id          String   @id @default(cuid())
-  projectId   String
-  cycleId     String?  // Optional - queries can be cycle-specific or general
-  
-  // Query details
-  type        String   // ARCHITECTURE, BUSINESS_LOGIC, UI_UX, INTEGRATION, CLARIFICATION
-  title       String   // Short question summary
-  question    String   // Detailed question
-  context     String   // JSON object with code context, options, etc.
-  
-  urgency     String   @default("ADVISORY") // BLOCKING, ADVISORY
-  priority    String   @default("MEDIUM")   // LOW, MEDIUM, HIGH
-  status      String   @default("PENDING")  // PENDING, ANSWERED, DISMISSED, EXPIRED
-  
-  // Response
-  answer      String?  // User's response
-  answeredAt  DateTime?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  cycle       Cycle?   @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-  comments    QueryComment[]
+  id         String         @id @default(cuid())
+  projectId  String
+  cycleId    String?
+  type       String
+  title      String
+  question   String
+  context    String
+  urgency    String         @default("ADVISORY")
+  priority   String         @default("MEDIUM")
+  status     String         @default("PENDING")
+  answer     String?
+  answeredAt DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  cycle      Cycle?         @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  project    Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  comments   QueryComment[]
 
   @@map("queries")
 }
 
 model QueryComment {
-  id          String   @id @default(cuid())
-  queryId     String
-  content     String
-  author      String   @default("user") // user, ai, system
-  
-  createdAt   DateTime @default(now())
-
-  // Relations
-  query       Query    @relation(fields: [queryId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  queryId   String
+  content   String
+  author    String   @default("user")
+  createdAt DateTime @default(now())
+  query     Query    @relation(fields: [queryId], references: [id], onDelete: Cascade)
 
   @@map("query_comments")
 }
 
 model Artifact {
-  id          String   @id @default(cuid())
-  cycleId     String
-  
-  // Artifact details
-  type        String   // CODE, TEST, DOCS, SCHEMA, CONFIG
-  name        String   // File name or artifact name
-  path        String   // File path relative to project root
-  content     String   // Generated content
-  
-  // Generation details
-  purpose     String?  // Why this artifact was created
-  phase       String   // Which TDD phase created this (RED, GREEN, REFACTOR)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  cycle       Cycle    @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  cycleId   String
+  type      String
+  name      String
+  path      String
+  content   String
+  purpose   String?
+  phase     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  cycle     Cycle    @relation(fields: [cycleId], references: [id], onDelete: Cascade)
 
   @@map("artifacts")
 }
 
-// Sprint Management Models
 model Sprint {
-  id          String   @id @default(cuid())
-  projectId   String
-  name        String   // "Sprint 1", "Sprint 2", etc.
-  goal        String?  // Sprint goal description
-  
-  // Sprint timing
-  startDate   DateTime
-  endDate     DateTime
-  duration    Int      // Duration in days
-  
-  // Sprint status
-  status      String   @default("PLANNING") // PLANNING, ACTIVE, COMPLETED, CANCELLED
-  
-  // Sprint capacity
-  plannedStoryPoints Int @default(0)
-  commitedStoryPoints Int @default(0)
-  completedStoryPoints Int @default(0)
-  velocity    Float?   // Average story points completed per sprint
-  
-  // Sprint ceremonies
-  planningNotes String?  // Sprint planning meeting notes
-  reviewNotes   String?  // Sprint review meeting notes
-  retrospectiveNotes String? // Sprint retrospective notes
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  completedAt DateTime?
-
-  // Relations
-  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  stories     KanbanCard[] // Stories assigned to this sprint
-  sprintEpics SprintEpic[] // Track which epics are being worked on
-  burndown    SprintBurndown[]
-  dailyUpdates SprintDailyUpdate[]
+  id                   String              @id @default(cuid())
+  projectId            String
+  name                 String
+  goal                 String?
+  startDate            DateTime
+  endDate              DateTime
+  duration             Int
+  status               String              @default("PLANNING")
+  plannedStoryPoints   Int                 @default(0)
+  commitedStoryPoints  Int                 @default(0)
+  completedStoryPoints Int                 @default(0)
+  velocity             Float?
+  planningNotes        String?
+  reviewNotes          String?
+  retrospectiveNotes   String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  completedAt          DateTime?
+  stories              KanbanCard[]
+  burndown             SprintBurndown[]
+  dailyUpdates         SprintDailyUpdate[]
+  sprintEpics          SprintEpic[]
+  project              Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("sprints")
 }
 
 model SprintEpic {
-  id          String   @id @default(cuid())
-  sprintId    String
-  epicId      String
-  
-  // Track epic progress within sprint
-  plannedStoryPoints Int @default(0)
-  completedStoryPoints Int @default(0)
-  
-  createdAt   DateTime @default(now())
-
-  // Relations
-  sprint      Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
-  epic        Epic     @relation(fields: [epicId], references: [id], onDelete: Cascade)
+  id                   String   @id @default(cuid())
+  sprintId             String
+  epicId               String
+  plannedStoryPoints   Int      @default(0)
+  completedStoryPoints Int      @default(0)
+  createdAt            DateTime @default(now())
+  epic                 Epic     @relation(fields: [epicId], references: [id], onDelete: Cascade)
+  sprint               Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
 
   @@unique([sprintId, epicId])
   @@map("sprint_epics")
 }
 
 model SprintBurndown {
-  id          String   @id @default(cuid())
-  sprintId    String
-  date        DateTime
-  
-  // Burndown metrics
+  id                   String   @id @default(cuid())
+  sprintId             String
+  date                 DateTime
   remainingStoryPoints Int
   completedStoryPoints Int
-  idealRemainingPoints Float // Ideal burndown line
-  
-  createdAt   DateTime @default(now())
-
-  // Relations
-  sprint      Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  idealRemainingPoints Float
+  createdAt            DateTime @default(now())
+  sprint               Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
 
   @@unique([sprintId, date])
   @@map("sprint_burndown")
 }
 
 model SprintDailyUpdate {
-  id          String   @id @default(cuid())
-  sprintId    String
-  date        DateTime
-  
-  // Daily standup tracking
-  storiesCompleted Int @default(0)
-  storiesInProgress Int @default(0)
-  blockers    String?  // JSON array of blockers
-  notes       String?  // Additional daily notes
-  
-  createdAt   DateTime @default(now())
-
-  // Relations
-  sprint      Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+  id                String   @id @default(cuid())
+  sprintId          String
+  date              DateTime
+  storiesCompleted  Int      @default(0)
+  storiesInProgress Int      @default(0)
+  blockers          String?
+  notes             String?
+  createdAt         DateTime @default(now())
+  sprint            Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
 
   @@unique([sprintId, date])
   @@map("sprint_daily_updates")
 }
 
-// Note: SQLite doesn't support enums, so we use strings with default values
-// Valid values:
-// ProjectStatus: "INITIALIZING", "ACTIVE", "PAUSED", "COMPLETED", "ARCHIVED"
-// CardStatus: "BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DONE"
-// TaskStatus: "PENDING", "RUNNING", "COMPLETED", "FAILED", "PAUSED"
-// MilestoneStatus: "PLANNED", "IN_PROGRESS", "COMPLETED"
-// EpicType: "MVP", "ENHANCEMENT", "FEATURE", "BUGFIX"
-// EpicPhase: "PLANNING", "IN_PROGRESS", "DONE", "CANCELLED"
-// EpicStatus: "ACTIVE", "PAUSED", "COMPLETED", "ARCHIVED"
-// MVPPriority: "CRITICAL", "HIGH", "MEDIUM", "LOW", "FUTURE"
-// MVPPhaseStatus: "PLANNING", "IN_PROGRESS", "COMPLETED", "CANCELLED"
-// StoryPriority: "LOW", "MEDIUM", "HIGH"
-// DependencyType: "BLOCKS", "RELATES_TO", "SIMILAR_TO"
-// CyclePhase: "RED", "GREEN", "REFACTOR", "REVIEW"
-// CycleStatus: "ACTIVE", "PAUSED", "COMPLETED", "FAILED"
-// TestStatus: "FAILING", "PASSING", "SKIPPED", "BROKEN"
-// QueryType: "ARCHITECTURE", "BUSINESS_LOGIC", "UI_UX", "INTEGRATION", "CLARIFICATION"
-// QueryUrgency: "BLOCKING", "ADVISORY"
-// QueryStatus: "PENDING", "ANSWERED", "DISMISSED", "EXPIRED"
-// ArtifactType: "CODE", "TEST", "DOCS", "SCHEMA", "CONFIG"
-// LogLevel: "info", "warn", "error", "debug"
-// SprintStatus: "PLANNING", "ACTIVE", "COMPLETED", "CANCELLED"
-
 model ProjectLog {
   id        String   @id @default(cuid())
   projectId String
-  
-  // Log details
-  level     String   // "info", "warn", "error", "debug"
-  message   String   // Log message
-  source    String   // Source of the log (e.g., "claude-code", "agent-executor", "api")
-  metadata  String?  // JSON string for additional data
-  
+  level     String
+  message   String
+  source    String
+  metadata  String?
   createdAt DateTime @default(now())
-
-  // Relations
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId, createdAt])

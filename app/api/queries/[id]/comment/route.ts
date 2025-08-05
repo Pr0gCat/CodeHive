@@ -3,7 +3,10 @@ import { prisma } from '@/lib/db';
 import { z } from 'zod';
 
 const commentSchema = z.object({
-  comment: z.string().min(1, 'Comment cannot be empty').max(1000, 'Comment too long'),
+  comment: z
+    .string()
+    .min(1, 'Comment cannot be empty')
+    .max(1000, 'Comment too long'),
 });
 
 export async function POST(
@@ -18,7 +21,7 @@ export async function POST(
     // Get the existing query
     const existingQuery = await prisma.query.findUnique({
       where: { id: queryId },
-      include: { comments: true }
+      include: { comments: true },
     });
 
     if (!existingQuery) {
@@ -34,7 +37,7 @@ export async function POST(
         queryId,
         content: comment,
         author: 'USER', // In a real app, this would be the authenticated user
-      }
+      },
     });
 
     // Update query status to indicate user feedback
@@ -42,8 +45,8 @@ export async function POST(
       where: { id: queryId },
       data: {
         status: 'FEEDBACK_PROVIDED',
-        updatedAt: new Date()
-      }
+        updatedAt: new Date(),
+      },
     });
 
     // In the improved architecture, this would trigger AI to revise the proposal
@@ -53,11 +56,11 @@ export async function POST(
     // Get updated query with comments
     const updatedQuery = await prisma.query.findUnique({
       where: { id: queryId },
-      include: { 
+      include: {
         comments: {
-          orderBy: { createdAt: 'asc' }
-        }
-      }
+          orderBy: { createdAt: 'asc' },
+        },
+      },
     });
 
     return NextResponse.json({

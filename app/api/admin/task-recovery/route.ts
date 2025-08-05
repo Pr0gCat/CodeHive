@@ -7,50 +7,61 @@ import { prisma } from '@/lib/db';
  */
 export async function POST(request: NextRequest) {
   try {
-    const { action } = await request.json().catch(() => ({ action: 'recover' }));
+    const { action } = await request
+      .json()
+      .catch(() => ({ action: 'recover' }));
 
     switch (action) {
       case 'recover':
         console.log('🔄 Manual task recovery triggered');
-        await taskRecoveryService.recoverInterruptedTasks();
-        
-        const stats = await taskRecoveryService.getRecoveryStats();
-        
+        const staleProjects = await taskRecoveryService.getStaleProjects();
+
+        if (staleProjects.length > 0) {
+          console.log(
+            `Found ${staleProjects.length} stale projects to clean up`
+          );
+          for (const project of staleProjects) {
+            await taskRecoveryService.cleanupCancelledProject(
+              project.id,
+              `manual-${project.id}`,
+              {
+                reason: 'Manual task recovery',
+              }
+            );
+          }
+        }
+
         return NextResponse.json({
           success: true,
           message: 'Task recovery process completed',
-          stats,
+          stats: { recoveredProjects: staleProjects.length },
         });
 
       case 'stats':
-        const currentStats = await taskRecoveryService.getRecoveryStats();
-        
+        const staleProjectsForStats = await taskRecoveryService.getStaleProjects();
+
         // Get additional current statistics
-        const [
-          initializingProjects,
-          pendingTasks,
-          runningTasks,
-          failedTasks,
-        ] = await Promise.all([
-          prisma.project.findMany({
-            where: { status: 'INITIALIZING' },
-            select: { id: true, name: true, createdAt: true },
-          }),
-          prisma.taskExecution.count({
-            where: { status: 'PENDING' },
-          }),
-          prisma.taskExecution.count({
-            where: { status: 'RUNNING' },
-          }),
-          prisma.taskExecution.count({
-            where: { status: 'FAILED' },
-          }),
-        ]);
+        const [initializingProjects, pendingTasks, runningTasks, failedTasks] =
+          await Promise.all([
+            prisma.project.findMany({
+              where: { status: 'INITIALIZING' },
+              select: { id: true, name: true, createdAt: true },
+            }),
+            prisma.taskExecution.count({
+              where: { status: 'PENDING' },
+            }),
+            prisma.taskExecution.count({
+              where: { status: 'RUNNING' },
+            }),
+            prisma.taskExecution.count({
+              where: { status: 'FAILED' },
+            }),
+          ]);
 
         return NextResponse.json({
           success: true,
           stats: {
-            ...currentStats,
+            staleProjects: staleProjectsForStats.length,
             details: {
               initializingProjects,
               tasks: {
@@ -65,7 +76,7 @@ export async function POST(request: NextRequest) {
       case 'cleanup':
         // Clean up old failed tasks (older than 24 hours)
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        
+
         const cleanupResult = await prisma.taskExecution.deleteMany({
           where: {
             status: 'FAILED',
@@ -81,14 +92,18 @@ export async function POST(request: NextRequest) {
 
       default:
         return NextResponse.json(
-          { success: false, error: 'Invalid action. Use: recover, stats, or cleanup' },
+          {
+            success: false,
+            error: 'Invalid action. Use: recover, stats, or cleanup',
+          },
           { status: 400 }
         );
     }
   } catch (error) {
     console.error('Task recovery API error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+
     return NextResponse.json(
       { success: false, error: `Task recovery failed: ${errorMessage}` },
       { status: 500 }
@@ -101,8 +116,8 @@ export async function POST(request: NextRequest) {
  */
 export async function GET() {
   try {
-    const stats = await taskRecoveryService.getRecoveryStats();
-    
+    const staleProjects = await taskRecoveryService.getStaleProjects();
+
     // Get current system status
     const [
       totalProjects,
@@ -143,13 +158,14 @@ export async function GET() {
           failed: failedTasks,
         },
       },
-      recoveryStats: stats,
+      recoveryStats: { staleProjects: staleProjects.length },
       needsRecovery: initializingProjects > 0 || pendingTasks > 0,
     });
   } catch (error) {
     console.error('Task recovery status error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }

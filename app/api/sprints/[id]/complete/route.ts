@@ -22,7 +22,11 @@ export async function POST(request: NextRequest, { params }: SprintParams) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { reviewNotes, retrospectiveNotes, moveUnfinishedToBacklog = true } = body;
+    const {
+      reviewNotes,
+      retrospectiveNotes,
+      moveUnfinishedToBacklog = true,
+    } = body;
 
     const sprint = await db.sprint.findUnique({
       where: { id },
@@ -32,10 +36,7 @@ export async function POST(request: NextRequest, { params }: SprintParams) {
     });
 
     if (!sprint) {
-      return NextResponse.json(
-        { error: 'Sprint not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Sprint not found' }, { status: 404 });
     }
 
     if (sprint.status !== 'ACTIVE') {
@@ -47,8 +48,8 @@ export async function POST(request: NextRequest, { params }: SprintParams) {
 
     // Calculate velocity
     const completedStoryPoints = sprint.stories
-      .filter((story: Story) => story.status === 'DONE')
-      .reduce((sum: number, story: Story) => sum + (story.storyPoints || 0), 0);
+      .filter(story => story.status === 'DONE')
+      .reduce((sum: number, story) => sum + (story.storyPoints || 0), 0);
 
     // Get previous sprints to calculate average velocity
     const previousSprints = await db.sprint.findMany({
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest, { params }: SprintParams) {
     });
 
     const totalVelocity = previousSprints.reduce(
-      (sum: number, s: Sprint) => sum + s.completedStoryPoints,
+      (sum: number, s) => sum + s.completedStoryPoints,
       completedStoryPoints
     );
     const averageVelocity = totalVelocity / (previousSprints.length + 1);
@@ -70,12 +71,12 @@ export async function POST(request: NextRequest, { params }: SprintParams) {
     // Handle unfinished stories
     if (moveUnfinishedToBacklog) {
       const unfinishedStories = sprint.stories.filter(
-        (story: Story) => story.status !== 'DONE'
+        story => story.status !== 'DONE'
       );
 
       await db.kanbanCard.updateMany({
         where: {
-          id: { in: unfinishedStories.map((s: Story) => s.id) },
+          id: { in: unfinishedStories.map(s => s.id) },
         },
         data: {
           sprintId: null,
@@ -112,8 +113,8 @@ export async function POST(request: NextRequest, { params }: SprintParams) {
     // Update epic actual story points
     for (const sprintEpic of updatedSprint.sprintEpics) {
       const epicCompletedPoints = updatedSprint.stories
-        .filter((story: Story) => story.epicId === sprintEpic.epicId)
-        .reduce((sum: number, story: Story) => sum + (story.storyPoints || 0), 0);
+        .filter(story => story.epicId === sprintEpic.epicId)
+        .reduce((sum: number, story) => sum + (story.storyPoints || 0), 0);
 
       await db.epic.update({
         where: { id: sprintEpic.epicId },

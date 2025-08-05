@@ -33,10 +33,15 @@ export async function GET(
 
     // Calculate current progress
     const currentPhase = activeTask.phases.find(p => p.status === 'ACTIVE');
-    const completedPhases = activeTask.phases.filter(p => p.status === 'COMPLETED');
-    const totalProgress = activeTask.totalPhases > 0 
-      ? ((completedPhases.length + (currentPhase?.progress || 0) / 100) / activeTask.totalPhases) * 100
-      : 0;
+    const completedPhases = activeTask.phases.filter(
+      p => p.status === 'COMPLETED'
+    );
+    const totalProgress =
+      activeTask.totalPhases > 0
+        ? ((completedPhases.length + (currentPhase?.progress || 0) / 100) /
+            activeTask.totalPhases) *
+          100
+        : 0;
 
     return NextResponse.json({
       success: true,

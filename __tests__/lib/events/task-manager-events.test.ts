@@ -1,4 +1,7 @@
-import { TaskEventData, taskEventEmitter } from '@/lib/events/task-event-emitter';
+import {
+  TaskEventData,
+  taskEventEmitter,
+} from '@/lib/events/task-event-emitter';
 
 describe('TaskManager Event System Integration', () => {
   beforeEach(() => {
@@ -10,13 +13,19 @@ describe('TaskManager Event System Integration', () => {
     const receivedEvents: TaskEventData[] = [];
 
     // Listen to all task events
-    const eventTypes = ['task_created', 'task_started', 'phase_updated', 'event_created', 'task_completed'];
-    
+    const eventTypes = [
+      'task_created',
+      'task_started',
+      'phase_updated',
+      'event_created',
+      'task_completed',
+    ];
+
     eventTypes.forEach(eventType => {
       taskEventEmitter.on(eventType, (event: TaskEventData) => {
         if (event.taskId === taskId) {
           receivedEvents.push(event);
-          
+
           if (event.type === 'task_completed') {
             expect(receivedEvents).toHaveLength(7);
             expect(receivedEvents[0].type).toBe('task_created');
@@ -38,10 +47,21 @@ describe('TaskManager Event System Integration', () => {
     // Simulate task workflow
     taskEventEmitter.emitTaskCreated(taskId, { type: 'PROJECT_CREATE' });
     taskEventEmitter.emitTaskStarted(taskId);
-    taskEventEmitter.emitPhaseUpdated(taskId, 'phase-1', { progress: 25, message: 'Phase 1' });
-    taskEventEmitter.emitPhaseUpdated(taskId, 'phase-2', { progress: 50, message: 'Phase 2' });
-    taskEventEmitter.emitPhaseUpdated(taskId, 'phase-3', { progress: 100, message: 'Phase 3' });
-    taskEventEmitter.emitEventCreated(taskId, 'custom_event', { message: 'Custom event' });
+    taskEventEmitter.emitPhaseUpdated(taskId, 'phase-1', {
+      progress: 25,
+      message: 'Phase 1',
+    });
+    taskEventEmitter.emitPhaseUpdated(taskId, 'phase-2', {
+      progress: 50,
+      message: 'Phase 2',
+    });
+    taskEventEmitter.emitPhaseUpdated(taskId, 'phase-3', {
+      progress: 100,
+      message: 'Phase 3',
+    });
+    taskEventEmitter.emitEventCreated(taskId, 'custom_event', {
+      message: 'Custom event',
+    });
     taskEventEmitter.emitTaskCompleted(taskId, { success: true });
   });
 
@@ -49,20 +69,27 @@ describe('TaskManager Event System Integration', () => {
     const taskId = 'workflow-test-2';
     const receivedEvents: TaskEventData[] = [];
 
-    const eventTypes = ['task_created', 'task_started', 'phase_updated', 'task_failed'];
-    
+    const eventTypes = [
+      'task_created',
+      'task_started',
+      'phase_updated',
+      'task_failed',
+    ];
+
     eventTypes.forEach(eventType => {
       taskEventEmitter.on(eventType, (event: TaskEventData) => {
         if (event.taskId === taskId) {
           receivedEvents.push(event);
-          
+
           if (event.type === 'task_failed') {
             expect(receivedEvents).toHaveLength(4);
             expect(receivedEvents[0].type).toBe('task_created');
             expect(receivedEvents[1].type).toBe('task_started');
             expect(receivedEvents[2].type).toBe('phase_updated');
             expect(receivedEvents[3].type).toBe('task_failed');
-            expect(receivedEvents[3].data?.message).toBe('Network connection failed');
+            expect(receivedEvents[3].data?.message).toBe(
+              'Network connection failed'
+            );
             done();
           }
         }
@@ -72,8 +99,13 @@ describe('TaskManager Event System Integration', () => {
     // Simulate failed task workflow
     taskEventEmitter.emitTaskCreated(taskId, { type: 'PROJECT_CREATE' });
     taskEventEmitter.emitTaskStarted(taskId);
-    taskEventEmitter.emitPhaseUpdated(taskId, 'phase-1', { progress: 25, message: 'Phase 1' });
-    taskEventEmitter.emitTaskFailed(taskId, { message: 'Network connection failed' });
+    taskEventEmitter.emitPhaseUpdated(taskId, 'phase-1', {
+      progress: 25,
+      message: 'Phase 1',
+    });
+    taskEventEmitter.emitTaskFailed(taskId, {
+      message: 'Network connection failed',
+    });
   });
 
   it('should support multiple concurrent tasks', done => {

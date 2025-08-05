@@ -29,10 +29,7 @@ export async function POST(request: NextRequest, { params }: SprintParams) {
     });
 
     if (!sprint) {
-      return NextResponse.json(
-        { error: 'Sprint not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Sprint not found' }, { status: 404 });
     }
 
     // Update stories to assign them to this sprint
@@ -59,12 +56,15 @@ export async function POST(request: NextRequest, { params }: SprintParams) {
     });
 
     // Group story points by epic
-    const epicPoints = stories.reduce((acc: Record<string, number>, story: StorySummary) => {
-      if (story.epicId && story.storyPoints) {
-        acc[story.epicId] = (acc[story.epicId] || 0) + story.storyPoints;
-      }
-      return acc;
-    }, {} as Record<string, number>);
+    const epicPoints = stories.reduce(
+      (acc: Record<string, number>, story: StorySummary) => {
+        if (story.epicId && story.storyPoints) {
+          acc[story.epicId] = (acc[story.epicId] || 0) + story.storyPoints;
+        }
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
     // Create or update SprintEpic records
     for (const [epicId, points] of Object.entries(epicPoints)) {
@@ -159,12 +159,15 @@ export async function DELETE(request: NextRequest, { params }: SprintParams) {
     });
 
     // Update SprintEpic records
-    const epicPoints = stories.reduce((acc: Record<string, number>, story: StorySummary) => {
-      if (story.epicId && story.storyPoints) {
-        acc[story.epicId] = (acc[story.epicId] || 0) + story.storyPoints;
-      }
-      return acc;
-    }, {} as Record<string, number>);
+    const epicPoints = stories.reduce(
+      (acc: Record<string, number>, story: StorySummary) => {
+        if (story.epicId && story.storyPoints) {
+          acc[story.epicId] = (acc[story.epicId] || 0) + story.storyPoints;
+        }
+        return acc;
+      },
+      {} as Record<string, number>
+    );
 
     for (const [epicId, points] of Object.entries(epicPoints)) {
       const sprintEpic = await db.sprintEpic.findUnique({
