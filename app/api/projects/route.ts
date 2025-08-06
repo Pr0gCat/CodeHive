@@ -12,12 +12,13 @@ export async function GET(request: NextRequest) {
 
     if (useDatabase && !refresh) {
       // Fast path: Use system database for quick access
-      const indexService = getProjectIndexService();
-      const indexedProjects = await indexService.getAllProjects({
-        includeInactive: false,
-        orderBy: 'lastAccessedAt',
-        orderDirection: 'desc',
-      });
+      try {
+        const indexService = getProjectIndexService();
+        const indexedProjects = await indexService.getAllProjects({
+          includeInactive: false,
+          orderBy: 'lastAccessedAt',
+          orderDirection: 'desc',
+        });
 
       const projectsData = indexedProjects.map(project => ({
         id: project.id,
@@ -43,15 +44,20 @@ export async function GET(request: NextRequest) {
         importSource: project.importSource,
       }));
 
-      return NextResponse.json({
-        success: true,
-        data: projectsData,
-        total: projectsData.length,
-        source: 'database',
-      });
-    } else {
-      // Slow path: Full filesystem discovery (used for refresh or if database disabled)
-      const discoveryService = getProjectDiscoveryService();
+        return NextResponse.json({
+          success: true,
+          data: projectsData,
+          total: projectsData.length,
+          source: 'database',
+        });
+      } catch (databaseError) {
+        console.warn('Database query failed, falling back to discovery:', databaseError);
+        // Fall through to discovery method
+      }
+    }
+    
+    // Discovery path: Full filesystem discovery (used for refresh, database errors, or if database disabled)
+    const discoveryService = getProjectDiscoveryService();
       
       // Clear cache if refresh is requested
       if (refresh) {
@@ -139,13 +145,12 @@ export async function GET(request: NextRequest) {
       new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
 
-      return NextResponse.json({
-        success: true,
-        data: projectsData,
-        total: projectsData.length,
-        source: 'discovery',
-      });
-    }
+    return NextResponse.json({
+      success: true,
+      data: projectsData,
+      total: projectsData.length,
+      source: 'discovery',
+    });
 
   } catch (error) {
     console.error('Error fetching portable projects:', error);
