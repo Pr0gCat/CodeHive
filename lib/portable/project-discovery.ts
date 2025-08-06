@@ -5,7 +5,7 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import { ProjectMetadataManager } from './metadata-manager';
+import { SQLiteMetadataManager } from './sqlite-metadata-manager';
 import { ProjectMetadata } from './schemas';
 
 export interface DiscoveredProject {
@@ -241,7 +241,7 @@ export class ProjectDiscoveryService {
 
   private async analyzeProject(projectPath: string, validateMetadata: boolean): Promise<DiscoveredProject | null> {
     try {
-      const metadataManager = new ProjectMetadataManager(projectPath);
+      const metadataManager = new SQLiteMetadataManager(projectPath);
       
       // Check if it's a portable project
       if (!(await metadataManager.isPortableProject())) {

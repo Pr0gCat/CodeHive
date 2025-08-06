@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
-import { ProjectMetadataManager } from '@/lib/portable/metadata-manager';
+import { SQLiteMetadataManager } from '@/lib/portable/sqlite-metadata-manager';
 import { logProjectEvent } from '@/lib/logging/project-logger';
 import { addInitialProjectLogs } from '@/lib/logging/init-logs';
 import { z } from 'zod';
@@ -40,7 +40,7 @@ export async function GET(
     addInitialProjectLogs(project.metadata.id, project.metadata.name);
 
     // Get additional project data from portable format
-    const metadataManager = new ProjectMetadataManager(project.path);
+    const metadataManager = new SQLiteMetadataManager(project.path);
     
     // Load actual data
     const stories = await metadataManager.getStories();
