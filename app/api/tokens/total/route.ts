@@ -16,9 +16,9 @@ export async function GET() {
     weekStart.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
 
     // Aggregate stats across all projects
-    let totalStats = { inputTokens: 0, outputTokens: 0, requests: 0 };
-    let todayStats = { inputTokens: 0, outputTokens: 0, requests: 0 };
-    let weekStats = { inputTokens: 0, outputTokens: 0, requests: 0 };
+    const totalStats = { inputTokens: 0, outputTokens: 0, requests: 0 };
+    const todayStats = { inputTokens: 0, outputTokens: 0, requests: 0 };
+    const weekStats = { inputTokens: 0, outputTokens: 0, requests: 0 };
     const agentStatsMap = new Map();
 
     // Process each project

@@ -135,7 +135,7 @@ export async function PUT(request: NextRequest) {
       );
 
       // Find corresponding database project
-      const dbProject = await prisma.project.findFirst({
+      let dbProject = await prisma.project.findFirst({
         where: {
           OR: [
             { id: allocation.projectId },
@@ -145,9 +145,26 @@ export async function PUT(request: NextRequest) {
         include: { budget: true }
       });
 
+      // If database project doesn't exist, create it for portable projects
       if (!dbProject) {
-        console.warn(`Database project not found: ${allocation.projectId}`);
-        continue;
+        console.log(`Creating database record for portable project: ${allocation.projectId}`);
+        try {
+          dbProject = await prisma.project.create({
+            data: {
+              id: project.metadata.id,
+              name: project.metadata.name,
+              description: project.metadata.description || '',
+              localPath: project.path,
+              gitUrl: project.metadata.gitUrl || null,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+            include: { budget: true }
+          });
+        } catch (error) {
+          console.error(`Failed to create database project for ${allocation.projectId}:`, error);
+          continue;
+        }
       }
 
       // Update or create budget in database
@@ -166,6 +183,37 @@ export async function PUT(request: NextRequest) {
           lastResetAt: new Date(),
           warningNotified: false,
           criticalNotified: false,
+        }
+      });
+
+      // Also update or create project settings to sync the token limits
+      await prisma.projectSettings.upsert({
+        where: { projectId: dbProject.id },
+        update: {
+          maxTokensPerDay: dailyTokenBudget,
+          updatedAt: new Date(),
+        },
+        create: {
+          projectId: dbProject.id,
+          maxTokensPerDay: dailyTokenBudget,
+          maxTokensPerRequest: 4000,
+          maxRequestsPerMinute: 20,
+          maxRequestsPerHour: 100,
+          agentTimeout: 300000,
+          maxRetries: 3,
+          parallelAgentLimit: 2,
+          autoReviewOnImport: true,
+          maxQueueSize: 50,
+          taskPriority: 'NORMAL',
+          autoExecuteTasks: true,
+          emailNotifications: false,
+          notifyOnTaskComplete: true,
+          notifyOnTaskFail: true,
+          codeAnalysisDepth: 'STANDARD',
+          testCoverageThreshold: 80.0,
+          enforceTypeChecking: true,
+          autoFixLintErrors: false,
+          claudeModel: 'claude-3-5-sonnet-20241022',
         }
       });
 

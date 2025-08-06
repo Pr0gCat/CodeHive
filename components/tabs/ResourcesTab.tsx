@@ -97,11 +97,11 @@ export function ResourcesTab({ projectId }: ResourcesTabProps) {
             usedTokens: projectData.usedTokens,
           });
 
-          // Update limits with real budget data
+          // Update limits with real budget data - respect zero budgets
           setLimits({
-            dailyLimit: projectData.budgetTokens || 100000,
-            weeklyGuideline: (projectData.budgetTokens || 100000) * 7, // Weekly is 7x daily
-            monthlyBudget: (projectData.budgetTokens || 100000) * 30, // Monthly is 30x daily
+            dailyLimit: projectData.budgetTokens,
+            weeklyGuideline: projectData.budgetTokens * 7, // Weekly is 7x daily
+            monthlyBudget: projectData.budgetTokens * 30, // Monthly is 30x daily
           });
         }
       } else {
@@ -164,25 +164,50 @@ export function ResourcesTab({ projectId }: ResourcesTabProps) {
     <div className="space-y-6">
       {/* Project Budget Status */}
       {projectBudget && (
-        <div className="bg-blue-900 rounded-lg border border-blue-700 p-4 mb-6">
+        <div className={`rounded-lg border p-4 mb-6 ${
+          projectBudget.dailyTokenBudget > 0 
+            ? 'bg-blue-900 border-blue-700' 
+            : 'bg-red-900 border-red-700'
+        }`}>
           <div className="flex items-center justify-between">
             <div>
-              <h4 className="font-medium text-blue-100">專案預算配置</h4>
-              <p className="text-sm text-blue-300">
+              <h4 className={`font-medium ${
+                projectBudget.dailyTokenBudget > 0 ? 'text-blue-100' : 'text-red-100'
+              }`}>
+                {projectBudget.dailyTokenBudget > 0 ? '專案預算配置' : '零預算配置'}
+              </h4>
+              <p className={`text-sm ${
+                projectBudget.dailyTokenBudget > 0 ? 'text-blue-300' : 'text-red-300'
+              }`}>
                 分配比例: {(projectBudget.allocatedPercentage * 100).toFixed(1)}
                 % | 每日預算: {projectBudget.dailyTokenBudget.toLocaleString()}{' '}
                 tokens
+                {projectBudget.dailyTokenBudget === 0 && (
+                  <span className="block mt-1 text-red-400">
+                    此專案設定為零預算 - 所有 token 使用被限制
+                  </span>
+                )}
               </p>
             </div>
             <div className="text-right">
-              <div className="text-lg font-bold text-blue-100">
-                {(
-                  (projectBudget.usedTokens / projectBudget.dailyTokenBudget) *
-                  100
-                ).toFixed(1)}
+              <div className={`text-lg font-bold ${
+                projectBudget.dailyTokenBudget > 0 ? 'text-blue-100' : 'text-red-100'
+              }`}>
+                {projectBudget.dailyTokenBudget > 0 ? (
+                  (
+                    (projectBudget.usedTokens / projectBudget.dailyTokenBudget) *
+                    100
+                  ).toFixed(1)
+                ) : (
+                  '0'
+                )}
                 %
               </div>
-              <div className="text-xs text-blue-300">預算使用率</div>
+              <div className={`text-xs ${
+                projectBudget.dailyTokenBudget > 0 ? 'text-blue-300' : 'text-red-300'
+              }`}>
+                {projectBudget.dailyTokenBudget > 0 ? '預算使用率' : '零預算限制'}
+              </div>
             </div>
           </div>
         </div>

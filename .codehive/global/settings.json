@@ -1,13 +1,13 @@
 {
   "id": "global",
-  "dailyTokenLimit": 100000000,
+  "dailyTokenLimit": 500000000,
   "warningThreshold": 0.75,
   "criticalThreshold": 0.9,
   "allocationStrategy": 0.5,
   "autoResumeEnabled": true,
-  "pauseOnWarning": false,
+  "pauseOnWarning": true,
   "claudeCodePath": "claude",
   "rateLimitPerMinute": 50,
   "createdAt": "2025-08-06T07:22:47.524Z",
-  "updatedAt": "2025-08-06T07:22:47.526Z"
+  "updatedAt": "2025-08-06T15:27:05.451Z"
 }

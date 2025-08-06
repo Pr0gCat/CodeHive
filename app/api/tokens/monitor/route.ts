@@ -167,16 +167,12 @@ async function getProjectMonitorData(
   globalSettings: GlobalSettings,
   todayStart: Date
 ) {
-  // Find project in database first
-  const dbProject = await prisma.project.findUnique({
-    where: { id: projectId },
-    include: {
-      budget: true,
-      tokenUsage: true
-    }
-  });
+  // Get portable project first
+  const discoveryService = getProjectDiscoveryService();
+  const projects = await discoveryService.discoverProjects();
+  const portableProject = projects.find(p => p.metadata.id === projectId);
 
-  if (!dbProject) {
+  if (!portableProject) {
     return NextResponse.json(
       {
         success: false,
@@ -186,11 +182,25 @@ async function getProjectMonitorData(
     );
   }
 
-  // Get project budget from database
-  const budget = dbProject.budget || null;
+  // Find corresponding database project
+  const dbProject = await prisma.project.findFirst({
+    where: {
+      OR: [
+        { id: projectId },
+        { localPath: portableProject.path }
+      ]
+    },
+    include: {
+      budget: true,
+      tokenUsage: true
+    }
+  });
 
-  // Get token usage from database
-  const allTokenUsage = dbProject.tokenUsage || [];
+  // Get project budget from database (if exists)
+  const budget = dbProject?.budget || null;
+
+  // Get token usage from database (if exists)
+  const allTokenUsage = dbProject?.tokenUsage || [];
 
   // Filter for today's usage
   const todayUsage = allTokenUsage.filter(usage => {
@@ -216,8 +226,8 @@ async function getProjectMonitorData(
     success: true,
     data: {
       project: {
-        id: dbProject.id,
-        name: dbProject.name,
+        id: portableProject.metadata.id,
+        name: portableProject.metadata.name,
         usedTokens: totalUsage,
         budgetTokens,
         allocatedPercentage: budget?.allocatedPercentage || 0,

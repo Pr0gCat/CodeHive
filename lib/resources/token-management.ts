@@ -340,13 +340,23 @@ export class TokenBasedResourceManager {
       where: { projectId },
     });
 
+    // Also get project budget allocation
+    const projectBudget = await prisma.projectBudget.findUnique({
+      where: { projectId },
+    });
+
     const defaultDailyLimit = this.config?.claudeDailyTokenLimit || 100000;
+    
+    // Use budget allocation if available, otherwise fall back to project settings or defaults
+    const dailyLimit = projectBudget?.dailyTokenBudget || 
+                      projectSettings?.maxTokensPerDay || 
+                      defaultDailyLimit;
 
     return {
-      dailyLimit: projectSettings?.tokenLimits?.daily || defaultDailyLimit,
-      weeklyGuideline: projectSettings?.tokenLimits?.weekly || defaultDailyLimit * 5,
-      monthlyBudget: projectSettings?.tokenLimits?.monthly || defaultDailyLimit * 20,
-      emergencyReserve: projectSettings?.tokenLimits?.emergency || defaultDailyLimit * 0.1,
+      dailyLimit,
+      weeklyGuideline: dailyLimit * 5,
+      monthlyBudget: dailyLimit * 20,
+      emergencyReserve: dailyLimit * 0.1,
     };
   }
 

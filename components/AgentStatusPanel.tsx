@@ -28,7 +28,7 @@ interface QueueStatus {
   };
 }
 
-export default function AgentStatusPanel({}: AgentStatusPanelProps) {
+export default function AgentStatusPanel({ projectId }: AgentStatusPanelProps) {
   const { showToast } = useToast();
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +36,7 @@ export default function AgentStatusPanel({}: AgentStatusPanelProps) {
 
   const fetchQueueStatus = useCallback(async () => {
     try {
-      const response = await fetch('/api/agents/queue');
+      const response = await fetch(`/api/agents/queue?projectId=${projectId}`);
       const data = await response.json();
 
       if (data.success) {
@@ -52,7 +52,7 @@ export default function AgentStatusPanel({}: AgentStatusPanelProps) {
     } finally {
       setLoading(false);
     }
-  }, [showToast]);
+  }, [showToast, projectId]);
 
   useEffect(() => {
     fetchQueueStatus();
