@@ -9,7 +9,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { gitClient } from '@/lib/git';
 import { taskManager } from '@/lib/tasks/task-manager';
-import { ProjectMetadataManager } from '@/lib/portable/metadata-manager';
+import { SQLiteMetadataManager } from '@/lib/portable/sqlite-metadata-manager';
 import { WorkspaceManager } from '@/lib/workspace/workspace-manager';
 import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
 import { 
@@ -107,9 +107,9 @@ export async function POST(request: NextRequest) {
     let sourcePath: string | undefined;
     
     if (localPath) {
-      // For local imports, we'll copy to repos/ directory
+      // For local imports, use the existing location in-place
       sourcePath = localPath;
-      finalLocalPath = await generateUniqueProjectPath(gitClient, projectName);
+      finalLocalPath = localPath; // Use original location, don't copy
     } else {
       // For Git imports, clone directly to repos/ directory
       finalLocalPath = await generateUniqueProjectPath(gitClient, projectName);
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     // Create task for progress tracking
     const phases = [
       { phaseId: 'validate', title: 'Validate Import', description: 'Validating import requirements', order: 0 },
-      { phaseId: 'clone', title: sourcePath ? 'Copy Project' : 'Clone Repository', description: sourcePath ? 'Copying project to repos/ directory' : 'Cloning repository from remote', order: 1 },
+      { phaseId: 'clone', title: sourcePath ? 'Setup Project' : 'Clone Repository', description: sourcePath ? 'Setting up project metadata in-place' : 'Cloning repository from remote', order: 1 },
       { phaseId: 'analyze', title: 'Analyze Project', description: 'Analyzing project structure and dependencies', order: 2 },
       { phaseId: 'setup-metadata', title: 'Setup Metadata', description: 'Creating .codehive/ structure', order: 3 },
       { phaseId: 'detect-stack', title: 'Detect Tech Stack', description: 'Auto-detecting technology stack', order: 4 },
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
         await fs.access(sourcePath);
         
         // Check if it's already a portable project
-        const metadataManager = new ProjectMetadataManager(sourcePath);
+        const metadataManager = new SQLiteMetadataManager(sourcePath);
         if (await metadataManager.isPortableProject()) {
           const existingMetadata = await metadataManager.getProjectMetadata();
           
@@ -267,29 +267,27 @@ export async function POST(request: NextRequest) {
         message: 'Repository cloned successfully',
       });
     } else if (sourcePath) {
-      // Copy local project to repos/ directory
+      // Setup local project in-place (no copying)
       await taskManager.updatePhaseProgress(taskId, 'clone', 0, {
         type: 'INFO',
-        message: `Copying project from ${sourcePath}...`,
+        message: `Setting up project at ${sourcePath}...`,
       });
 
       try {
-        // Copy entire directory
-        await copyDirectory(sourcePath, finalLocalPath);
-        
+        // No copying needed - project will be set up in-place
         await taskManager.updatePhaseProgress(taskId, 'clone', 100, {
           type: 'PHASE_COMPLETE',
-          message: 'Project copied to repos/ directory successfully',
+          message: 'Project location confirmed, proceeding with in-place setup',
         });
       } catch (error) {
         await taskManager.updatePhaseProgress(taskId, 'clone', 100, {
           type: 'ERROR',
-          message: `Copy failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          message: `Setup failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
         });
         
         return NextResponse.json({
           success: false,
-          error: `Failed to copy project: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          error: `Failed to setup project: ${error instanceof Error ? error.message : 'Unknown error'}`,
         }, { status: 500 });
       }
     }
@@ -314,7 +312,7 @@ export async function POST(request: NextRequest) {
       message: 'Setting up .codehive/ metadata structure...',
     });
 
-    const metadataManager = new ProjectMetadataManager(finalLocalPath);
+    const metadataManager = new SQLiteMetadataManager(finalLocalPath);
     const workspaceManager = new WorkspaceManager(finalLocalPath);
 
     // Initialize directory structures
