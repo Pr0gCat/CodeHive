@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TaskQueue } from '@/lib/agents/queue';
+import { TaskQueue } from '@/lib/tasks/queue';
 import { z } from 'zod';
 
 const executeAgentSchema = z.object({

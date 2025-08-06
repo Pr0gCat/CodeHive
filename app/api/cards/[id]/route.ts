@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { projectLogger } from '@/lib/logging/project-logger';
-import { coordinationSystem } from '@/lib/agents/coordination-system';
+import { coordinationSystem } from '@/lib/coordination/system';
 import { z } from 'zod';
 
 const updateCardSchema = z.object({

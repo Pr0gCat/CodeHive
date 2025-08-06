@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ProjectManagerAgent } from '@/lib/agents/project-manager';
-import { prisma } from '@/lib/db';
+import { ProjectManagerAgent } from '@/lib/project-manager';
+import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
+import { ProjectMetadataManager } from '@/lib/portable/metadata-manager';
 
 interface GenerateEpicsParams {
   params: Promise<{ id: string }>;
@@ -13,16 +14,10 @@ export async function POST(
   try {
     const { id: projectId } = await params;
 
-    // Validate project exists
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-      include: {
-        epics: {
-          where: { status: 'ACTIVE' },
-          select: { id: true, title: true },
-        },
-      },
-    });
+    // Find the project
+    const discoveryService = getProjectDiscoveryService();
+    const projects = await discoveryService.discoverProjects();
+    const project = projects.find(p => p.metadata.id === projectId);
 
     if (!project) {
       return NextResponse.json(
@@ -32,12 +27,16 @@ export async function POST(
     }
 
     // Check if project already has epics
-    if (project.epics.length > 0) {
+    const metadataManager = new ProjectMetadataManager(project.path);
+    const existingEpics = await metadataManager.getEpics();
+    const activeEpics = existingEpics.filter(epic => epic.status === 'ACTIVE');
+    
+    if (activeEpics.length > 0) {
       return NextResponse.json(
         {
           error: 'Project already has epics',
-          message: `This project already has ${project.epics.length} active epic(s). Use the feature request system to add new epics.`,
-          existingEpics: project.epics.map(epic => ({
+          message: `This project already has ${activeEpics.length} active epic(s). Use the feature request system to add new epics.`,
+          existingEpics: activeEpics.map(epic => ({
             id: epic.id,
             title: epic.title,
           })),
@@ -46,7 +45,7 @@ export async function POST(
       );
     }
 
-    console.log(`🚀 Starting epic generation for project: ${project.name}`);
+    console.log(`🚀 Starting epic generation for project: ${project.metadata.name}`);
 
     // Initialize project manager
     const projectManager = new ProjectManagerAgent();
@@ -86,25 +85,10 @@ export async function GET(
   try {
     const { id: projectId } = await params;
 
-    // Check project exists and epic status
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-      include: {
-        epics: {
-          where: { status: 'ACTIVE' },
-          select: { id: true, title: true },
-        },
-        kanbanCards: {
-          select: { id: true, status: true },
-        },
-        _count: {
-          select: {
-            epics: true,
-            kanbanCards: true,
-          },
-        },
-      },
-    });
+    // Find the project
+    const discoveryService = getProjectDiscoveryService();
+    const projects = await discoveryService.discoverProjects();
+    const project = projects.find(p => p.metadata.id === projectId);
 
     if (!project) {
       return NextResponse.json(
@@ -113,8 +97,14 @@ export async function GET(
       );
     }
 
-    const canGenerate = project.epics.length === 0;
-    const hasStories = project.kanbanCards.length > 0;
+    // Get project epics and stories
+    const metadataManager = new ProjectMetadataManager(project.path);
+    const existingEpics = await metadataManager.getEpics();
+    const activeEpics = existingEpics.filter(epic => epic.status === 'ACTIVE');
+    const allStories = await metadataManager.getStories();
+    
+    const canGenerate = activeEpics.length === 0;
+    const hasStories = allStories.length > 0;
 
     return NextResponse.json({
       canGenerate,
@@ -122,15 +112,15 @@ export async function GET(
         ? 'No active epics found - generation available'
         : 'Project already has active epics',
       projectInfo: {
-        id: project.id,
-        name: project.name,
-        language: project.language,
-        framework: project.framework,
-        activeEpicsCount: project.epics.length,
-        totalStoriesCount: project._count.kanbanCards,
+        id: project.metadata.id,
+        name: project.metadata.name,
+        language: project.metadata.language,
+        framework: project.metadata.framework,
+        activeEpicsCount: activeEpics.length,
+        totalStoriesCount: allStories.length,
         hasExistingStories: hasStories,
       },
-      existingEpics: project.epics.map(epic => ({
+      existingEpics: activeEpics.map(epic => ({
         id: epic.id,
         title: epic.title,
       })),

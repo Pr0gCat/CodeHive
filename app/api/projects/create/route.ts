@@ -1,10 +1,22 @@
-import { prisma } from '@/lib/db';
+/**
+ * Project creation API - Creates CodeHive projects with .codehive/ metadata structure
+ * All projects are now portable by default
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { promises as fs } from 'fs';
+import path from 'path';
 import { gitClient } from '@/lib/git';
 import { taskManager } from '@/lib/tasks/task-manager';
-import { promises as fs } from 'fs';
-import { NextRequest, NextResponse } from 'next/server';
-import path from 'path';
-import { z } from 'zod';
+import { ProjectMetadataManager } from '@/lib/portable/metadata-manager';
+import { WorkspaceManager } from '@/lib/workspace/workspace-manager';
+import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
+import { 
+  ProjectMetadata, 
+  ProjectSettings,
+  ProjectBudget
+} from '@/lib/portable/schemas';
 
 const createProjectSchema = z.object({
   name: z
@@ -24,9 +36,7 @@ const createProjectSchema = z.object({
     .string()
     .optional()
     .refine(val => {
-      // 允許空字符串或未定義
       if (!val || val.trim() === '') return true;
-      // 如果有值，驗證 URL 格式
       try {
         new URL(val);
         return true;
@@ -36,6 +46,7 @@ const createProjectSchema = z.object({
     }, 'Invalid URL format'),
   localPath: z.string().optional(),
   initializeGit: z.boolean().default(true),
+  
   // Tech stack fields
   framework: z.string().optional(),
   language: z.string().optional(),
@@ -43,9 +54,31 @@ const createProjectSchema = z.object({
   testFramework: z.string().optional(),
   lintTool: z.string().optional(),
   buildTool: z.string().optional(),
+  
+  // Project settings
+  settings: z.object({
+    maxTokensPerDay: z.number().default(10000),
+    maxTokensPerRequest: z.number().default(4000),
+    maxRequestsPerMinute: z.number().default(20),
+    maxRequestsPerHour: z.number().default(100),
+    agentTimeout: z.number().default(300000),
+    maxRetries: z.number().default(3),
+    parallelAgentLimit: z.number().default(2),
+    autoReviewOnImport: z.boolean().default(true),
+    claudeModel: z.string().default('claude-3-5-sonnet-20241022'),
+    customInstructions: z.string().optional(),
+  }).optional(),
+  
+  // Budget allocation
+  budget: z.object({
+    allocatedPercentage: z.number().min(0).max(100).default(10),
+    dailyTokenBudget: z.number().default(1000),
+  }).optional(),
 });
 
 export async function POST(request: NextRequest) {
+  const taskId = `create-project-${Date.now()}`;
+  
   try {
     const body = await request.json();
     const validatedData = createProjectSchema.parse(body);
@@ -60,437 +93,351 @@ export async function POST(request: NextRequest) {
       testFramework,
       lintTool,
       buildTool,
+      settings,
+      budget,
     } = validatedData;
 
-    // Generate localPath if not provided
-    const localPath =
-      validatedData.localPath?.trim() || gitClient.generateProjectPath(name);
-
-    // Check if project name already exists
-    const existingProject = await prisma.project.findFirst({
-      where: { name },
-    });
-
-    if (existingProject) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'A project with this name already exists',
-        },
-        { status: 409 }
-      );
+    // Always generate localPath for new projects in repos/ directory
+    // Custom paths should use the import endpoint instead
+    const localPath = gitClient.generateProjectPath(name);
+    
+    // Warn if user provided a custom localPath
+    if (validatedData.localPath?.trim()) {
+      console.warn(`Create endpoint received custom localPath: ${validatedData.localPath}. This will be ignored. Use import endpoint for existing directories.`);
     }
 
-    // Check if local path already exists in database
-    const existingPath = await prisma.project.findFirst({
-      where: { localPath },
-    });
-
-    if (existingPath) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: `A project already exists at this location: ${localPath}`,
-        },
-        { status: 409 }
-      );
-    }
-
-    // Check if directory already exists on filesystem
-    try {
-      await fs.access(localPath);
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Directory already exists at: ${localPath}. Please choose a different location or name.`,
-        },
-        { status: 409 }
-      );
-    } catch {
-      // Directory doesn't exist, which is what we want for new project creation
-    }
-
-    // IMMEDIATELY CREATE PROJECT RECORD IN DATABASE
-    const project = await prisma.project.create({
-      data: {
-        name,
-        description: description || '專案正在初始化中...',
-        gitUrl: gitUrl && gitUrl.trim() ? gitUrl.trim() : null,
-        localPath,
-        status: 'INITIALIZING', // Start with INITIALIZING status
-        // Tech stack will be updated during initialization if provided
-        framework: framework || null,
-        language: language || null,
-        packageManager: packageManager || null,
-        testFramework: testFramework || null,
-        lintTool: lintTool || null,
-        buildTool: buildTool || null,
-      },
-    });
-
-    // Define phases for project creation
+    // Create task for progress tracking
     const phases = [
-      {
-        phaseId: 'validation',
-        title: '驗證專案資訊',
-        description: '檢查專案名稱和路徑',
-        order: 0,
-      },
-      {
-        phaseId: 'setup',
-        title: '建立專案目錄',
-        description: 'mkdir 建立專案目錄和 git init',
-        order: 1,
-      },
-      {
-        phaseId: 'sprint_setup',
-        title: 'Setup Default Sprint',
-        description: 'Create default first sprint and tasks',
-        order: 2,
-      },
-      {
-        phaseId: 'description_generation',
-        title: '生成專案描述',
-        description: '使用代碼分析器生成專案描述',
-        order: 3,
-      },
-      {
-        phaseId: 'completion',
-        title: '完成初始化',
-        description: '更新專案狀態為已完成',
-        order: 4,
-      },
+      { phaseId: 'validate', title: 'Validate Project', description: 'Validating project requirements', order: 0 },
+      { phaseId: 'create-dir', title: 'Create Directory', description: 'Creating project directory', order: 1 },
+      { phaseId: 'init-git', title: 'Initialize Git', description: 'Setting up Git repository', order: 2 },
+      { phaseId: 'setup-metadata', title: 'Setup Metadata', description: 'Creating .codehive/ structure', order: 3 },
+      { phaseId: 'create-files', title: 'Create Files', description: 'Generating initial project files', order: 4 },
+      { phaseId: 'finalize', title: 'Finalize', description: 'Finalizing project setup', order: 5 },
     ];
-
-    // Create task for project creation
-    const taskId = `create-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
     await taskManager.createTask(taskId, 'PROJECT_CREATE', phases, {
       projectName: name,
-      projectId: project.id, // Now we have the project ID
     });
 
-    // Start the task
     await taskManager.startTask(taskId);
 
-    // Start async project creation
-    createProjectAsync(taskId, project.id, {
+    // Phase 1: Validation
+    await taskManager.updatePhaseProgress(taskId, 'validate', 0, {
+      type: 'INFO',
+      message: 'Starting project validation...',
+    });
+
+    // Check if directory already exists
+    // The create endpoint should only be used for new projects in the repos/ directory
+    try {
+      await fs.access(localPath);
+      await taskManager.updatePhaseProgress(taskId, 'validate', 100, {
+        type: 'ERROR',
+        message: `Directory already exists: ${localPath}`,
+      });
+      
+      return NextResponse.json({
+        success: false,
+        error: `A project with the name "${name}" already exists. Please choose a different name or use the import feature for existing projects.`,
+      }, { status: 409 });
+    } catch {
+      // Directory doesn't exist, which is good for new projects
+    }
+
+    // Check if another portable project with the same name exists
+    const reposDir = path.dirname(localPath);
+    try {
+      const entries = await fs.readdir(reposDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isDirectory()) {
+          const projectPath = path.join(reposDir, entry.name);
+          const metadataManager = new ProjectMetadataManager(projectPath);
+          if (await metadataManager.isPortableProject()) {
+            const metadata = await metadataManager.getProjectMetadata();
+            if (metadata && metadata.name === name) {
+              await taskManager.updatePhaseProgress(taskId, 'validate', 100, {
+                type: 'ERROR',
+                message: `Project with name "${name}" already exists`,
+              });
+              
+              return NextResponse.json({
+                success: false,
+                error: `A project with the name "${name}" already exists in ${projectPath}`,
+              }, { status: 409 });
+            }
+          }
+        }
+      }
+    } catch {
+      // Repos directory might not exist yet, that's okay
+    }
+
+    await taskManager.updatePhaseProgress(taskId, 'validate', 100, {
+      type: 'PHASE_COMPLETE',
+      message: 'Project validation completed',
+    });
+
+    // Phase 2: Create Directory
+    await taskManager.updatePhaseProgress(taskId, 'create-dir', 0, {
+      type: 'INFO',
+      message: `Creating project directory at ${localPath}...`,
+    });
+
+    await fs.mkdir(path.dirname(localPath), { recursive: true });
+    await fs.mkdir(localPath, { recursive: true });
+
+    await taskManager.updatePhaseProgress(taskId, 'create-dir', 100, {
+      type: 'PHASE_COMPLETE',
+      message: 'Project directory created',
+    });
+
+    // Phase 3: Initialize Git
+    await taskManager.updatePhaseProgress(taskId, 'init-git', 0, {
+      type: 'INFO',
+      message: 'Initializing Git repository...',
+    });
+
+    if (initializeGit) {
+      const isExistingRepo = await gitClient.isValidRepository(localPath);
+      
+      if (!isExistingRepo) {
+        const initResult = await gitClient.init(localPath);
+        if (!initResult.success) {
+          throw new Error(`Git initialization failed: ${initResult.error}`);
+        }
+      }
+    }
+
+    await taskManager.updatePhaseProgress(taskId, 'init-git', 100, {
+      type: 'PHASE_COMPLETE',
+      message: 'Git repository initialized',
+    });
+
+    // Phase 4: Setup Metadata
+    await taskManager.updatePhaseProgress(taskId, 'setup-metadata', 0, {
+      type: 'INFO',
+      message: 'Setting up .codehive/ metadata structure...',
+    });
+
+    const metadataManager = new ProjectMetadataManager(localPath);
+    const workspaceManager = new WorkspaceManager(localPath);
+
+    // Initialize directory structures
+    await metadataManager.initialize();
+    await workspaceManager.initialize();
+
+    // Create project metadata
+    const now = new Date().toISOString();
+    const projectId = `proj-${Date.now()}`;
+    
+    const projectMetadata: ProjectMetadata = {
+      version: '1.0.0',
+      id: projectId,
       name,
       description,
-      gitUrl,
+      gitUrl: gitUrl?.trim() || undefined,
       localPath,
-      initializeGit,
+      status: 'ACTIVE',
       framework,
       language,
       packageManager,
       testFramework,
       lintTool,
       buildTool,
-    }).catch(async error => {
-      console.error('Project creation failed:', error);
-      // Update project status to failed
-      await prisma.project.update({
-        where: { id: project.id },
-        data: {
-          status: 'ARCHIVED',
-          description: `初始化失敗: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        },
-      });
-      await taskManager.updatePhaseProgress(taskId, 'complete', 100, {
-        type: 'ERROR',
-        message: `Project creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      });
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await metadataManager.saveProjectMetadata(projectMetadata, { validateData: true });
+
+    // Create project settings
+    const projectSettings: ProjectSettings = {
+      maxTokensPerDay: settings?.maxTokensPerDay || 10000,
+      maxTokensPerRequest: settings?.maxTokensPerRequest || 4000,
+      maxRequestsPerMinute: settings?.maxRequestsPerMinute || 20,
+      maxRequestsPerHour: settings?.maxRequestsPerHour || 100,
+      agentTimeout: settings?.agentTimeout || 300000,
+      maxRetries: settings?.maxRetries || 3,
+      parallelAgentLimit: settings?.parallelAgentLimit || 2,
+      autoReviewOnImport: settings?.autoReviewOnImport ?? true,
+      maxQueueSize: 50,
+      taskPriority: 'NORMAL',
+      autoExecuteTasks: true,
+      emailNotifications: false,
+      notifyOnTaskComplete: true,
+      notifyOnTaskFail: true,
+      codeAnalysisDepth: 'STANDARD',
+      testCoverageThreshold: 80.0,
+      enforceTypeChecking: true,
+      autoFixLintErrors: false,
+      claudeModel: settings?.claudeModel || 'claude-3-5-sonnet-20241022',
+      customInstructions: settings?.customInstructions,
+      excludePatterns: undefined,
+      includeDependencies: true,
+    };
+
+    await metadataManager.saveProjectSettings(projectSettings, { validateData: true });
+
+    // Create project budget if specified
+    if (budget) {
+      const projectBudget: ProjectBudget = {
+        allocatedPercentage: budget.allocatedPercentage,
+        dailyTokenBudget: budget.dailyTokenBudget,
+        usedTokens: 0,
+        lastResetAt: now,
+        warningNotified: false,
+        criticalNotified: false,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      await metadataManager.saveProjectBudget(projectBudget);
+    }
+
+    await taskManager.updatePhaseProgress(taskId, 'setup-metadata', 100, {
+      type: 'PHASE_COMPLETE',
+      message: '.codehive/ metadata structure created',
     });
+
+    // Phase 5: Create Files
+    await taskManager.updatePhaseProgress(taskId, 'create-files', 0, {
+      type: 'INFO',
+      message: 'Creating initial project files...',
+    });
+
+    // Create a basic README.md
+    const readmeContent = `# ${name}
+
+${description || 'A CodeHive managed project'}
+
+## About
+
+This is a portable CodeHive project. All project metadata is stored in the \`.codehive/\` directory, making this project fully portable between different CodeHive installations.
+
+## Project Structure
+
+- \`.codehive/\` - CodeHive metadata and configuration
+  - \`project.json\` - Project metadata
+  - \`settings.json\` - Project settings
+  - \`epics/\` - Epic definitions
+  - \`stories/\` - User story definitions
+  - \`sprints/\` - Sprint planning data
+  - \`cycles/\` - TDD cycle data
+  - \`agents/\` - Agent specifications
+  - \`usage/\` - Token usage tracking
+  - \`workspaces/\` - Workspace snapshots
+  - \`logs/\` - Project logs
+
+## Getting Started
+
+This project is ready to be managed by CodeHive. The project structure and metadata are fully self-contained.
+
+---
+
+*Generated by CodeHive - Portable Project System*
+`;
+
+    await fs.writeFile(path.join(localPath, 'README.md'), readmeContent);
+
+    // Create initial .gitignore if it doesn't exist
+    try {
+      await fs.access(path.join(localPath, '.gitignore'));
+    } catch {
+      const gitignoreContent = `# Dependencies
+node_modules/
+*.log
+
+# Build outputs
+dist/
+build/
+.next/
+
+# Environment
+.env*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# CodeHive (already handled by metadata manager)
+# .codehive/
+`;
+      await fs.writeFile(path.join(localPath, '.gitignore'), gitignoreContent);
+    }
+
+    await taskManager.updatePhaseProgress(taskId, 'create-files', 100, {
+      type: 'PHASE_COMPLETE',
+      message: 'Initial project files created',
+    });
+
+    // Phase 6: Finalize
+    await taskManager.updatePhaseProgress(taskId, 'finalize', 0, {
+      type: 'INFO',
+      message: 'Finalizing project setup...',
+    });
+
+    // Create initial Git commit if Git was initialized
+    if (initializeGit) {
+      try {
+        await gitClient.initialCommit(localPath, 'Initial commit - Portable CodeHive project setup');
+      } catch (error) {
+        console.warn('Failed to create initial commit:', error);
+      }
+    }
+
+    await taskManager.updatePhaseProgress(taskId, 'finalize', 100, {
+      type: 'PHASE_COMPLETE',
+      message: 'Project setup completed successfully',
+    });
+
+    // Complete the task
+    const result = {
+      projectId,
+      name,
+      localPath,
+      metadata: projectMetadata,
+      settings: projectSettings,
+      budget: budget ? {
+        allocatedPercentage: budget.allocatedPercentage,
+        dailyTokenBudget: budget.dailyTokenBudget,
+      } : undefined,
+    };
+
+    await taskManager.completeTask(taskId, result);
+
+    // Clear discovery cache so the new project is immediately discoverable
+    const discoveryService = getProjectDiscoveryService();
+    discoveryService.clearCache();
 
     return NextResponse.json({
       success: true,
-      data: {
-        projectId: project.id,
-        taskId: taskId,
-        message: 'Project created and initialization started',
-        project: {
-          id: project.id,
-          name: project.name,
-          status: project.status,
-          localPath: project.localPath,
-        },
-      },
+      taskId,
+      data: result,
     });
-  } catch (error) {
-    console.error('Error creating project:', error);
 
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid project data',
-          details: error.issues,
-        },
-        { status: 400 }
-      );
+  } catch (error) {
+    console.error('Project creation failed:', error);
+    
+    // Update task with error
+    try {
+      // TODO: Implement proper error handling for tasks
+      console.error('Task failed:', taskId, error instanceof Error ? error.message : 'Unknown error');
+    } catch {
+      // Task might not exist yet
     }
 
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to create project',
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        taskId,
       },
       { status: 500 }
     );
-  }
-}
-
-async function createProjectAsync(
-  taskId: string,
-  projectId: string,
-  data: {
-    name: string;
-    description?: string;
-    gitUrl?: string;
-    localPath: string;
-    initializeGit: boolean;
-    framework?: string;
-    language?: string;
-    packageManager?: string;
-    testFramework?: string;
-    lintTool?: string;
-    buildTool?: string;
-  }
-) {
-  const { name, description, gitUrl, localPath, initializeGit } = data;
-
-  try {
-    // Phase 1: Validation
-    const validationPhaseId = 'validation';
-    await taskManager.startPhase(taskId, validationPhaseId);
-
-    // Check project name availability
-    await taskManager.updatePhaseProgress(taskId, validationPhaseId, 30, {
-      type: 'PHASE_PROGRESS',
-      message: 'Checking project name availability',
-    });
-
-    // Ensure directory exists
-    await fs.mkdir(path.dirname(localPath), { recursive: true });
-
-    await taskManager.updatePhaseProgress(taskId, validationPhaseId, 70, {
-      type: 'PHASE_PROGRESS',
-      message: 'Validating project path',
-    });
-
-    await taskManager.updatePhaseProgress(taskId, validationPhaseId, 100, {
-      type: 'PHASE_COMPLETE',
-      message: 'Validation completed',
-    });
-    await taskManager.completePhase(taskId, validationPhaseId);
-
-    // Phase 2: Setup (mkdir + git init)
-    const setupPhaseId = 'setup';
-    await taskManager.startPhase(taskId, setupPhaseId);
-
-    await taskManager.updatePhaseProgress(taskId, setupPhaseId, 30, {
-      type: 'PHASE_PROGRESS',
-      message: 'Creating project directory',
-    });
-
-    // Create project directory
-    await fs.mkdir(localPath, { recursive: true });
-
-    await taskManager.updatePhaseProgress(taskId, setupPhaseId, 70, {
-      type: 'PHASE_PROGRESS',
-      message: 'Initializing Git repository',
-    });
-
-    // Git initialization
-    if (initializeGit) {
-      const isExistingRepo = await gitClient.isValidRepository(localPath);
-
-      if (!isExistingRepo) {
-        const initResult = await gitClient.init(localPath);
-
-        if (!initResult.success) {
-          throw new Error(`Failed to initialize Git: ${initResult.error}`);
-        }
-      }
-    }
-
-    await taskManager.updatePhaseProgress(taskId, setupPhaseId, 100, {
-      type: 'PHASE_COMPLETE',
-      message: 'Project directory and Git initialized',
-    });
-    await taskManager.completePhase(taskId, setupPhaseId);
-
-    // Phase 3: Create default first sprint with README task
-    const sprintSetupPhaseId = 'sprint_setup';
-    await taskManager.startPhase(taskId, sprintSetupPhaseId);
-
-    await taskManager.updatePhaseProgress(taskId, sprintSetupPhaseId, 30, {
-      type: 'PHASE_PROGRESS',
-      message: 'Creating default first sprint...',
-    });
-
-    try {
-      const { createDefaultFirstSprint } = await import(
-        '@/lib/sprints/default-sprint'
-      );
-      const sprintResult = await createDefaultFirstSprint(projectId, name);
-
-      await taskManager.updatePhaseProgress(taskId, sprintSetupPhaseId, 100, {
-        type: 'PHASE_COMPLETE',
-        message: `Created first sprint with README creation task`,
-      });
-      await taskManager.completePhase(taskId, sprintSetupPhaseId);
-    } catch (sprintError) {
-      console.error('Failed to create default sprint:', sprintError);
-      await taskManager.updatePhaseProgress(taskId, sprintSetupPhaseId, 100, {
-        type: 'PHASE_COMPLETE',
-        message: 'Sprint creation skipped due to error',
-      });
-      await taskManager.completePhase(taskId, sprintSetupPhaseId);
-    }
-
-    // Phase 4: Generate project description with code analyzer
-    const descriptionGenerationPhaseId = 'description_generation';
-    await taskManager.startPhase(taskId, descriptionGenerationPhaseId);
-
-    await taskManager.updatePhaseProgress(
-      taskId,
-      descriptionGenerationPhaseId,
-      20,
-      {
-        type: 'PHASE_PROGRESS',
-        message: 'Analyzing project for description generation...',
-      }
-    );
-
-    // Use code analyzer for description generation
-    let finalDescription = description || 'Software project';
-    try {
-      console.log(`🔍 Analyzing project structure for description: ${name}...`);
-
-      const { projectAnalyzer } = await import(
-        '@/lib/analysis/project-analyzer'
-      );
-      const finalAnalysisResult =
-        await projectAnalyzer.analyzeProject(localPath);
-
-      await taskManager.updatePhaseProgress(
-        taskId,
-        descriptionGenerationPhaseId,
-        60,
-        {
-          type: 'PHASE_PROGRESS',
-          message: 'Generating intelligent project description...',
-        }
-      );
-
-      // Generate description based on analysis results
-      const techStack = [];
-      if (finalAnalysisResult.detectedLanguage)
-        techStack.push(finalAnalysisResult.detectedLanguage);
-      if (finalAnalysisResult.detectedFramework)
-        techStack.push(finalAnalysisResult.detectedFramework);
-      if (finalAnalysisResult.detectedPackageManager)
-        techStack.push(finalAnalysisResult.detectedPackageManager);
-
-      const techStackText =
-        techStack.length > 0 ? ` using ${techStack.join(', ')}` : '';
-      const fileCountText =
-        finalAnalysisResult.totalFiles > 0
-          ? ` with ${finalAnalysisResult.totalFiles} files`
-          : '';
-
-      finalDescription =
-        description ||
-        `${finalAnalysisResult.detectedLanguage || 'Software'} project${techStackText}${fileCountText}. Managed by CodeHive with AI-Native TDD development.`;
-
-      console.log(`Generated description from analysis: "${finalDescription}"`);
-    } catch (descriptionError) {
-      console.error(
-        `⚠️ Failed to analyze project for description ${name}:`,
-        descriptionError
-      );
-      // Continue with default description
-    }
-
-    await taskManager.updatePhaseProgress(
-      taskId,
-      descriptionGenerationPhaseId,
-      100,
-      {
-        type: 'PHASE_COMPLETE',
-        message: 'Project description generated with code analyzer',
-      }
-    );
-    await taskManager.completePhase(taskId, descriptionGenerationPhaseId);
-
-    // Phase 5: Complete initialization
-    const completionPhaseId = 'completion';
-    await taskManager.startPhase(taskId, completionPhaseId);
-
-    await taskManager.updatePhaseProgress(taskId, completionPhaseId, 50, {
-      type: 'PHASE_PROGRESS',
-      message: 'Updating project status...',
-    });
-
-    // Update project with generated description and ACTIVE status
-    await prisma.project.update({
-      where: { id: projectId },
-      data: {
-        description: finalDescription,
-        status: 'ACTIVE', // Change status to ACTIVE
-      },
-    });
-
-    // Create initial commit with all generated files
-    if (initializeGit) {
-      try {
-        const commitResult = await gitClient.initialCommit(
-          localPath,
-          'Initial commit - CodeHive project setup\n\n- Created README.md with project analysis\n- Set up project structure'
-        );
-
-        if (!commitResult.success) {
-          console.warn('Failed to create initial commit:', commitResult.error);
-        }
-      } catch (commitError) {
-        console.warn('Failed to create initial commit:', commitError);
-      }
-    }
-
-    await taskManager.updatePhaseProgress(taskId, completionPhaseId, 100, {
-      type: 'PHASE_COMPLETE',
-      message: 'Project initialization completed',
-    });
-    await taskManager.completePhase(taskId, completionPhaseId);
-
-    // Complete the task
-    await taskManager.completeTask(taskId, {
-      project: {
-        id: projectId,
-        name: name,
-        localPath: localPath,
-      },
-    });
-
-    // TODO: Trigger automatic Kanban board optimization after project creation completion
-    // setImmediate(async () => {
-    //   try {
-    //     console.log(`🎯 Triggering automatic Kanban optimization after project creation completion`);
-    //     const { ProjectManagerAgent } = await import('@/lib/agents/project-manager');
-    //     const projectManager = new ProjectManagerAgent();
-    //     // await projectManager.manageKanbanBoard(projectId);
-    //     console.log(`✅ Automatic Kanban optimization completed after project creation`);
-    //   } catch (error) {
-    //     console.error(`❌ Automatic Kanban optimization failed after project creation: ${error}`);
-    //   }
-    // });
-  } catch (error) {
-    console.error('Error in createProjectAsync:', error);
-    await taskManager.updatePhaseProgress(taskId, 'complete', 100, {
-      type: 'ERROR',
-      message: `Project creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-    });
-    throw error;
   }
 }

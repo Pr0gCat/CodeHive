@@ -1,3 +1,5 @@
+import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
+import { globalSettingsManager } from '@/lib/portable/global-settings-manager';
 import { prisma } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -14,19 +16,7 @@ export async function GET(request: NextRequest) {
     const projectId = request.nextUrl.searchParams.get('projectId');
 
     // Get global settings
-    const globalSettings = await prisma.globalSettings.findUnique({
-      where: { id: 'global' },
-    });
-
-    if (!globalSettings) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Global settings not found',
-        },
-        { status: 404 }
-      );
-    }
+    const globalSettings = await globalSettingsManager.getGlobalSettings();
 
     // Calculate today's start time
     const todayStart = new Date();
@@ -55,64 +45,86 @@ async function getGlobalMonitorData(
   globalSettings: GlobalSettings,
   todayStart: Date
 ) {
-  // Get today's total usage across all projects
-  const todayUsage = await prisma.tokenUsage.aggregate({
-    where: {
-      timestamp: {
-        gte: todayStart,
-      },
-    },
-    _sum: {
-      inputTokens: true,
-      outputTokens: true,
-    },
-    _count: {
-      id: true,
-    },
-  });
+  // Get all portable projects
+  const discoveryService = getProjectDiscoveryService();
+  const projects = await discoveryService.discoverProjects();
 
-  const totalTokensUsed =
-    (todayUsage._sum.inputTokens || 0) + (todayUsage._sum.outputTokens || 0);
-  const usagePercentage =
-    (totalTokensUsed / globalSettings.dailyTokenLimit) * 100;
+  let totalTokensUsed = 0;
+  let totalRequestsToday = 0;
+  const projectData = [];
 
-  // Get project-wise usage
-  const projectUsage = await prisma.project.findMany({
-    include: {
-      budget: true,
-      tokenUsage: {
+  // Process each project to get usage data
+  for (const project of projects) {
+    try {
+      // Find corresponding database project
+      const dbProject = await prisma.project.findFirst({
         where: {
-          timestamp: {
-            gte: todayStart,
-          },
+          OR: [
+            { id: project.metadata.id },
+            { localPath: project.path }
+          ]
         },
-        select: {
-          inputTokens: true,
-          outputTokens: true,
-        },
-      },
-    },
-  });
+        include: {
+          budget: true,
+          tokenUsage: true
+        }
+      });
 
-  const projectData = projectUsage.map(project => {
-    const usage = project.tokenUsage.reduce(
-      (sum, token) => sum + token.inputTokens + token.outputTokens,
-      0
-    );
-    const budget = project.budget?.dailyTokenBudget || 0;
-    const percentage = budget > 0 ? (usage / budget) * 100 : 0;
+      // Get project budget from database
+      const budget = dbProject?.budget || null;
 
-    return {
-      id: project.id,
-      name: project.name,
-      usedTokens: usage,
-      budgetTokens: budget,
-      allocatedPercentage: project.budget?.allocatedPercentage || 0,
-      usagePercentage: percentage,
-      status: getUsageStatus(percentage, globalSettings),
-      isOverBudget: usage > budget,
-    };
-  });
+      // Get token usage for today from database
+      const tokenUsage = dbProject?.tokenUsage || [];
+
+      // Filter usage for today
+      const todayUsage = tokenUsage.filter(usage => {
+        const usageDate = new Date(usage.timestamp);
+        return usageDate >= todayStart;
+      });
+
+      // Calculate project totals
+      const projectTokensUsed = todayUsage.reduce(
+        (sum, usage) => sum + usage.inputTokens + usage.outputTokens,
+        0
+      );
+      const projectRequestsToday = todayUsage.length;
+
+      // Add to global totals
+      totalTokensUsed += projectTokensUsed;
+      totalRequestsToday += projectRequestsToday;
+
+      // Calculate project stats
+      const budgetTokens = budget?.dailyTokenBudget || 0;
+      const percentage = budgetTokens > 0 ? (projectTokensUsed / budgetTokens) * 100 : 0;
+
+      projectData.push({
+        id: project.metadata.id,
+        name: project.metadata.name,
+        usedTokens: projectTokensUsed,
+        budgetTokens,
+        allocatedPercentage: budget?.allocatedPercentage || 0,
+        usagePercentage: percentage,
+        status: getUsageStatus(percentage, globalSettings),
+        isOverBudget: projectTokensUsed > budgetTokens,
+      });
+    } catch (error) {
+      console.warn(`Failed to get monitoring data for project ${project.metadata.name}:`, error);
+      // Add project with zero usage to maintain visibility
+      projectData.push({
+        id: project.metadata.id,
+        name: project.metadata.name,
+        usedTokens: 0,
+        budgetTokens: 0,
+        allocatedPercentage: 0,
+        usagePercentage: 0,
+        status: 'safe',
+        isOverBudget: false,
+      });
+    }
+  }
+
+  // Calculate global stats
+  const usagePercentage = (totalTokensUsed / globalSettings.dailyTokenLimit) * 100;
 
   // Determine global status
   let globalStatus = 'safe';
@@ -133,14 +145,13 @@ async function getGlobalMonitorData(
         warningThreshold: globalSettings.warningThreshold * 100,
         criticalThreshold: globalSettings.criticalThreshold * 100,
         remainingTokens: globalSettings.dailyTokenLimit - totalTokensUsed,
-        requestsToday: todayUsage._count.id || 0,
+        requestsToday: totalRequestsToday,
       },
       projects: projectData,
       summary: {
         totalProjects: projectData.length,
         projectsOverBudget: projectData.filter(p => p.isOverBudget).length,
-        projectsNearLimit: projectData.filter(p => p.usagePercentage > 80)
-          .length,
+        projectsNearLimit: projectData.filter(p => p.usagePercentage > 80).length,
         averageUsage:
           projectData.length > 0
             ? projectData.reduce((sum, p) => sum + p.usagePercentage, 0) /
@@ -156,26 +167,16 @@ async function getProjectMonitorData(
   globalSettings: GlobalSettings,
   todayStart: Date
 ) {
-  // Get project with budget and usage
-  const project = await prisma.project.findUnique({
+  // Find project in database first
+  const dbProject = await prisma.project.findUnique({
     where: { id: projectId },
     include: {
       budget: true,
-      tokenUsage: {
-        where: {
-          timestamp: {
-            gte: todayStart,
-          },
-        },
-        orderBy: {
-          timestamp: 'desc',
-        },
-        take: 100, // Last 100 usage records
-      },
-    },
+      tokenUsage: true
+    }
   });
 
-  if (!project) {
+  if (!dbProject) {
     return NextResponse.json(
       {
         success: false,
@@ -185,35 +186,50 @@ async function getProjectMonitorData(
     );
   }
 
-  const totalUsage = project.tokenUsage.reduce(
-    (sum, token) => sum + token.inputTokens + token.outputTokens,
+  // Get project budget from database
+  const budget = dbProject.budget || null;
+
+  // Get token usage from database
+  const allTokenUsage = dbProject.tokenUsage || [];
+
+  // Filter for today's usage
+  const todayUsage = allTokenUsage.filter(usage => {
+    const usageDate = new Date(usage.timestamp);
+    return usageDate >= todayStart;
+  });
+
+  // Sort by timestamp descending
+  todayUsage.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  const totalUsage = todayUsage.reduce(
+    (sum, usage) => sum + usage.inputTokens + usage.outputTokens,
     0
   );
 
-  const budget = project.budget?.dailyTokenBudget || 0;
-  const usagePercentage = budget > 0 ? (totalUsage / budget) * 100 : 0;
+  const budgetTokens = budget?.dailyTokenBudget || 0;
+  const usagePercentage = budgetTokens > 0 ? (totalUsage / budgetTokens) * 100 : 0;
 
   // Get hourly usage for the chart
-  const hourlyUsage = await getHourlyUsage(projectId, todayStart);
+  const hourlyUsage = await getPortableHourlyUsage(allTokenUsage, todayStart);
 
   return NextResponse.json({
     success: true,
     data: {
       project: {
-        id: project.id,
-        name: project.name,
+        id: dbProject.id,
+        name: dbProject.name,
         usedTokens: totalUsage,
-        budgetTokens: budget,
-        allocatedPercentage: project.budget?.allocatedPercentage || 0,
+        budgetTokens,
+        allocatedPercentage: budget?.allocatedPercentage || 0,
         usagePercentage,
         status: getUsageStatus(usagePercentage, globalSettings),
-        isOverBudget: totalUsage > budget,
-        remainingBudget: Math.max(0, budget - totalUsage),
-        lastResetAt: project.budget?.lastResetAt || new Date(),
+        isOverBudget: totalUsage > budgetTokens,
+        remainingBudget: Math.max(0, budgetTokens - totalUsage),
+        lastResetAt: budget?.lastResetAt || new Date(),
       },
       usage: {
         hourly: hourlyUsage,
-        recent: project.tokenUsage.slice(0, 10).map(usage => ({
+        recent: todayUsage.slice(0, 10).map(usage => ({
           timestamp: usage.timestamp,
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens,
@@ -225,7 +241,7 @@ async function getProjectMonitorData(
   });
 }
 
-async function getHourlyUsage(projectId: string, todayStart: Date) {
+async function getPortableHourlyUsage(tokenUsage: any[], todayStart: Date) {
   const hourlyData = [];
   const now = new Date();
 
@@ -237,27 +253,23 @@ async function getHourlyUsage(projectId: string, todayStart: Date) {
 
     if (hourStart > now) break; // Don't include future hours
 
-    const usage = await prisma.tokenUsage.aggregate({
-      where: {
-        projectId,
-        timestamp: {
-          gte: hourStart,
-          lt: hourEnd,
-        },
-      },
-      _sum: {
-        inputTokens: true,
-        outputTokens: true,
-      },
-      _count: {
-        id: true,
-      },
+    // Filter usage for this hour
+    const hourUsage = tokenUsage.filter(usage => {
+      const usageDate = new Date(usage.timestamp);
+      return usageDate >= hourStart && usageDate < hourEnd;
     });
+
+    // Calculate totals for this hour
+    const tokens = hourUsage.reduce(
+      (sum, usage) => sum + usage.inputTokens + usage.outputTokens,
+      0
+    );
+    const requests = hourUsage.length;
 
     hourlyData.push({
       hour,
-      tokens: (usage._sum.inputTokens || 0) + (usage._sum.outputTokens || 0),
-      requests: usage._count.id || 0,
+      tokens,
+      requests,
     });
   }
 

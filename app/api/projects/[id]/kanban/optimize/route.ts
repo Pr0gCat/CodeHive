@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ProjectManagerAgent } from '@/lib/agents/project-manager';
+import { ProjectManagerAgent } from '@/lib/project-manager';
 import { projectLogger } from '@/lib/logging/project-logger';
 
 export async function POST(

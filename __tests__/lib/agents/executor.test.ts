@@ -1,4 +1,4 @@
-import { AgentExecutor } from '@/lib/agents/executor';
+import { AgentExecutor } from '@/lib/claude-code/executor';
 import { getConfig } from '@/lib/config';
 import { exec } from 'child_process';
 import { promisify } from 'util';

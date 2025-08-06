@@ -93,6 +93,12 @@ export default function NewProjectPage() {
     e.preventDefault();
     setError(null);
 
+    // Validation: Project name is always required
+    if (!formData.name.trim()) {
+      setError('專案名稱是必須的');
+      return;
+    }
+    
     // Validation: For new projects, description is required
     if (creationMode === 'new' && !formData.description.trim()) {
       setError('創建新專案時需要提供專案描述');
@@ -110,16 +116,38 @@ export default function NewProjectPage() {
         projectData.localPath = ''; // API will generate path based on project name
       }
 
-      const response = await fetch('/api/projects/create', {
+      // Choose correct endpoint based on creation mode
+      const endpoint = creationMode === 'existing' ? '/api/projects/import' : '/api/projects/create';
+      
+      // Prepare payload based on endpoint
+      const payload = creationMode === 'existing' 
+        ? {
+            name: String(projectData.name || '').trim(),
+            description: projectData.description,
+            gitUrl: projectData.gitUrl.trim() || undefined,
+            localPath: projectData.localPath.trim() || undefined,
+            autoDetectTechStack: true,
+            // Include tech stack fields for import
+            framework: projectData.framework,
+            language: projectData.language,
+            packageManager: projectData.packageManager,
+            testFramework: projectData.testFramework,
+            lintTool: projectData.lintTool,
+            buildTool: projectData.buildTool,
+          }
+        : {
+            ...projectData,
+            name: String(projectData.name || '').trim(),
+            gitUrl: projectData.gitUrl.trim() || undefined,
+            initializeGit: true, // Always initialize as Git repo
+          };
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          ...projectData,
-          gitUrl: projectData.gitUrl.trim() || undefined, // 確保空字符串變為 undefined
-          initializeGit: true, // Always initialize as Git repo
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -137,7 +165,7 @@ export default function NewProjectPage() {
       );
       console.log(
         '🚀 Background initialization started with task ID:',
-        data.data.taskId
+        data.taskId
       );
 
       // Navigate directly to the created project

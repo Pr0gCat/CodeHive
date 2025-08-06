@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TaskQueue } from '@/lib/agents/queue';
+import { TaskQueue } from '@/lib/tasks/queue';
 
 // Global task queue instance
 let taskQueue: TaskQueue | null = null;

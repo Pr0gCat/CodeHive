@@ -1,44 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { z } from 'zod';
-import { checkProjectOperationAccess } from '@/lib/project-access-control';
+import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
+import { ProjectMetadataManager } from '@/lib/portable/metadata-manager';
 
 const projectSettingsSchema = z.object({
-  // Token and Rate Limiting Settings
-  maxTokensPerDay: z.number().min(100).max(100000).optional(),
+  // AI Model Settings
+  claudeModel: z.string().optional(),
   maxTokensPerRequest: z.number().min(100).max(10000).optional(),
+  
+  // Rate Limiting
   maxRequestsPerMinute: z.number().min(1).max(100).optional(),
-  maxRequestsPerHour: z.number().min(10).max(1000).optional(),
-
-  // Agent Execution Settings
+  
+  // Execution Settings
   agentTimeout: z.number().min(30000).max(1800000).optional(), // 30s to 30min
   maxRetries: z.number().min(0).max(10).optional(),
-  parallelAgentLimit: z.number().min(1).max(10).optional(),
-  autoReviewOnImport: z.boolean().optional(),
-
-  // Task Queue Settings
-  maxQueueSize: z.number().min(5).max(500).optional(),
-  taskPriority: z.enum(['LOW', 'NORMAL', 'HIGH', 'CRITICAL']).optional(),
   autoExecuteTasks: z.boolean().optional(),
-
-  // Notification Settings
-  emailNotifications: z.boolean().optional(),
-  slackWebhookUrl: z.string().url().nullable().optional(),
-  discordWebhookUrl: z.string().url().nullable().optional(),
-  notifyOnTaskComplete: z.boolean().optional(),
-  notifyOnTaskFail: z.boolean().optional(),
-
-  // Agent Behavior Settings
-  codeAnalysisDepth: z.enum(['LIGHT', 'STANDARD', 'DEEP']).optional(),
+  
+  // Code Quality
   testCoverageThreshold: z.number().min(0).max(100).optional(),
   enforceTypeChecking: z.boolean().optional(),
-  autoFixLintErrors: z.boolean().optional(),
-
-  // Advanced Settings
-  claudeModel: z.string().optional(),
+  
+  // Optional Advanced Settings
   customInstructions: z.string().nullable().optional(),
   excludePatterns: z.string().nullable().optional(),
-  includeDependencies: z.boolean().optional(),
 });
 
 interface RouteParams {
@@ -50,18 +34,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const projectId = params.id;
 
-    // Check if prisma is available
-    if (!prisma) {
-      return NextResponse.json(
-        { success: false, error: 'Database connection not available' },
-        { status: 500 }
-      );
-    }
-
-    // Check if project exists
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-    });
+    // Find project in portable format
+    const discoveryService = getProjectDiscoveryService();
+    const projects = await discoveryService.discoverProjects();
+    const project = projects.find(p => p.metadata.id === projectId);
 
     if (!project) {
       return NextResponse.json(
@@ -70,89 +46,28 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Try to get or create project settings
-    let settings;
-    try {
-      settings = await prisma.projectSettings.findUnique({
-        where: { projectId },
-      });
-    } catch {
-      // If ProjectSettings table doesn't exist, return default values
-      console.log('ProjectSettings table not found, returning defaults');
-      return NextResponse.json({
-        success: true,
-        data: {
-          projectId,
-          maxTokensPerDay: 10000,
-          maxTokensPerRequest: 4000,
-          maxRequestsPerMinute: 20,
-          maxRequestsPerHour: 200,
-          agentTimeout: 300000,
-          maxRetries: 3,
-          parallelAgentLimit: 3,
-          autoReviewOnImport: true,
-          maxQueueSize: 50,
-          taskPriority: 'NORMAL',
-          autoExecuteTasks: false,
-          emailNotifications: false,
-          slackWebhookUrl: null,
-          discordWebhookUrl: null,
-          notifyOnTaskComplete: true,
-          notifyOnTaskFail: true,
-          codeAnalysisDepth: 'STANDARD',
-          testCoverageThreshold: 80,
-          enforceTypeChecking: true,
-          autoFixLintErrors: false,
-          claudeModel: 'claude-3-sonnet-20240229',
-          customInstructions: null,
-          excludePatterns: null,
-          includeDependencies: true,
-        },
-      });
-    }
+    // Get settings from portable format
+    const metadataManager = new ProjectMetadataManager(project.path);
+    let settings = await metadataManager.getProjectSettings();
 
+    // If no settings exist, use defaults
     if (!settings) {
-      // Try to create default settings
-      try {
-        settings = await prisma.projectSettings.create({
-          data: {
-            projectId,
-          },
-        });
-      } catch {
-        // If creation fails, return default values without persisting
-        console.log('Could not create ProjectSettings, returning defaults');
-        return NextResponse.json({
-          success: true,
-          data: {
-            projectId,
-            maxTokensPerDay: 10000,
-            maxTokensPerRequest: 4000,
-            maxRequestsPerMinute: 20,
-            maxRequestsPerHour: 200,
-            agentTimeout: 300000,
-            maxRetries: 3,
-            parallelAgentLimit: 3,
-            autoReviewOnImport: true,
-            maxQueueSize: 50,
-            taskPriority: 'NORMAL',
-            autoExecuteTasks: false,
-            emailNotifications: false,
-            slackWebhookUrl: null,
-            discordWebhookUrl: null,
-            notifyOnTaskComplete: true,
-            notifyOnTaskFail: true,
-            codeAnalysisDepth: 'STANDARD',
-            testCoverageThreshold: 80,
-            enforceTypeChecking: true,
-            autoFixLintErrors: false,
-            claudeModel: 'claude-3-sonnet-20240229',
-            customInstructions: null,
-            excludePatterns: null,
-            includeDependencies: true,
-          },
-        });
-      }
+      settings = {
+        projectId,
+        claudeModel: 'claude-3-5-sonnet-20241022',
+        maxTokensPerRequest: 4000,
+        maxRequestsPerMinute: 20,
+        agentTimeout: 300000, // 5 minutes
+        maxRetries: 3,
+        autoExecuteTasks: true,
+        testCoverageThreshold: 80,
+        enforceTypeChecking: true,
+        customInstructions: null,
+        excludePatterns: null,
+      };
+
+      // Save default settings to portable format
+      await metadataManager.updateProjectSettings(settings);
     }
 
     return NextResponse.json({
@@ -181,40 +96,34 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     // Validate input
     const validatedData = projectSettingsSchema.parse(body);
 
-    // Check if project can be operated on
-    const accessCheck = await checkProjectOperationAccess(projectId);
+    // Find project in portable format
+    const discoveryService = getProjectDiscoveryService();
+    const projects = await discoveryService.discoverProjects();
+    const project = projects.find(p => p.metadata.id === projectId);
 
-    if (!accessCheck.allowed) {
-      return accessCheck.response;
-    }
-
-    // Update or create project settings
-    let settings;
-    try {
-      settings = await prisma.projectSettings.upsert({
-        where: { projectId },
-        update: validatedData,
-        create: {
-          projectId,
-          ...validatedData,
-        },
-      });
-    } catch {
-      // If ProjectSettings table doesn't exist, just return success with the data
-      console.log(
-        'ProjectSettings table not found during update, returning data'
+    if (!project) {
+      return NextResponse.json(
+        { success: false, error: 'Project not found' },
+        { status: 404 }
       );
-      return NextResponse.json({
-        success: true,
-        data: { projectId, ...validatedData },
-        message:
-          'Project settings updated (in memory only - database table not available)',
-      });
     }
+
+    // Get current settings and merge with updates
+    const metadataManager = new ProjectMetadataManager(project.path);
+    const currentSettings = await metadataManager.getProjectSettings() || {};
+    
+    const updatedSettings = {
+      ...currentSettings,
+      ...validatedData,
+      projectId,
+    };
+
+    // Save updated settings to portable format
+    await metadataManager.updateProjectSettings(updatedSettings);
 
     return NextResponse.json({
       success: true,
-      data: settings,
+      data: updatedSettings,
       message: 'Project settings updated successfully',
     });
   } catch (error) {
@@ -246,10 +155,10 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const projectId = params.id;
 
-    // Check if project exists
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-    });
+    // Find project in portable format
+    const discoveryService = getProjectDiscoveryService();
+    const projects = await discoveryService.discoverProjects();
+    const project = projects.find(p => p.metadata.id === projectId);
 
     if (!project) {
       return NextResponse.json(
@@ -258,60 +167,28 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Delete existing settings (will trigger default values on next GET)
-    let settings;
-    try {
-      await prisma.projectSettings.deleteMany({
-        where: { projectId },
-      });
+    // Reset to default settings
+    const defaultSettings = {
+      projectId,
+      claudeModel: 'claude-3-5-sonnet-20241022',
+      maxTokensPerRequest: 4000,
+      maxRequestsPerMinute: 20,
+      agentTimeout: 300000, // 5 minutes
+      maxRetries: 3,
+      autoExecuteTasks: true,
+      testCoverageThreshold: 80,
+      enforceTypeChecking: true,
+      customInstructions: null,
+      excludePatterns: null,
+    };
 
-      // Create new default settings
-      settings = await prisma.projectSettings.create({
-        data: {
-          projectId,
-        },
-      });
-    } catch {
-      // If ProjectSettings table doesn't exist, return default values
-      console.log(
-        'ProjectSettings table not found during delete, returning defaults'
-      );
-      return NextResponse.json({
-        success: true,
-        data: {
-          projectId,
-          maxTokensPerDay: 10000,
-          maxTokensPerRequest: 4000,
-          maxRequestsPerMinute: 20,
-          maxRequestsPerHour: 200,
-          agentTimeout: 300000,
-          maxRetries: 3,
-          parallelAgentLimit: 3,
-          autoReviewOnImport: true,
-          maxQueueSize: 50,
-          taskPriority: 'NORMAL',
-          autoExecuteTasks: false,
-          emailNotifications: false,
-          slackWebhookUrl: null,
-          discordWebhookUrl: null,
-          notifyOnTaskComplete: true,
-          notifyOnTaskFail: true,
-          codeAnalysisDepth: 'STANDARD',
-          testCoverageThreshold: 80,
-          enforceTypeChecking: true,
-          autoFixLintErrors: false,
-          claudeModel: 'claude-3-sonnet-20240229',
-          customInstructions: null,
-          excludePatterns: null,
-          includeDependencies: true,
-        },
-        message: 'Project settings reset to defaults',
-      });
-    }
+    // Save default settings to portable format
+    const metadataManager = new ProjectMetadataManager(project.path);
+    await metadataManager.updateProjectSettings(defaultSettings);
 
     return NextResponse.json({
       success: true,
-      data: settings,
+      data: defaultSettings,
       message: 'Project settings reset to defaults',
     });
   } catch (error) {

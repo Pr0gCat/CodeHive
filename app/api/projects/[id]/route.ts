@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
+import { ProjectMetadataManager } from '@/lib/portable/metadata-manager';
 import { logProjectEvent } from '@/lib/logging/project-logger';
 import { addInitialProjectLogs } from '@/lib/logging/init-logs';
 import { z } from 'zod';
+import fs from 'fs/promises';
+import path from 'path';
 
 const updateProjectSchema = z.object({
   name: z.string().min(1, 'Project name is required').optional(),
@@ -17,35 +20,11 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const project = await prisma.project.findUnique({
-      where: { id: params.id },
-      include: {
-        kanbanCards: {
-          orderBy: { position: 'asc' },
-        },
-        tokenUsage: {
-          orderBy: { timestamp: 'desc' },
-          take: 10,
-        },
-        queuedTasks: {
-          where: { status: 'PENDING' },
-          orderBy: { priority: 'desc' },
-        },
-        milestones: {
-          orderBy: { dueDate: 'asc' },
-        },
-        agentSpecs: {
-          orderBy: { updatedAt: 'desc' },
-        },
-        _count: {
-          select: {
-            kanbanCards: true,
-            tokenUsage: true,
-            queuedTasks: true,
-          },
-        },
-      },
-    });
+    const discoveryService = getProjectDiscoveryService();
+    const projects = await discoveryService.discoverProjects();
+    
+    // Find project by ID
+    const project = projects.find(p => p.metadata.id === params.id);
 
     if (!project) {
       return NextResponse.json(
@@ -58,11 +37,50 @@ export async function GET(
     }
 
     // Add initial project logs when accessed (server-side only)
-    addInitialProjectLogs(project.id, project.name);
+    addInitialProjectLogs(project.metadata.id, project.metadata.name);
+
+    // Get additional project data from portable format
+    const metadataManager = new ProjectMetadataManager(project.path);
+    
+    // Load actual data
+    const stories = await metadataManager.getStories();
+    const tokenUsage = await metadataManager.getTokenUsage();
+    const epics = await metadataManager.getEpics();
+    const agents = await metadataManager.getAgents();
+    
+    // Transform portable project data to match expected format
+    const projectData = {
+      id: project.metadata.id,
+      name: project.metadata.name,
+      description: project.metadata.description,
+      status: project.metadata.status,
+      gitUrl: project.metadata.gitUrl,
+      localPath: project.metadata.localPath,
+      framework: project.metadata.framework,
+      language: project.metadata.language,
+      packageManager: project.metadata.packageManager,
+      testFramework: project.metadata.testFramework,
+      lintTool: project.metadata.lintTool,
+      buildTool: project.metadata.buildTool,
+      createdAt: new Date(project.metadata.createdAt),
+      updatedAt: new Date(project.metadata.updatedAt),
+      // Actual data from portable format
+      kanbanCards: stories,
+      tokenUsage: tokenUsage,
+      epics: epics,
+      queuedTasks: [], // TODO: Implement queued tasks in portable format
+      milestones: [], // TODO: Implement milestones in portable format
+      agentSpecs: agents,
+      _count: {
+        kanbanCards: stories.length,
+        tokenUsage: tokenUsage.length,
+        queuedTasks: 0, // TODO: Count queued tasks when implemented
+      },
+    };
 
     return NextResponse.json({
       success: true,
-      data: project,
+      data: projectData,
     });
   } catch (error) {
     console.error('Error fetching project:', error);
@@ -84,25 +102,60 @@ export async function PUT(
     const body = await request.json();
     const validatedData = updateProjectSchema.parse(body);
 
-    const project = await prisma.project.update({
-      where: { id: params.id },
-      data: validatedData,
-      include: {
-        kanbanCards: {
-          orderBy: { position: 'asc' },
+    const discoveryService = getProjectDiscoveryService();
+    const projects = await discoveryService.discoverProjects();
+    
+    // Find project by ID
+    const project = projects.find(p => p.metadata.id === params.id);
+
+    if (!project) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Project not found',
         },
-        _count: {
-          select: {
-            kanbanCards: true,
-            tokenUsage: true,
-          },
-        },
+        { status: 404 }
+      );
+    }
+
+    // Update project metadata
+    const metadataManager = new ProjectMetadataManager(project.path);
+    const currentMetadata = project.metadata;
+    
+    const updatedMetadata = {
+      ...currentMetadata,
+      ...validatedData,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await metadataManager.saveProjectMetadata(updatedMetadata, { validateData: true });
+
+    // Transform updated data to match expected format
+    const projectData = {
+      id: updatedMetadata.id,
+      name: updatedMetadata.name,
+      description: updatedMetadata.description,
+      status: updatedMetadata.status,
+      gitUrl: updatedMetadata.gitUrl,
+      localPath: updatedMetadata.localPath,
+      framework: updatedMetadata.framework,
+      language: updatedMetadata.language,
+      packageManager: updatedMetadata.packageManager,
+      testFramework: updatedMetadata.testFramework,
+      lintTool: updatedMetadata.lintTool,
+      buildTool: updatedMetadata.buildTool,
+      createdAt: new Date(updatedMetadata.createdAt),
+      updatedAt: new Date(updatedMetadata.updatedAt),
+      kanbanCards: [],
+      _count: {
+        kanbanCards: 0,
+        tokenUsage: 0,
       },
-    });
+    };
 
     return NextResponse.json({
       success: true,
-      data: project,
+      data: projectData,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -132,11 +185,11 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Get project name before deleting for logging
-    const project = await prisma.project.findUnique({
-      where: { id: params.id },
-      select: { name: true },
-    });
+    const discoveryService = getProjectDiscoveryService();
+    const projects = await discoveryService.discoverProjects();
+    
+    // Find project by ID
+    const project = projects.find(p => p.metadata.id === params.id);
 
     if (!project) {
       return NextResponse.json(
@@ -145,12 +198,12 @@ export async function DELETE(
       );
     }
 
-    await prisma.project.delete({
-      where: { id: params.id },
-    });
+    // Delete project directory
+    const fs = await import('fs/promises');
+    await fs.rm(project.path, { recursive: true, force: true });
 
     // Log the project deletion
-    logProjectEvent.projectDeleted(params.id, project.name);
+    logProjectEvent.projectDeleted(params.id, project.metadata.name);
 
     return NextResponse.json({
       success: true,

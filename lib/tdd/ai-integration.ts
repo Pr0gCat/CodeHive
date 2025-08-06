@@ -1,5 +1,5 @@
-import { AgentExecutor } from '@/lib/agents/executor';
-import { ProjectContext } from '@/lib/agents/project-manager';
+import { AgentExecutor } from '@/lib/claude-code/executor';
+import { ProjectContext } from '@/lib/project-manager';
 import {
     Artifact,
     prisma,

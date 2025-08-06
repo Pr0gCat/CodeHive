@@ -1,6 +1,8 @@
-import { prisma } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
+import { ProjectMetadataManager } from '@/lib/portable/metadata-manager';
+import type { Epic } from '@/lib/portable/schemas';
 
 // Epic update schema
 const updateEpicSchema = z.object({
@@ -28,78 +30,28 @@ export async function GET(
   try {
     const epicId = params.id;
 
-    const epic = await prisma.epic.findUnique({
-      where: { id: epicId },
-      include: {
-        project: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        stories: {
-          include: {
-            cycles: {
-              select: {
-                id: true,
-                title: true,
-                phase: true,
-                status: true,
-              },
-            },
-            dependencies: {
-              include: {
-                dependsOn: {
-                  select: {
-                    id: true,
-                    title: true,
-                    status: true,
-                  },
-                },
-              },
-            },
-            dependents: {
-              include: {
-                story: {
-                  select: {
-                    id: true,
-                    title: true,
-                    status: true,
-                  },
-                },
-              },
-            },
-          },
-          orderBy: { sequence: 'asc' },
-        },
-        dependencies: {
-          include: {
-            dependsOn: {
-              select: {
-                id: true,
-                title: true,
-                phase: true,
-                status: true,
-              },
-            },
-          },
-        },
-        dependents: {
-          include: {
-            epic: {
-              select: {
-                id: true,
-                title: true,
-                phase: true,
-                status: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    // Find the epic across all projects
+    const discoveryService = getProjectDiscoveryService();
+    const projects = await discoveryService.discoverProjects();
+    
+    let epic: Epic | null = null;
+    let project: any = null;
+    
+    for (const p of projects) {
+      try {
+        const metadataManager = new ProjectMetadataManager(p.path);
+        const foundEpic = await metadataManager.getEpic(epicId);
+        if (foundEpic) {
+          epic = foundEpic;
+          project = p;
+          break;
+        }
+      } catch (error) {
+        // Continue searching other projects
+      }
+    }
 
-    if (!epic) {
+    if (!epic || !project) {
       return NextResponse.json(
         {
           success: false,
@@ -109,9 +61,32 @@ export async function GET(
       );
     }
 
+    // Get stories and cycles for this epic
+    const metadataManager = new ProjectMetadataManager(project.path);
+    const allStories = await metadataManager.getStories();
+    const allCycles = await metadataManager.getCycles();
+    
+    const epicStories = allStories.filter(s => s.epicId === epic.id);
+    
+    // Enhance stories with cycles and dependencies
+    const storiesWithDetails = epicStories.map(story => {
+      const storyCycles = allCycles.filter(c => c.storyId === story.id);
+      return {
+        ...story,
+        cycles: storyCycles.map(c => ({
+          id: c.id,
+          title: c.title,
+          phase: c.phase,
+          status: c.status,
+        })),
+        dependencies: [], // TODO: Implement story dependencies in portable format
+        dependents: [], // TODO: Implement story dependencies in portable format
+      };
+    });
+
     // Calculate detailed progress
-    const totalStories = epic.stories.length;
-    const storiesByStatus = epic.stories.reduce(
+    const totalStories = storiesWithDetails.length;
+    const storiesByStatus = storiesWithDetails.reduce(
       (acc, story) => {
         acc[story.status] = (acc[story.status] || 0) + 1;
         return acc;
@@ -119,20 +94,20 @@ export async function GET(
       {} as Record<string, number>
     );
 
-    const totalStoryPoints = epic.stories.reduce(
+    const totalStoryPoints = storiesWithDetails.reduce(
       (sum, story) => sum + (story.storyPoints || 0),
       0
     );
-    const completedStoryPoints = epic.stories
+    const completedStoryPoints = storiesWithDetails
       .filter(story => story.status === 'DONE')
       .reduce((sum, story) => sum + (story.storyPoints || 0), 0);
 
     // Calculate TDD cycles progress
-    const totalCycles = epic.stories.reduce(
+    const totalCycles = storiesWithDetails.reduce(
       (sum, story) => sum + story.cycles.length,
       0
     );
-    const completedCycles = epic.stories.reduce(
+    const completedCycles = storiesWithDetails.reduce(
       (sum, story) =>
         sum + story.cycles.filter(cycle => cycle.status === 'COMPLETED').length,
       0
@@ -140,6 +115,13 @@ export async function GET(
 
     const epicWithProgress = {
       ...epic,
+      project: {
+        id: project.metadata.id,
+        name: project.metadata.name,
+      },
+      stories: storiesWithDetails,
+      dependencies: [], // TODO: Implement epic dependencies in portable format
+      dependents: [], // TODO: Implement epic dependencies in portable format
       progress: {
         stories: {
           total: totalStories,
@@ -195,12 +177,30 @@ export async function PUT(
     const body = await request.json();
     const validatedData = updateEpicSchema.parse(body);
 
-    // Check if epic exists
-    const existingEpic = await prisma.epic.findUnique({
-      where: { id: epicId },
-    });
+    // Find the epic across all projects
+    const discoveryService = getProjectDiscoveryService();
+    const projects = await discoveryService.discoverProjects();
+    
+    let existingEpic: Epic | null = null;
+    let project: any = null;
+    let metadataManager: ProjectMetadataManager | null = null;
+    
+    for (const p of projects) {
+      try {
+        const manager = new ProjectMetadataManager(p.path);
+        const foundEpic = await manager.getEpic(epicId);
+        if (foundEpic) {
+          existingEpic = foundEpic;
+          project = p;
+          metadataManager = manager;
+          break;
+        }
+      } catch (error) {
+        // Continue searching other projects
+      }
+    }
 
-    if (!existingEpic) {
+    if (!existingEpic || !project || !metadataManager) {
       return NextResponse.json(
         {
           success: false,
@@ -210,45 +210,41 @@ export async function PUT(
       );
     }
 
-    // Update epic
-    const updateData: Record<string, unknown> = { ...validatedData };
-
-    // Handle date conversions
-    if (validatedData.startDate) {
-      updateData.startDate = new Date(validatedData.startDate);
-    }
-    if (validatedData.dueDate) {
-      updateData.dueDate = new Date(validatedData.dueDate);
-    }
+    // Update epic with new data
+    const now = new Date().toISOString();
+    const updatedEpic: Epic = {
+      ...existingEpic,
+      ...validatedData,
+      updatedAt: now,
+    };
 
     // Set completedAt when phase changes to DONE
     if (validatedData.phase === 'DONE' && existingEpic.phase !== 'DONE') {
-      updateData.completedAt = new Date();
+      updatedEpic.completedAt = now;
     } else if (validatedData.phase && validatedData.phase !== 'DONE') {
-      updateData.completedAt = null;
+      updatedEpic.completedAt = null;
     }
 
-    const updatedEpic = await prisma.epic.update({
-      where: { id: epicId },
-      data: updateData,
-      include: {
-        project: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        _count: {
-          select: {
-            stories: true,
-          },
-        },
+    await metadataManager.saveEpic(updatedEpic);
+
+    // Get story count for response
+    const allStories = await metadataManager.getStories();
+    const epicStories = allStories.filter(s => s.epicId === epicId);
+
+    const response = {
+      ...updatedEpic,
+      project: {
+        id: project.metadata.id,
+        name: project.metadata.name,
       },
-    });
+      _count: {
+        stories: epicStories.length,
+      },
+    };
 
     return NextResponse.json({
       success: true,
-      data: updatedEpic,
+      data: response,
     });
   } catch (error) {
     console.error('Error updating epic:', error);
@@ -282,17 +278,30 @@ export async function DELETE(
   try {
     const epicId = params.id;
 
-    // Check if epic exists
-    const existingEpic = await prisma.epic.findUnique({
-      where: { id: epicId },
-      include: {
-        stories: true,
-        dependencies: true,
-        dependents: true,
-      },
-    });
+    // Find the epic across all projects
+    const discoveryService = getProjectDiscoveryService();
+    const projects = await discoveryService.discoverProjects();
+    
+    let existingEpic: Epic | null = null;
+    let project: any = null;
+    let metadataManager: ProjectMetadataManager | null = null;
+    
+    for (const p of projects) {
+      try {
+        const manager = new ProjectMetadataManager(p.path);
+        const foundEpic = await manager.getEpic(epicId);
+        if (foundEpic) {
+          existingEpic = foundEpic;
+          project = p;
+          metadataManager = manager;
+          break;
+        }
+      } catch (error) {
+        // Continue searching other projects
+      }
+    }
 
-    if (!existingEpic) {
+    if (!existingEpic || !project || !metadataManager) {
       return NextResponse.json(
         {
           success: false,
@@ -302,33 +311,23 @@ export async function DELETE(
       );
     }
 
-    // Check if epic has dependencies from other epics
-    if (existingEpic.dependents.length > 0) {
-      const dependentEpicIds = existingEpic.dependents.map(dep => dep.epicId);
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Cannot delete epic that other epics depend on',
-          details: {
-            dependents: dependentEpicIds,
-          },
-        },
-        { status: 400 }
-      );
+    // Get stories associated with this epic
+    const allStories = await metadataManager.getStories();
+    const epicStories = allStories.filter(s => s.epicId === epicId);
+
+    // TODO: Check epic dependencies when implemented
+    // For now, we'll proceed with deletion
+
+    // If epic has stories, unlink them (set epicId to undefined)
+    if (epicStories.length > 0) {
+      for (const story of epicStories) {
+        const updatedStory = { ...story, epicId: undefined };
+        await metadataManager.saveStory(updatedStory);
+      }
     }
 
-    // If epic has stories, set their epicId to null instead of deleting them
-    if (existingEpic.stories.length > 0) {
-      await prisma.kanbanCard.updateMany({
-        where: { epicId },
-        data: { epicId: null },
-      });
-    }
-
-    // Delete the epic (dependencies will be cascade deleted)
-    await prisma.epic.delete({
-      where: { id: epicId },
-    });
+    // Delete the epic
+    await metadataManager.deleteEpic(epicId);
 
     return NextResponse.json({
       success: true,

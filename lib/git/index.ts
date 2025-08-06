@@ -2,7 +2,7 @@ import { taskManager } from '@/lib/tasks/task-manager';
 import { validatePath } from '@/lib/utils/security';
 import { spawn } from 'child_process';
 import { existsSync, mkdirSync } from 'fs';
-import { join } from 'path';
+import path, { join } from 'path';
 
 export interface GitCloneOptions {
   url: string;
@@ -180,6 +180,17 @@ export class GitClient {
     }
 
     const gitDir = join(safePath, '.git');
+    return existsSync(gitDir);
+  }
+
+  async isValidExternalRepository(repoPath: string): Promise<boolean> {
+    // For external repositories (outside repos/ directory)
+    // Basic security check - ensure it's an absolute path and exists
+    if (!path.isAbsolute(repoPath) || !existsSync(repoPath)) {
+      return false;
+    }
+
+    const gitDir = join(repoPath, '.git');
     return existsSync(gitDir);
   }
 

@@ -1,7 +1,7 @@
 import {
     FeatureRequestAnalysis,
     ProjectManagerAgent,
-} from '@/lib/agents/project-manager';
+} from '@/lib/project-manager';
 import { prisma } from '@/lib/db';
 import { TDDCycleEngine } from '@/lib/tdd/cycle-engine';
 

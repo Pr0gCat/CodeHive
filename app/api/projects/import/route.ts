@@ -1,721 +1,718 @@
-import { projectAnalyzer } from '@/lib/analysis/project-analyzer';
-import { prisma } from '@/lib/db';
-import { gitClient } from '@/lib/git';
-import { taskManager, TaskPhase } from '@/lib/tasks/task-manager';
+/**
+ * Project import API - Imports existing projects as CodeHive projects
+ * All projects now use .codehive/ metadata structure for portability
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { gitClient } from '@/lib/git';
+import { taskManager } from '@/lib/tasks/task-manager';
+import { ProjectMetadataManager } from '@/lib/portable/metadata-manager';
+import { WorkspaceManager } from '@/lib/workspace/workspace-manager';
+import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
+import { 
+  ProjectMetadata, 
+  ProjectSettings,
+  ProjectBudget
+} from '@/lib/portable/schemas';
 
 const importProjectSchema = z.object({
+  name: z.string().min(1, 'Project name is required').refine(
+    (val) => val.trim().length > 0,
+    'Project name cannot be empty or only whitespace'
+  ),
+  description: z.string().optional(),
   gitUrl: z
     .string()
     .optional()
     .refine(val => {
-      // Allow empty string or undefined
       if (!val || val.trim() === '') return true;
-      // If has value, validate URL format
       try {
         new URL(val);
         return true;
       } catch {
         return false;
       }
-    }, 'Invalid URL format'),
+    }, 'Invalid Git URL format'),
   localPath: z.string().optional(),
-  projectName: z
-    .string()
-    .min(1, 'Project name is required')
-    .max(100, 'Project name must be less than 100 characters')
-    .regex(
-      /^[a-zA-Z0-9\s\-_\.]+$/,
-      'Project name can only contain letters, numbers, spaces, hyphens, underscores, and dots'
-    )
-    .refine(
-      val => val.trim().length > 0,
-      'Project name cannot be empty or only whitespace'
-    ),
   branch: z.string().optional(),
+  
+  // Auto-detection options
+  autoDetectTechStack: z.boolean().default(true),
+  
+  // Tech stack overrides
   framework: z.string().optional(),
   language: z.string().optional(),
   packageManager: z.string().optional(),
   testFramework: z.string().optional(),
   lintTool: z.string().optional(),
   buildTool: z.string().optional(),
+  
+  // Project settings
+  settings: z.object({
+    maxTokensPerDay: z.number().default(10000),
+    maxTokensPerRequest: z.number().default(4000),
+    maxRequestsPerMinute: z.number().default(20),
+    maxRequestsPerHour: z.number().default(100),
+    agentTimeout: z.number().default(300000),
+    maxRetries: z.number().default(3),
+    parallelAgentLimit: z.number().default(2),
+    autoReviewOnImport: z.boolean().default(true),
+    claudeModel: z.string().default('claude-3-5-sonnet-20241022'),
+    customInstructions: z.string().optional(),
+  }).optional(),
+  
+  // Budget allocation
+  budget: z.object({
+    allocatedPercentage: z.number().min(0).max(100).default(10),
+    dailyTokenBudget: z.number().default(1000),
+  }).optional(),
 });
 
 export async function POST(request: NextRequest) {
+  const taskId = `import-project-${Date.now()}`;
+  
   try {
     const body = await request.json();
     const validatedData = importProjectSchema.parse(body);
     const {
+      name,
+      description,
       gitUrl,
       localPath,
-      projectName,
       branch,
+      autoDetectTechStack,
       framework,
       language,
       packageManager,
       testFramework,
       lintTool,
       buildTool,
+      settings,
+      budget,
     } = validatedData;
 
-    // Validate inputs first
     if (!gitUrl && !localPath) {
-      return NextResponse.json(
-        { success: false, error: 'Either Git URL or local path is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        success: false,
+        error: 'Either gitUrl or localPath must be provided',
+      }, { status: 400 });
     }
 
-    // Check if project name already exists
-    const existingProject = await prisma.project.findFirst({
-      where: { name: projectName },
+    // Generate final local path
+    const projectName = name || path.basename(gitUrl || localPath || '');
+    let finalLocalPath: string;
+    let sourcePath: string | undefined;
+    
+    if (localPath) {
+      // For local imports, we'll copy to repos/ directory
+      sourcePath = localPath;
+      finalLocalPath = await generateUniqueProjectPath(gitClient, projectName);
+    } else {
+      // For Git imports, clone directly to repos/ directory
+      finalLocalPath = await generateUniqueProjectPath(gitClient, projectName);
+    }
+
+    // Create task for progress tracking
+    const phases = [
+      { phaseId: 'validate', title: 'Validate Import', description: 'Validating import requirements', order: 0 },
+      { phaseId: 'clone', title: sourcePath ? 'Copy Project' : 'Clone Repository', description: sourcePath ? 'Copying project to repos/ directory' : 'Cloning repository from remote', order: 1 },
+      { phaseId: 'analyze', title: 'Analyze Project', description: 'Analyzing project structure and dependencies', order: 2 },
+      { phaseId: 'setup-metadata', title: 'Setup Metadata', description: 'Creating .codehive/ structure', order: 3 },
+      { phaseId: 'detect-stack', title: 'Detect Tech Stack', description: 'Auto-detecting technology stack', order: 4 },
+      { phaseId: 'finalize', title: 'Finalize', description: 'Finalizing project import', order: 5 },
+    ];
+
+    await taskManager.createTask(taskId, 'PROJECT_IMPORT', phases, {
+      projectName,
     });
 
-    if (existingProject) {
-      return NextResponse.json(
-        { success: false, error: 'A project with this name already exists' },
-        { status: 409 }
-      );
+    await taskManager.startTask(taskId);
+
+    // Phase 1: Validation
+    await taskManager.updatePhaseProgress(taskId, 'validate', 0, {
+      type: 'INFO',
+      message: 'Starting import validation...',
+    });
+
+    // Check if it's a local path import
+    if (sourcePath) {
+      try {
+        await fs.access(sourcePath);
+        
+        // Check if it's already a portable project
+        const metadataManager = new ProjectMetadataManager(sourcePath);
+        if (await metadataManager.isPortableProject()) {
+          const existingMetadata = await metadataManager.getProjectMetadata();
+          
+          await taskManager.updatePhaseProgress(taskId, 'validate', 100, {
+            type: 'PHASE_COMPLETE',
+            message: 'Project is already portable, loading existing metadata',
+          });
+
+          await taskManager.completeTask(taskId, {
+            projectId: existingMetadata?.id,
+            name: existingMetadata?.name,
+            localPath: sourcePath,
+            alreadyPortable: true,
+          });
+
+          return NextResponse.json({
+            success: true,
+            taskId,
+            data: {
+              projectId: existingMetadata?.id,
+              name: existingMetadata?.name,
+              localPath: sourcePath,
+              alreadyPortable: true,
+            },
+          });
+        }
+
+        // Check if directory is a Git repository
+        if (!(await gitClient.isValidExternalRepository(sourcePath))) {
+          await taskManager.updatePhaseProgress(taskId, 'validate', 100, {
+            type: 'ERROR',
+            message: 'Local directory is not a Git repository',
+          });
+          
+          return NextResponse.json({
+            success: false,
+            error: `Local directory ${sourcePath} is not a Git repository`,
+          }, { status: 400 });
+        }
+      } catch {
+        await taskManager.updatePhaseProgress(taskId, 'validate', 100, {
+          type: 'ERROR',
+          message: `Local directory does not exist: ${localPath}`,
+        });
+        
+        return NextResponse.json({
+          success: false,
+          error: `Local directory does not exist: ${sourcePath}`,
+        }, { status: 400 });
+      }
     }
 
-    // Generate the initial local path
-    let finalLocalPath = localPath || gitClient.generateProjectPath(projectName);
-
-    // Additional filesystem validation
+    // Check for conflicts based on import type
+    const discoveryService = getProjectDiscoveryService();
+    const existingProjects = await discoveryService.discoverProjects();
+    
     if (localPath) {
-      // For local path imports, verify the source directory exists
-      try {
-        const { promises: fs } = await import('fs');
-        await fs.access(localPath);
-      } catch {
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Local directory does not exist: ${localPath}`,
-          },
-          { status: 400 }
-        );
+      // For local path imports, check if the same path is already imported
+      const existingByPath = existingProjects.find(p => path.resolve(p.path) === path.resolve(localPath));
+      if (existingByPath) {
+        await taskManager.updatePhaseProgress(taskId, 'validate', 100, {
+          type: 'ERROR',
+          message: `Project at path "${localPath}" is already imported`,
+        });
+        
+        return NextResponse.json({
+          success: false,
+          error: `The project at "${localPath}" is already imported as "${existingByPath.metadata.name}"`,
+        }, { status: 409 });
       }
     } else if (gitUrl) {
-      // For Git URL imports, if target directory exists, automatically use unique name
-      try {
-        const { promises: fs } = await import('fs');
-        await fs.access(finalLocalPath);
+      // For Git URL imports, check if project name already exists (to avoid naming conflicts)
+      const existingByName = existingProjects.find(p => p.metadata.name === name);
+      if (existingByName) {
+        await taskManager.updatePhaseProgress(taskId, 'validate', 100, {
+          type: 'ERROR',
+          message: `Project with name "${name}" already exists`,
+        });
         
-        // Directory exists, generate a unique path
-        let counter = 1;
-        let uniquePath = `${finalLocalPath}-${counter}`;
-        
-        while (true) {
-          try {
-            await fs.access(uniquePath);
-            counter++;
-            uniquePath = `${finalLocalPath}-${counter}`;
-          } catch {
-            // This path doesn't exist, we can use it
-            finalLocalPath = uniquePath;
-            break;
-          }
-        }
-        
-        console.log(`Directory conflict resolved: Using ${finalLocalPath} instead`);
-      } catch {
-        // Directory doesn't exist, which is perfect for Git URL imports
+        return NextResponse.json({
+          success: false,
+          error: `A project with the name "${name}" already exists at ${existingByName.path}`,
+        }, { status: 409 });
       }
     }
 
-    // Check if local path already exists in database (after potential path adjustment)
-    // For local path imports, we allow the directory to exist since we're importing existing projects
-    // For Git URL imports, we already handled path conflicts above by generating unique paths
-    const existingPath = await prisma.project.findFirst({
-      where: { localPath: finalLocalPath },
+    await taskManager.updatePhaseProgress(taskId, 'validate', 100, {
+      type: 'PHASE_COMPLETE',
+      message: 'Import validation completed',
     });
 
-    if (existingPath) {
-      return NextResponse.json(
-        {
+    // Phase 2: Clone/Copy Repository
+    if (gitUrl) {
+      await taskManager.updatePhaseProgress(taskId, 'clone', 0, {
+        type: 'INFO',
+        message: `Cloning repository from ${gitUrl}...`,
+      });
+
+      const cloneResult = await gitClient.clone({
+        url: gitUrl,
+        targetPath: finalLocalPath,
+        branch,
+        taskId,
+        phaseId: 'clone',
+      });
+
+      if (!cloneResult.success) {
+        await taskManager.updatePhaseProgress(taskId, 'clone', 100, {
+          type: 'ERROR',
+          message: `Clone failed: ${cloneResult.error}`,
+        });
+        
+        return NextResponse.json({
           success: false,
-          error: `A project already exists at this location: ${finalLocalPath}`,
-        },
-        { status: 409 }
-      );
+          error: `Failed to clone repository: ${cloneResult.error}`,
+        }, { status: 500 });
+      }
+
+      await taskManager.updatePhaseProgress(taskId, 'clone', 100, {
+        type: 'PHASE_COMPLETE',
+        message: 'Repository cloned successfully',
+      });
+    } else if (sourcePath) {
+      // Copy local project to repos/ directory
+      await taskManager.updatePhaseProgress(taskId, 'clone', 0, {
+        type: 'INFO',
+        message: `Copying project from ${sourcePath}...`,
+      });
+
+      try {
+        // Copy entire directory
+        await copyDirectory(sourcePath, finalLocalPath);
+        
+        await taskManager.updatePhaseProgress(taskId, 'clone', 100, {
+          type: 'PHASE_COMPLETE',
+          message: 'Project copied to repos/ directory successfully',
+        });
+      } catch (error) {
+        await taskManager.updatePhaseProgress(taskId, 'clone', 100, {
+          type: 'ERROR',
+          message: `Copy failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        });
+        
+        return NextResponse.json({
+          success: false,
+          error: `Failed to copy project: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        }, { status: 500 });
+      }
     }
 
-    // IMMEDIATELY CREATE PROJECT RECORD IN DATABASE
-    const project = await prisma.project.create({
-      data: {
-        name: projectName,
-        description: '專案正在導入中...',
-        gitUrl: gitUrl || null,
-        localPath: finalLocalPath,
-        status: 'INITIALIZING', // Start with INITIALIZING status
-        framework: framework || null,
-        language: language || null,
-        packageManager: packageManager || null,
-        testFramework: testFramework || null,
-        lintTool: lintTool || null,
-        buildTool: buildTool || null,
-      },
+    // Phase 3: Analyze Project
+    await taskManager.updatePhaseProgress(taskId, 'analyze', 0, {
+      type: 'INFO',
+      message: 'Analyzing project structure...',
     });
 
-    // Generate task ID for background import
-    const taskId = `import-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // Basic project analysis
+    const projectStats = await analyzeProjectStructure(finalLocalPath);
+    
+    await taskManager.updatePhaseProgress(taskId, 'analyze', 100, {
+      type: 'PHASE_COMPLETE',
+      message: `Analyzed ${projectStats.totalFiles} files in ${projectStats.directories} directories`,
+    });
 
-    // Run asynchronously with real progress tracking
-    runImportAsync(project.id, taskId, {
-      gitUrl,
-      localPath,
-      projectName,
-      branch,
+    // Phase 4: Setup Metadata
+    await taskManager.updatePhaseProgress(taskId, 'setup-metadata', 0, {
+      type: 'INFO',
+      message: 'Setting up .codehive/ metadata structure...',
+    });
+
+    const metadataManager = new ProjectMetadataManager(finalLocalPath);
+    const workspaceManager = new WorkspaceManager(finalLocalPath);
+
+    // Initialize directory structures
+    await metadataManager.initialize();
+    await workspaceManager.initialize();
+
+    await taskManager.updatePhaseProgress(taskId, 'setup-metadata', 100, {
+      type: 'PHASE_COMPLETE',
+      message: '.codehive/ metadata structure created',
+    });
+
+    // Phase 5: Detect Tech Stack
+    await taskManager.updatePhaseProgress(taskId, 'detect-stack', 0, {
+      type: 'INFO',
+      message: 'Detecting technology stack...',
+    });
+
+    let detectedTechStack = {
       framework,
       language,
       packageManager,
       testFramework,
       lintTool,
       buildTool,
-      finalLocalPath,
+    };
+
+    if (autoDetectTechStack) {
+      const detected = await detectTechStack(finalLocalPath);
+      detectedTechStack = {
+        framework: framework || detected.framework,
+        language: language || detected.language,
+        packageManager: packageManager || detected.packageManager,
+        testFramework: testFramework || detected.testFramework,
+        lintTool: lintTool || detected.lintTool,
+        buildTool: buildTool || detected.buildTool,
+      };
+    }
+
+    await taskManager.updatePhaseProgress(taskId, 'detect-stack', 100, {
+      type: 'PHASE_COMPLETE',
+      message: 'Technology stack detection completed',
     });
+
+    // Phase 6: Finalize
+    await taskManager.updatePhaseProgress(taskId, 'finalize', 0, {
+      type: 'INFO',
+      message: 'Creating project metadata...',
+    });
+
+    // Create project metadata
+    const now = new Date().toISOString();
+    const projectId = `proj-${Date.now()}`;
+    
+    const projectMetadata: ProjectMetadata = {
+      version: '1.0.0',
+      id: projectId,
+      name,
+      description,
+      gitUrl: gitUrl?.trim() || undefined,
+      localPath: finalLocalPath,
+      status: 'ACTIVE',
+      ...detectedTechStack,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await metadataManager.saveProjectMetadata(projectMetadata, { validateData: true });
+
+    // Create project settings
+    const projectSettings: ProjectSettings = {
+      maxTokensPerDay: settings?.maxTokensPerDay || 10000,
+      maxTokensPerRequest: settings?.maxTokensPerRequest || 4000,
+      maxRequestsPerMinute: settings?.maxRequestsPerMinute || 20,
+      maxRequestsPerHour: settings?.maxRequestsPerHour || 100,
+      agentTimeout: settings?.agentTimeout || 300000,
+      maxRetries: settings?.maxRetries || 3,
+      parallelAgentLimit: settings?.parallelAgentLimit || 2,
+      autoReviewOnImport: settings?.autoReviewOnImport ?? true,
+      maxQueueSize: 50,
+      taskPriority: 'NORMAL',
+      autoExecuteTasks: true,
+      emailNotifications: false,
+      notifyOnTaskComplete: true,
+      notifyOnTaskFail: true,
+      codeAnalysisDepth: 'STANDARD',
+      testCoverageThreshold: 80.0,
+      enforceTypeChecking: true,
+      autoFixLintErrors: false,
+      claudeModel: settings?.claudeModel || 'claude-3-5-sonnet-20241022',
+      customInstructions: settings?.customInstructions,
+      excludePatterns: undefined,
+      includeDependencies: true,
+    };
+
+    await metadataManager.saveProjectSettings(projectSettings, { validateData: true });
+
+    // Create project budget if specified
+    if (budget) {
+      const projectBudget: ProjectBudget = {
+        allocatedPercentage: budget.allocatedPercentage,
+        dailyTokenBudget: budget.dailyTokenBudget,
+        usedTokens: 0,
+        lastResetAt: now,
+        warningNotified: false,
+        criticalNotified: false,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      await metadataManager.saveProjectBudget(projectBudget);
+    }
+
+    await taskManager.updatePhaseProgress(taskId, 'finalize', 100, {
+      type: 'PHASE_COMPLETE',
+      message: 'Project import completed successfully',
+    });
+
+    // Complete the task
+    const result = {
+      projectId,
+      name,
+      localPath: finalLocalPath,
+      metadata: projectMetadata,
+      settings: projectSettings,
+      techStack: detectedTechStack,
+      budget: budget ? {
+        allocatedPercentage: budget.allocatedPercentage,
+        dailyTokenBudget: budget.dailyTokenBudget,
+      } : undefined,
+      stats: projectStats,
+    };
+
+    await taskManager.completeTask(taskId, result);
+
+    // Clear discovery cache so the new project is immediately discoverable
+    discoveryService.clearCache();
 
     return NextResponse.json({
       success: true,
-      data: {
-        projectId: project.id,
-        taskId,
-        message: 'Project created and import started',
-        project: {
-          id: project.id,
-          name: project.name,
-          status: project.status,
-          localPath: project.localPath,
-        },
-      },
+      taskId,
+      data: result,
     });
-  } catch (error) {
-    console.error('Error in import setup:', error);
 
-    // Handle validation errors
+  } catch (error) {
+    console.error('Project import failed:', error);
+    
+    // Handle validation errors specifically
     if (error instanceof z.ZodError) {
+      console.error('Validation error details:', {
+        issues: error.issues,
+        receivedData: 'Check request body in browser dev tools'
+      });
+      
       return NextResponse.json(
         {
           success: false,
-          error: 'Invalid input format',
+          error: 'Invalid input data',
           details: error.issues,
         },
         { status: 400 }
       );
     }
+    
+    // Update task with error
+    try {
+      // TODO: Implement proper error handling for tasks
+      console.error('Task failed:', taskId, error instanceof Error ? error.message : 'Unknown error');
+    } catch {
+      // Task might not exist yet
+    }
 
     return NextResponse.json(
       {
         success: false,
-        error:
-          error instanceof Error ? error.message : 'Failed to start import',
+        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        taskId,
       },
       { status: 500 }
     );
   }
+}
 
-  async function runImportAsync(
-    projectId: string,
-    taskId: string,
-    params: {
-      gitUrl?: string;
-      localPath?: string;
-      projectName: string;
-      branch?: string;
-      framework?: string;
-      language?: string;
-      packageManager?: string;
-      testFramework?: string;
-      lintTool?: string;
-      buildTool?: string;
-      finalLocalPath: string;
-    }
-  ) {
-    const {
-      gitUrl,
-      localPath,
-      projectName,
-      branch,
-      framework,
-      language,
-      packageManager,
-      testFramework,
-      lintTool,
-      buildTool,
-      finalLocalPath,
-    } = params;
+// Helper functions
+async function analyzeProjectStructure(projectPath: string): Promise<{
+    totalFiles: number;
+    directories: number;
+    hasPackageJson: boolean;
+    hasDockerfile: boolean;
+    hasTests: boolean;
+  }> {
+    let totalFiles = 0;
+    let directories = 0;
+    let hasPackageJson = false;
+    let hasDockerfile = false;
+    let hasTests = false;
+
+    const analyzeDir = async (dirPath: string) => {
+      try {
+        const entries = await fs.readdir(dirPath, { withFileTypes: true });
+        
+        for (const entry of entries) {
+          if (entry.name.startsWith('.') && entry.name !== '.gitignore') continue;
+          if (entry.name === 'node_modules') continue;
+          
+          const fullPath = path.join(dirPath, entry.name);
+          
+          if (entry.isDirectory()) {
+            directories++;
+            await analyzeDir(fullPath);
+          } else {
+            totalFiles++;
+            
+            // Check for key files
+            if (entry.name === 'package.json') hasPackageJson = true;
+            if (entry.name === 'Dockerfile') hasDockerfile = true;
+            if (entry.name.includes('test') || entry.name.includes('spec')) hasTests = true;
+          }
+        }
+      } catch (error) {
+        // Ignore errors for individual directories
+      }
+    };
+
+    await analyzeDir(projectPath);
+
+    return {
+      totalFiles,
+      directories,
+      hasPackageJson,
+      hasDockerfile,
+      hasTests,
+    };
+  }
+
+async function detectTechStack(projectPath: string): Promise<{
+    framework?: string;
+    language?: string;
+    packageManager?: string;
+    testFramework?: string;
+    lintTool?: string;
+    buildTool?: string;
+  }> {
+    const result: Record<string, string | undefined> = {};
 
     try {
-      console.log(`🚀 Starting real import task: ${taskId}`);
-
-      // Define real task phases
-      const phases: TaskPhase[] = [
-        {
-          phaseId: 'git_clone',
-          title: gitUrl ? '克隆儲存庫' : '驗證本地儲存庫',
-          description: gitUrl
-            ? `從 ${gitUrl} 克隆儲存庫`
-            : '驗證本地 Git 儲存庫',
-          order: 1,
-        },
-        {
-          phaseId: 'analysis',
-          title: '分析專案結構',
-          description: '掃描檔案並檢測技術棧',
-          order: 2,
-        },
-        {
-          phaseId: 'sprint_setup',
-          title: 'Setup Default Sprint',
-          description: 'Create first sprint and initial work items',
-          order: 3,
-        },
-        {
-          phaseId: 'completion',
-          title: '完成導入',
-          description: '更新專案狀態為已完成',
-          order: 4,
-        },
-      ];
-
-      // Create task in database
-      await taskManager.createTask(taskId, 'PROJECT_IMPORT', phases, {
-        projectName,
-        projectId: projectId,
-        initiatedBy: 'user',
-      });
-
-      // Start task
-      await taskManager.startTask(taskId);
-
-      // Use the final local path passed from the main function
-      // (already resolved with conflict handling)
-
-      // Phase 1: Git Repository
-      // TODO: Check for cancellation before starting
-      // if (await taskManager.isTaskCancelled(taskId)) {
-      //   console.log(`🚫 Task ${taskId} was cancelled, stopping execution`);
-      //   return;
-      // }
-
-      await taskManager.startPhase(taskId, 'git_clone');
-
-      let needsClone = false;
-
-      if (localPath) {
-        // Importing existing local repository
-
-        await taskManager.updatePhaseProgress(taskId, 'git_clone', 30, {
-          type: 'PHASE_PROGRESS',
-          message: '檢查本地儲存庫',
-        });
-
-        // Verify it's a valid Git repository
-        const isValid = await gitClient.isValidRepository(finalLocalPath);
-        if (!isValid) {
-          await taskManager.failPhase(
-            taskId,
-            'git_clone',
-            'Path is not a valid Git repository'
-          );
-          return;
-        }
-
-        await taskManager.completePhase(taskId, 'git_clone', {
-          repositoryPath: finalLocalPath,
-          repositoryType: 'local',
-        });
-      } else {
-        // Clone from remote URL
-        needsClone = true;
-
-        // Check if directory already exists
-        const repoExists = await gitClient.isValidRepository(finalLocalPath);
-        if (repoExists) {
-          await taskManager.failPhase(
-            taskId,
-            'git_clone',
-            'Repository already exists at this location'
-          );
-          return;
-        }
-
-        // Clone the repository with real progress tracking
-        console.log(
-          `Cloning repository from ${gitUrl} to ${finalLocalPath}...`
-        );
-        const cloneResult = await gitClient.clone({
-          url: gitUrl!,
-          targetPath: finalLocalPath,
-          branch,
-          depth: 1,
-          taskId: taskId,
-          phaseId: 'git_clone',
-        });
-
-        if (!cloneResult.success) {
-          await taskManager.failPhase(
-            taskId,
-            'git_clone',
-            'Failed to clone repository: ' + cloneResult.error
-          );
-          return;
-        }
-
-        // Verify the clone was successful
-        const isValid = await gitClient.isValidRepository(finalLocalPath);
-        if (!isValid) {
-          await taskManager.failPhase(
-            taskId,
-            'git_clone',
-            'Repository clone verification failed'
-          );
-          return;
-        }
-
-        await taskManager.completePhase(taskId, 'git_clone', {
-          repositoryPath: finalLocalPath,
-          repositoryType: 'remote',
-          clonedFrom: gitUrl,
-          cloneSize: cloneResult.output?.length || 0,
-        });
-      }
-
-      // Phase 3: Project Analysis - WITH REAL PROGRESS
-      // TODO: Check for cancellation before analysis
-      // if (await taskManager.isTaskCancelled(taskId)) {
-      //   console.log(`🚫 Task ${taskId} was cancelled, stopping execution`);
-      //   return;
-      // }
-
-      await taskManager.startPhase(taskId, 'analysis');
-
-      // Run real project analysis with progress tracking
-      const analysisResult = await projectAnalyzer.analyzeProject(
-        finalLocalPath,
-        taskId,
-        'analysis'
-      );
-
-      // Get additional repository metadata
-      const currentBranch = await gitClient.getCurrentBranch(finalLocalPath);
-      const actualRemoteUrl =
-        gitUrl || (await gitClient.getRemoteUrl(finalLocalPath));
-
-      await taskManager.completePhase(taskId, 'analysis', {
-        filesAnalyzed: analysisResult.totalFiles,
-        totalSize: analysisResult.totalSize,
-        detectedFramework: analysisResult.detectedFramework,
-        detectedLanguage: analysisResult.detectedLanguage,
-        detectedPackageManager: analysisResult.detectedPackageManager,
-        filesByType: analysisResult.filesByType,
-        currentBranch,
-        remoteUrl: actualRemoteUrl,
-      });
-
-      // Phase 3: Completion - Update project status first
-      // TODO: Check for cancellation before completion
-      // if (await taskManager.isTaskCancelled(taskId)) {
-      //   console.log(`🚫 Task ${taskId} was cancelled, stopping execution`);
-      //   return;
-      // }
-
-      await taskManager.startPhase(taskId, 'completion');
-
-      await taskManager.updatePhaseProgress(taskId, 'completion', 20, {
-        type: 'PHASE_PROGRESS',
-        message: 'Updating project information',
-      });
-
-      // Update project in database with analysis results and set status to ACTIVE
-      await prisma.project.update({
-        where: { id: projectId },
-        data: {
-          description: gitUrl
-            ? `Imported from ${gitUrl}`
-            : `Imported from local repository at ${finalLocalPath}`,
-          gitUrl: actualRemoteUrl,
-          localPath: finalLocalPath,
-          status: 'ACTIVE', // Change status to ACTIVE before sprint creation
-          framework: framework || analysisResult.detectedFramework,
-          language: language || analysisResult.detectedLanguage,
-          packageManager:
-            packageManager || analysisResult.detectedPackageManager,
-          testFramework: testFramework || analysisResult.detectedTestFramework,
-          lintTool,
-          buildTool,
-        },
-      });
-
-      await taskManager.updatePhaseProgress(taskId, 'completion', 40, {
-        type: 'PHASE_PROGRESS',
-        message: 'Project status updated to ACTIVE',
-      });
-
-      // Phase 4: Sprint Setup - Create default first sprint (now that project is ACTIVE)
-      // TODO: Check for cancellation before sprint setup
-      // if (await taskManager.isTaskCancelled(taskId)) {
-      //   console.log(`🚫 Task ${taskId} was cancelled, stopping execution`);
-      //   return;
-      // }
-
-      await taskManager.startPhase(taskId, 'sprint_setup');
-
+      // Detect from package.json
+      const packageJsonPath = path.join(projectPath, 'package.json');
       try {
-        console.log(`Setting up default sprint for project: ${projectName}...`);
+        const packageJsonContent = await fs.readFile(packageJsonPath, 'utf-8');
+        const packageJson = JSON.parse(packageJsonContent);
+        
+        // Detect framework
+        if (packageJson.dependencies?.next || packageJson.devDependencies?.next) {
+          result.framework = 'Next.js';
+        } else if (packageJson.dependencies?.react || packageJson.devDependencies?.react) {
+          result.framework = 'React';
+        } else if (packageJson.dependencies?.vue || packageJson.devDependencies?.vue) {
+          result.framework = 'Vue.js';
+        } else if (packageJson.dependencies?.express || packageJson.devDependencies?.express) {
+          result.framework = 'Express.js';
+        }
 
-        await taskManager.updatePhaseProgress(taskId, 'sprint_setup', 30, {
-          type: 'PHASE_PROGRESS',
-          message: 'Setting up default sprint plan',
-        });
+        // Detect test framework
+        if (packageJson.dependencies?.jest || packageJson.devDependencies?.jest) {
+          result.testFramework = 'Jest';
+        } else if (packageJson.dependencies?.vitest || packageJson.devDependencies?.vitest) {
+          result.testFramework = 'Vitest';
+        } else if (packageJson.dependencies?.mocha || packageJson.devDependencies?.mocha) {
+          result.testFramework = 'Mocha';
+        }
 
-        // Import and call createDefaultFirstSprint
-        const { createDefaultFirstSprint } = await import(
-          '@/lib/sprints/default-sprint'
-        );
+        // Detect linting
+        if (packageJson.dependencies?.eslint || packageJson.devDependencies?.eslint) {
+          result.lintTool = 'ESLint';
+        }
 
-        await taskManager.updatePhaseProgress(taskId, 'sprint_setup', 60, {
-          type: 'PHASE_PROGRESS',
-          message: 'Creating first sprint and work items',
-        });
-
-        const sprintResult = await createDefaultFirstSprint(
-          projectId,
-          projectName
-        );
-
-        console.log(
-          `✅ Default sprint created successfully for project: ${projectName}`
-        );
-        console.log(`   Sprint: ${sprintResult.sprint.name}`);
-        console.log(`   Epic: ${sprintResult.epic.title}`);
-        console.log(`   Stories created: ${sprintResult.stories.length}`);
-
-        await taskManager.updatePhaseProgress(taskId, 'sprint_setup', 100, {
-          type: 'PHASE_PROGRESS',
-          message: 'Sprint setup completed',
-        });
-
-        await taskManager.completePhase(taskId, 'sprint_setup', {
-          sprintId: sprintResult.sprint.id,
-          sprintName: sprintResult.sprint.name,
-          epicId: sprintResult.epic.id,
-          epicTitle: sprintResult.epic.title,
-          storiesCreated: sprintResult.stories.length,
-          totalStoryPoints: sprintResult.stories.reduce(
-            (sum, story) => sum + (story.storyPoints || 0),
-            0
-          ),
-        });
-      } catch (sprintError) {
-        console.error(
-          `❌ Error setting up sprint for ${projectName}:`,
-          sprintError
-        );
-        await taskManager.updatePhaseProgress(taskId, 'sprint_setup', 100, {
-          type: 'ERROR',
-          message: `Sprint setup error: ${sprintError instanceof Error ? sprintError.message : 'Unknown error'}`,
-        });
-        await taskManager.completePhase(taskId, 'sprint_setup', {
-          error:
-            sprintError instanceof Error
-              ? sprintError.message
-              : 'Unknown error',
-        });
+        // Detect build tool
+        if (packageJson.dependencies?.webpack || packageJson.devDependencies?.webpack) {
+          result.buildTool = 'Webpack';
+        } else if (packageJson.dependencies?.vite || packageJson.devDependencies?.vite) {
+          result.buildTool = 'Vite';
+        }
+      } catch {
+        // package.json not found or invalid
       }
 
-      await taskManager.updatePhaseProgress(taskId, 'completion', 70, {
-        type: 'PHASE_PROGRESS',
-        message: 'Creating initial project cards',
-      });
-
-      // Create initial Kanban cards
-      const initialCards = [
-        {
-          title: 'Project Setup',
-          description: 'Initialize project dependencies and configuration',
-          status: 'TODO',
-          position: 0,
-        },
-        {
-          title: 'Code Analysis',
-          description: 'Analyze codebase for quality and potential issues',
-          status: 'TODO',
-          position: 1,
-        },
-        {
-          title: 'Documentation Review',
-          description: 'Review and update project documentation',
-          status: 'TODO',
-          position: 2,
-        },
-      ];
-
-      await prisma.kanbanCard.createMany({
-        data: initialCards.map(card => ({
-          projectId: projectId,
-          ...card,
-        })),
-      });
-
-      await taskManager.updatePhaseProgress(taskId, 'completion', 80, {
-        type: 'PHASE_PROGRESS',
-        message: '生成智能描述',
-      });
-
-      // Generate project description using Claude Code
-      let projectDescription = gitUrl
-        ? `Imported from ${gitUrl}`
-        : `Imported from local repository at ${finalLocalPath}`;
-      try {
-        console.log(
-          `🤖 Generating project description using Claude Code for: ${projectName}...`
-        );
-
-        await taskManager.updatePhaseProgress(taskId, 'completion', 85, {
-          type: 'PHASE_PROGRESS',
-          message: '使用 Claude Code 分析專案結構',
-        });
-
-        const descriptionResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/agents/project-manager`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              projectId: projectId,
-              action: 'analyze',
-            }),
-          }
-        );
-
-        const descriptionResult = await descriptionResponse.json();
-        if (descriptionResult.success && descriptionResult.data?.context) {
-          await taskManager.updatePhaseProgress(taskId, 'completion', 87, {
-            type: 'PHASE_PROGRESS',
-            message: '生成智能專案描述',
-          });
-
-          // Generate project summary using the context
-          const summaryResponse = await fetch(
-            `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/agents/project-manager`,
-            {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                projectId: projectId,
-                action: 'generate-summary',
-                context: descriptionResult.data.context,
-              }),
-            }
-          );
-
-          const summaryResult = await summaryResponse.json();
-          if (summaryResult.success && summaryResult.data?.summary) {
-            projectDescription = summaryResult.data.summary;
-            console.log(
-              `Generated intelligent description: "${projectDescription}"`
-            );
-          }
-        }
-      } catch (descriptionError) {
-        console.error(
-          `⚠️ Failed to generate project description for ${projectName}:`,
-          descriptionError
-        );
-
-        // Try to generate a basic description based on analysis results
-        if (
-          analysisResult?.detectedFramework &&
-          analysisResult.detectedFramework !== 'None specified'
-        ) {
-          projectDescription = `${analysisResult.detectedFramework} application`;
-        } else if (
-          analysisResult?.detectedLanguage &&
-          analysisResult.detectedLanguage !== 'None specified'
-        ) {
-          projectDescription = `${analysisResult.detectedLanguage} project`;
-        }
-
-        console.log(`Using fallback description: "${projectDescription}"`);
+      // Detect from file extensions
+      const extensions = await findFileExtensions(projectPath);
+      
+      if (extensions.includes('.ts') || extensions.includes('.tsx')) {
+        result.language = 'TypeScript';
+      } else if (extensions.includes('.js') || extensions.includes('.jsx')) {
+        result.language = 'JavaScript';
+      } else if (extensions.includes('.py')) {
+        result.language = 'Python';
+      } else if (extensions.includes('.go')) {
+        result.language = 'Go';
+      } else if (extensions.includes('.rs')) {
+        result.language = 'Rust';
       }
 
-      // Step 2: Update project with generated description and complete status
-      await prisma.project.update({
-        where: { id: projectId },
-        data: { description: projectDescription },
-      });
+      // Detect package manager
+      if (await fileExists(path.join(projectPath, 'bun.lockb'))) {
+        result.packageManager = 'bun';
+      } else if (await fileExists(path.join(projectPath, 'pnpm-lock.yaml'))) {
+        result.packageManager = 'pnpm';
+      } else if (await fileExists(path.join(projectPath, 'yarn.lock'))) {
+        result.packageManager = 'yarn';
+      } else if (await fileExists(path.join(projectPath, 'package-lock.json'))) {
+        result.packageManager = 'npm';
+      }
 
-      await taskManager.updatePhaseProgress(taskId, 'completion', 100, {
-        type: 'PHASE_COMPLETE',
-        message: '專案導入完成',
-      });
-
-      await taskManager.completePhase(taskId, 'completion', {
-        projectUpdated: true,
-        descriptionGenerated: true,
-        sprintSetupCompleted: true,
-        finalDescription: projectDescription,
-        initialCards: 3,
-      });
-
-      // Complete entire task
-      const finalResult = {
-        success: true,
-        project: {
-          id: projectId,
-          name: projectName,
-          gitUrl: actualRemoteUrl,
-          localPath: finalLocalPath,
-          branch: currentBranch,
-          isGitManaged: true,
-          importSource: gitUrl ? 'remote' : 'local',
-          analysis: analysisResult,
-        },
-        message: `Git repository imported successfully ${needsClone ? 'from remote' : 'from local path'} and project review initiated`,
-      };
-
-      await taskManager.completeTask(taskId, finalResult);
-
-      // Trigger automatic Kanban board optimization after project import completion
-      setImmediate(async () => {
-        try {
-          console.log(`🎯 Triggering automatic Kanban optimization after project import completion`);
-          // const { ProjectManagerAgent } = await import('@/lib/agents/project-manager');
-          // const projectManager = new ProjectManagerAgent();
-          // await projectManager.manageKanbanBoard(projectId);
-          console.log(`✅ Automatic Kanban optimization completed after project import`);
-        } catch (error) {
-          console.error(`❌ Automatic Kanban optimization failed after project import: ${error}`);
-        }
-      });
-
-      console.log(`🎉 Import task ${taskId} completed successfully`);
     } catch (error) {
-      console.error('Import task failed:', error);
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
+      console.warn('Tech stack detection failed:', error);
+    }
 
-      // Update project status to failed
-      await prisma.project.update({
-        where: { id: projectId },
-        data: {
-          status: 'ARCHIVED',
-          description: `導入失敗: ${errorMessage}`,
-        },
-      });
+    return result;
+  }
 
-      await taskManager.failPhase(
-        taskId,
-        'unknown',
-        `Failed to import project: ${errorMessage}`
-      );
+async function findFileExtensions(dirPath: string, maxFiles = 100): Promise<string[]> {
+    const extensions = new Set<string>();
+    let fileCount = 0;
+
+    const scanDir = async (currentPath: string) => {
+      if (fileCount >= maxFiles) return;
+      
+      try {
+        const entries = await fs.readdir(currentPath, { withFileTypes: true });
+        
+        for (const entry of entries) {
+          if (fileCount >= maxFiles) break;
+          if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+          
+          const fullPath = path.join(currentPath, entry.name);
+          
+          if (entry.isDirectory()) {
+            await scanDir(fullPath);
+          } else {
+            const ext = path.extname(entry.name);
+            if (ext) {
+              extensions.add(ext);
+              fileCount++;
+            }
+          }
+        }
+      } catch {
+        // Ignore errors
+      }
+    };
+
+    await scanDir(dirPath);
+    return Array.from(extensions);
+  }
+
+async function fileExists(filePath: string): Promise<boolean> {
+    try {
+      await fs.access(filePath);
+      return true;
+    } catch {
+      return false;
     }
   }
+
+// Helper function to copy directories recursively
+async function copyDirectory(src: string, dest: string): Promise<void> {
+  await fs.mkdir(dest, { recursive: true });
+  const entries = await fs.readdir(src, { withFileTypes: true });
+  
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    
+    if (entry.isDirectory()) {
+      await copyDirectory(srcPath, destPath);
+    } else {
+      await fs.copyFile(srcPath, destPath);
+    }
+  }
+}
+
+// Helper function to generate unique project path
+async function generateUniqueProjectPath(gitClient: any, projectName: string): Promise<string> {
+  const basePath = gitClient.generateProjectPath(projectName);
+  let finalPath = basePath;
+  let counter = 1;
+  
+  // Check if path exists and generate unique one if needed
+  while (true) {
+    try {
+      await fs.access(finalPath);
+      // Path exists, try with counter suffix
+      finalPath = `${basePath}-${counter}`;
+      counter++;
+    } catch {
+      // Path doesn't exist, we can use it
+      break;
+    }
+  }
+  
+  return finalPath;
 }

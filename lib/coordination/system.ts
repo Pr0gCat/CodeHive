@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db';
 import { tokenManager } from '@/lib/resources/token-management';
-import { ImprovedProjectManagerAgent } from './improved-project-manager';
+import { ProjectManagerAgent as ImprovedProjectManagerAgent } from '@/lib/project-manager';
 import { updateCLAUDEMDAfterTask } from '@/lib/claude-md/auto-update';
 import { TDDCycleEngine } from '@/lib/tdd/cycle-engine';
 

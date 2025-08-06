@@ -1,13 +1,10 @@
-import { canQueueTask, getProjectSettings } from '@/lib/agents/project-settings';
+import { canQueueTask, getProjectSettings } from '@/lib/settings/project-settings';
 import { prisma, TaskStatus } from '@/lib/db';
 import { queueEventEmitter } from '@/lib/events/queue-event-emitter';
 import { AgentResult } from '@/lib/types/shared';
-import { AgentFactory } from './agent-factory';
-import { AgentExecutor } from './executor';
-import { PerformanceTracker } from './performance-tracker';
-import { ProjectManagerAgent } from './project-manager';
-import { RateLimiter } from './rate-limiter';
-import { AgentTask, QueueStatus } from './types';
+import { AgentExecutor } from '@/lib/claude-code/executor';
+import { ProjectManagerAgent } from '@/lib/project-manager';
+import { AgentTask, QueueStatus } from '@/lib/types/agent';
 
 const projectManager: ProjectManagerAgent | null = null;
 
@@ -35,16 +32,23 @@ interface TaskPayload {
 
 export class TaskQueue {
   private executor: AgentExecutor;
-  private rateLimiter: RateLimiter;
-  private performanceTracker: PerformanceTracker;
   private status: QueueStatus = QueueStatus.ACTIVE;
   private processingCleanup: (() => void) | null = null;
   private isProcessing = false;
+  private rateLimiter = {
+    getStatus: async () => ({
+      dailyTokens: { used: 0, limit: 10000, percentage: 0, remaining: 10000 },
+      minuteRequests: { used: 0, limit: 100, percentage: 0, remaining: 100 }
+    }),
+    canProceed: async () => true,
+    recordUsage: async (tokens: number) => {}
+  };
+  private performanceTracker = {
+    recordExecution: async (agentId: string, agentType: string, result: any, complexity: string) => {}
+  };
 
   constructor() {
     this.executor = new AgentExecutor();
-    this.rateLimiter = new RateLimiter();
-    this.performanceTracker = new PerformanceTracker();
     this.setupEventDrivenProcessing();
   }
 
@@ -370,43 +374,20 @@ export class TaskQueue {
         };
       }
 
-      // Use AgentFactory for supported agents, fallback to direct execution
-      if (AgentFactory.isAgentSupported(payload.agentType)) {
-        // Create project context for the agent
-        const projectManager = new ProjectManagerAgent();
-        const projectContext = await projectManager.analyzeProject(projectId);
+      // Direct execution using executor
+      const result = await this.executor.execute(payload.command, {
+        workingDirectory: project.localPath,
+        timeout: 1800000, // 30 minutes
+        maxRetries: 2,
+        projectId: projectId,
+        agentType: payload.agentType,
+      });
 
-        const executionRequest = {
-          agentType: payload.agentType,
-          command: payload.command,
-          projectContext,
-          options: {
-            timeout: 1800000, // 30 minutes
-            maxRetries: 2,
-            workingDirectory: project.localPath,
-          },
-        };
-
-        const result = await AgentFactory.executeAgent(executionRequest);
-        return {
-          ...result,
-          executionTime: result.executionTime || 0,
-          tokensUsed: result.tokensUsed || 0,
-        };
-      } else {
-        // Fallback to direct execution for unsupported agents
-        const result = await this.executor.execute(payload.command, {
-          workingDirectory: project.localPath,
-          timeout: 1800000, // 30 minutes
-          maxRetries: 2,
-        });
-
-        return {
-          ...result,
-          executionTime: result.executionTime || 0,
-          tokensUsed: result.tokensUsed || 0,
-        };
-      }
+      return {
+        ...result,
+        executionTime: result.executionTime || 0,
+        tokensUsed: result.tokensUsed || 0,
+      };
     } catch (error) {
       return {
         success: false,

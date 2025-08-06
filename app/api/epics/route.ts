@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { z } from 'zod';
+import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
+import { ProjectMetadataManager } from '@/lib/portable/metadata-manager';
+import type { Epic } from '@/lib/portable/schemas';
 
-// Epic creation schema
+// Epic creation schema - updated for portable format
 const createEpicSchema = z.object({
-  projectId: z.string().cuid(),
+  projectId: z.string(),
   title: z.string().min(1).max(200),
   description: z.string().optional(),
   type: z.enum(['MVP', 'ENHANCEMENT', 'FEATURE', 'BUGFIX']).default('FEATURE'),
@@ -27,89 +29,91 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const projectId = searchParams.get('projectId');
 
-    const whereClause = projectId ? { projectId } : {};
+    const discoveryService = getProjectDiscoveryService();
+    const projects = await discoveryService.discoverProjects();
+    
+    let targetProjects = projects;
+    if (projectId) {
+      targetProjects = projects.filter(p => p.metadata.id === projectId);
+      if (targetProjects.length === 0) {
+        return NextResponse.json({
+          success: true,
+          data: [],
+        });
+      }
+    }
 
-    const epics = await prisma.epic.findMany({
-      where: whereClause,
-      include: {
-        project: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        stories: {
-          select: {
-            id: true,
-            title: true,
-            status: true,
-            storyPoints: true,
-          },
-          orderBy: { sequence: 'asc' },
-        },
-        dependencies: {
-          include: {
-            dependsOn: {
-              select: {
-                id: true,
-                title: true,
-                phase: true,
-              },
+    const allEpics: any[] = [];
+
+    // Get epics from all target projects
+    for (const project of targetProjects) {
+      try {
+        const metadataManager = new ProjectMetadataManager(project.path);
+        const epics = await metadataManager.getEpics();
+        const stories = await metadataManager.getStories();
+        
+        for (const epic of epics) {
+          // Get stories for this epic
+          const epicStories = stories.filter(s => s.epicId === epic.id);
+          
+          // Calculate progress
+          const totalStories = epicStories.length;
+          const completedStories = epicStories.filter(
+            story => story.status === 'DONE'
+          ).length;
+          const totalStoryPoints = epicStories.reduce(
+            (sum, story) => sum + (story.storyPoints || 0),
+            0
+          );
+          const completedStoryPoints = epicStories
+            .filter(story => story.status === 'DONE')
+            .reduce((sum, story) => sum + (story.storyPoints || 0), 0);
+
+          allEpics.push({
+            ...epic,
+            project: {
+              id: project.metadata.id,
+              name: project.metadata.name,
             },
-          },
-        },
-        dependents: {
-          include: {
-            epic: {
-              select: {
-                id: true,
-                title: true,
-                phase: true,
-              },
+            stories: epicStories.map(s => ({
+              id: s.id,
+              title: s.title,
+              status: s.status,
+              storyPoints: s.storyPoints,
+            })),
+            dependencies: [], // TODO: Implement epic dependencies in portable format
+            dependents: [], // TODO: Implement epic dependencies in portable format
+            _count: {
+              stories: totalStories,
             },
-          },
-        },
-        _count: {
-          select: {
-            stories: true,
-          },
-        },
-      },
-      orderBy: [{ sequence: 'asc' }, { createdAt: 'desc' }],
-    });
+            progress: {
+              storiesCompleted: completedStories,
+              storiesTotal: totalStories,
+              storyPointsCompleted: completedStoryPoints,
+              storyPointsTotal: totalStoryPoints,
+              percentage:
+                totalStories > 0
+                  ? Math.round((completedStories / totalStories) * 100)
+                  : 0,
+            },
+          });
+        }
+      } catch (error) {
+        console.warn(`Failed to get epics for project ${project.metadata.name}:`, error);
+      }
+    }
 
-    // Calculate progress for each epic
-    const epicsWithProgress = epics.map(epic => {
-      const totalStories = epic.stories.length;
-      const completedStories = epic.stories.filter(
-        story => story.status === 'DONE'
-      ).length;
-      const totalStoryPoints = epic.stories.reduce(
-        (sum, story) => sum + (story.storyPoints || 0),
-        0
-      );
-      const completedStoryPoints = epic.stories
-        .filter(story => story.status === 'DONE')
-        .reduce((sum, story) => sum + (story.storyPoints || 0), 0);
-
-      return {
-        ...epic,
-        progress: {
-          storiesCompleted: completedStories,
-          storiesTotal: totalStories,
-          storyPointsCompleted: completedStoryPoints,
-          storyPointsTotal: totalStoryPoints,
-          percentage:
-            totalStories > 0
-              ? Math.round((completedStories / totalStories) * 100)
-              : 0,
-        },
-      };
+    // Sort epics by sequence and creation date
+    allEpics.sort((a, b) => {
+      if (a.sequence !== b.sequence) {
+        return a.sequence - b.sequence;
+      }
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
 
     return NextResponse.json({
       success: true,
-      data: epicsWithProgress,
+      data: allEpics,
     });
   } catch (error) {
     console.error('Error fetching epics:', error);
@@ -129,10 +133,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createEpicSchema.parse(body);
 
-    // Verify project exists
-    const project = await prisma.project.findUnique({
-      where: { id: validatedData.projectId },
-    });
+    // Find the target project
+    const discoveryService = getProjectDiscoveryService();
+    const projects = await discoveryService.discoverProjects();
+    const project = projects.find(p => p.metadata.id === validatedData.projectId);
 
     if (!project) {
       return NextResponse.json(
@@ -144,34 +148,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create epic
-    const epic = await prisma.epic.create({
-      data: {
-        ...validatedData,
-        startDate: validatedData.startDate
-          ? new Date(validatedData.startDate)
-          : null,
-        dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : null,
+    const metadataManager = new ProjectMetadataManager(project.path);
+    
+    // Create epic with portable format
+    const now = new Date().toISOString();
+    const epicId = `epic-${Date.now()}`;
+    
+    const epic: Epic = {
+      id: epicId,
+      projectId: validatedData.projectId,
+      title: validatedData.title,
+      description: validatedData.description,
+      type: validatedData.type,
+      phase: 'PLANNING',
+      status: 'ACTIVE',
+      mvpPriority: validatedData.mvpPriority,
+      coreValue: validatedData.coreValue,
+      estimatedStoryPoints: validatedData.estimatedStoryPoints,
+      actualStoryPoints: 0,
+      startDate: validatedData.startDate || null,
+      dueDate: validatedData.dueDate || null,
+      completedAt: null,
+      sequence: validatedData.sequence,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await metadataManager.saveEpic(epic);
+
+    // Return epic with project info and count
+    const response = {
+      ...epic,
+      project: {
+        id: project.metadata.id,
+        name: project.metadata.name,
       },
-      include: {
-        project: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        _count: {
-          select: {
-            stories: true,
-          },
-        },
+      _count: {
+        stories: 0, // New epic has no stories yet
       },
-    });
+    };
 
     return NextResponse.json(
       {
         success: true,
-        data: epic,
+        data: response,
       },
       { status: 201 }
     );

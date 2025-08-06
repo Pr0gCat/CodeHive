@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { coordinationSystem } from '@/lib/agents/coordination-system';
+import { coordinationSystem } from '@/lib/coordination/system';
 import { getDefaultProjectId } from '@/lib/config';
 
 export async function POST(request: NextRequest) {

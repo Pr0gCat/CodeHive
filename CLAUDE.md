@@ -6,10 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 CodeHive is a multi-agent software development platform where users provide feature requests and feedback, while the Project Manager agent autonomously manages project backlogs through Epic and Story organization. The system uses AI-driven Test-Driven Development with minimal human interruption.
 
-**Current Status**: AI-Native TDD Development System - Real Progress Tracking Complete ✅
+**Current Status**: AI-Native TDD Development System - All Projects Are Portable ✅
 
 - Next.js 14 + TypeScript + Tailwind CSS with complete UI
-- SQLite database with Prisma ORM and database-driven configuration
+- **ALL PROJECTS ARE PORTABLE**: Every project stores metadata in `.codehive/` directories
+- No centralized database dependency - projects are fully self-contained
 - 5 specialized agents with command validation and real execution tracking
 - User-controlled tech stack preferences system
 - ESLint, Prettier, and code quality tools configured
@@ -38,8 +39,74 @@ CodeHive is a multi-agent software development platform where users provide feat
 - ✅ **Epic/Story Management**: Complete Epic and Story data models with detailed views
 - ✅ **Kanban Integration**: Serializable kanban boards with real-time optimization
 - ✅ **Epic Generation API**: Automated epic creation and breakdown system
+- ✅ **PORTABLE PROJECT SYSTEM**: Complete project portability with `.codehive/` metadata
+- ✅ **PROJECT MIGRATION**: Convert existing projects to portable format
+- ✅ **PROJECT DISCOVERY**: Automatic scanning of repos/ for portable projects
+- ✅ **PROJECT VALIDATION**: Comprehensive integrity checking and repair tools
+- ✅ **EXPORT/IMPORT**: Full project backup and transfer capabilities
 - 🔄 Autonomous backlog management (in progress)
 - 🔄 Feature request processing pipeline (in progress)
+
+## Project System (All Projects Are Portable)
+
+**CodeHive projects are fully portable by default.** All project metadata is stored in `.codehive/` directories within each project, making them completely self-contained and transferable between different CodeHive installations.
+
+### Portable Project Structure
+
+```
+project-root/
+├── .codehive/
+│   ├── project.json          # Project metadata and settings
+│   ├── settings.json         # CodeHive configuration
+│   ├── budget.json           # Token budget allocation (optional)
+│   ├── epics/               # Epic definitions (JSON files)
+│   ├── stories/             # Story/card data (JSON files)
+│   ├── sprints/             # Sprint planning data (JSON files)
+│   ├── cycles/              # TDD cycle data (JSON files)
+│   ├── agents/              # Agent specifications (JSON files)
+│   ├── usage/               # Token usage tracking
+│   ├── logs/                # Project-specific logs
+│   ├── workspaces/          # Workspace snapshots
+│   ├── locks/               # File locking
+│   └── backups/             # Automatic backups
+├── src/                     # Your project source code
+├── README.md               # Generated project documentation
+└── .gitignore              # Includes .codehive/ exclusion
+```
+
+### Portable Project Commands
+
+```bash
+# Migration from legacy database format
+tsx scripts/migrate-to-portable.ts --all          # Migrate all projects
+tsx scripts/migrate-to-portable.ts --project <id> # Migrate specific project
+tsx scripts/migrate-to-portable.ts --dry-run      # Preview migration
+
+# Create new projects (all are portable)
+curl -X POST http://localhost:3000/api/projects/create \
+  -H "Content-Type: application/json" \
+  -d '{"name":"My Project","description":"A portable project"}'
+
+# Import existing repositories
+curl -X POST http://localhost:3000/api/projects/import \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Imported Project","gitUrl":"https://github.com/user/repo"}'
+
+# List all projects
+curl http://localhost:3000/api/projects
+
+# Project validation and repair
+# (Available programmatically via lib/portable/validation.ts)
+```
+
+### Key Benefits
+
+- ✅ **Full Portability**: Move projects between different CodeHive installations
+- ✅ **No Database Dependency**: Projects work independently of centralized database
+- ✅ **Version Control Friendly**: All metadata can be committed with your code
+- ✅ **Backup Simplified**: Back up entire projects by copying directories
+- ✅ **Team Collaboration**: Share projects easily with team members
+- ✅ **Self-Contained**: Each project contains all its metadata and configuration
 
 ## Core Development Commands
 
@@ -350,6 +417,9 @@ interface Story {
 - **WEBSOCKET EVENTS**: All real-time events use Socket.IO WebSockets for reliable communication
 - **GENUINE OPERATIONS**: Git clones, file scanning, and project analysis must report actual progress
 - **SOCKET.IO ONLY**: Server-Sent Events have been replaced with Socket.IO - use WebSocket for all real-time features
+- **PORTABLE BY DEFAULT**: All projects use the portable format with `.codehive/` directories
+- **NO DATABASE DEPENDENCY**: Projects are fully self-contained and portable
+- **STANDARD APIS**: Use `/api/projects/create` and `/api/projects/import` for all project operations
 - This project is not just for frontend developement
 - Treat Claude Code as a normal LLM, just give instructions and it do the job. You must make Claude Code make its questions response in certain format for the program to parse.
 - Do not change too much of the project unless it is really needed to

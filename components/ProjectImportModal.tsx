@@ -62,7 +62,11 @@ export default function ProjectImportModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
+          name: formData.projectName,
+          gitUrl: formData.gitUrl,
+          localPath: formData.localPath,
+          branch: formData.branch,
+          autoDetectTechStack: true,
         }),
       });
 

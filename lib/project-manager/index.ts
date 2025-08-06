@@ -1,14 +1,14 @@
 import { prisma } from '@/lib/db';
 import { promises as fs } from 'fs';
-import { ProjectAnalyzer } from './analyzers/project-analyzer';
-import { AgentExecutor } from './executor';
-import { SpecificationGenerator } from './generators/spec-generator';
+import { ProjectAnalyzer } from '@/lib/analysis/structure-analyzer';
+import { AgentExecutor } from '@/lib/claude-code/executor';
+import { SpecificationGenerator } from '@/lib/generators/spec-generator';
 import {
     checkRateLimit,
     checkTokenLimit,
     logTokenUsage,
-} from './project-settings';
-import { AgentResult, AgentSpec } from './types';
+} from '@/lib/rate-limiting';
+import { AgentResult, AgentSpec } from '@/lib/types/agent';
 
 export interface ProjectContext {
   id: string;
@@ -304,7 +304,13 @@ export class ProjectManagerAgent {
         `🤖 Using Claude Code to generate project summary: ${name}`
       );
 
-      const result = await this.executor.execute('Summarize this project in one simple sentence within 16 words. Just response the sentence.', {
+      // Provide more specific context to Claude Code about what to analyze
+      const summaryPrompt = `Look at the files in the current directory (${localPath}). 
+Based on README files, package.json, main files, or source code you find here, 
+summarize what THIS specific project does in one simple sentence within 16 words. 
+Just respond with the sentence describing this project's purpose.`;
+
+      const result = await this.executor.execute(summaryPrompt, {
         workingDirectory: localPath,
         timeout: 300000, // 5 minutes timeout for summary generation
       });

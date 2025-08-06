@@ -1,5 +1,5 @@
-import { ProjectManagerAgent } from '@/lib/agents/project-manager';
-import { TaskQueue } from '@/lib/agents/queue';
+import { ProjectManagerAgent } from '@/lib/project-manager';
+import { TaskQueue } from '@/lib/tasks/queue';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 

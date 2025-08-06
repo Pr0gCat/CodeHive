@@ -29,7 +29,7 @@ jest.mock('@/lib/sprints/default-sprint', () => ({
   createDefaultFirstSprint: jest.fn(),
 }));
 
-jest.mock('@/lib/agents/project-manager', () => ({
+jest.mock('@/lib/project-manager', () => ({
   ProjectManager: jest.fn().mockImplementation(() => ({
     manageKanbanBoard: jest.fn(),
   })),
@@ -53,7 +53,7 @@ jest.mock('@/lib/tasks/task-manager', () => ({
 }));
 
 const { createDefaultFirstSprint } = require('@/lib/sprints/default-sprint');
-const { ProjectManager } = require('@/lib/agents/project-manager');
+const { ProjectManager } = require('@/lib/project-manager');
 
 describe('Project Creation', () => {
   const mockProjectData = {

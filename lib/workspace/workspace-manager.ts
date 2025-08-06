@@ -45,12 +45,19 @@ export class WorkspaceManager {
    * 初始化工作空間管理器
    */
   async initialize(): Promise<void> {
-    // 創建 .codehive 目錄結構
+    // 創建 .codehive 目錄結構 - Extended for portable projects
     const dirs = [
       path.join(this.projectPath, '.codehive'),
+      path.join(this.projectPath, '.codehive', 'epics'),
+      path.join(this.projectPath, '.codehive', 'stories'),
+      path.join(this.projectPath, '.codehive', 'sprints'),
       path.join(this.projectPath, '.codehive', 'cycles'),
+      path.join(this.projectPath, '.codehive', 'agents'),
+      path.join(this.projectPath, '.codehive', 'usage'),
+      path.join(this.projectPath, '.codehive', 'logs'),
       path.join(this.projectPath, '.codehive', 'workspaces'),
       path.join(this.projectPath, '.codehive', 'locks'),
+      path.join(this.projectPath, '.codehive', 'backups'),
     ];
 
     for (const dir of dirs) {

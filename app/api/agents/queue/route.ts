@@ -1,5 +1,5 @@
-import { TaskQueue } from '@/lib/agents/queue';
-import { QueueStatus } from '@/lib/agents/types';
+import { TaskQueue } from '@/lib/tasks/queue';
+import { QueueStatus } from '@/lib/types/agent';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Global task queue instance

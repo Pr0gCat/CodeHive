@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
 import { z } from 'zod';
-import { checkProjectOperationAccess } from '@/lib/project-access-control';
-import { projectLogger } from '@/lib/logging/project-logger';
+import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
+import { ProjectMetadataManager } from '@/lib/portable/metadata-manager';
+import type { Story } from '@/lib/portable/schemas';
+// TODO: Migrate project access control to portable format
+// import { checkProjectOperationAccess } from '@/lib/project-access-control';
+// import { projectLogger } from '@/lib/logging/project-logger';
 
 const createCardSchema = z.object({
   title: z.string().min(1, 'Card title is required'),
@@ -12,7 +15,7 @@ const createCardSchema = z.object({
     .default('BACKLOG'),
   assignedAgent: z.string().optional(),
   position: z.number().optional(), // Frontend sends this but we calculate our own
-  epicId: z.string().cuid().optional(), // Link to epic
+  epicId: z.string().optional(), // Link to epic
   storyPoints: z.number().int().min(0).optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).default('MEDIUM'),
   tddEnabled: z.boolean().default(false),
@@ -24,43 +27,64 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const cards = await prisma.kanbanCard.findMany({
-      where: { projectId: params.id },
-      include: {
-        epic: {
-          select: {
-            id: true,
-            title: true,
-            type: true,
-            phase: true,
-            mvpPriority: true,
-          },
+    const projectId = params.id;
+    
+    // Find the project
+    const discoveryService = getProjectDiscoveryService();
+    const projects = await discoveryService.discoverProjects();
+    const project = projects.find(p => p.metadata.id === projectId);
+    
+    if (!project) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Project not found',
         },
-        cycles: {
-          select: {
-            id: true,
-            title: true,
-            phase: true,
-            status: true,
-          },
-          orderBy: { sequence: 'asc' },
-        },
-        agentTasks: {
-          orderBy: { createdAt: 'desc' },
-        },
+        { status: 404 }
+      );
+    }
+    
+    const metadataManager = new ProjectMetadataManager(project.path);
+    
+    // Get stories (kanban cards)
+    const stories = await metadataManager.getStories();
+    const epics = await metadataManager.getEpics();
+    const cycles = await metadataManager.getCycles();
+    
+    // Enhance stories with epic and cycle information
+    const enhancedCards = stories.map(story => {
+      const epic = story.epicId ? epics.find(e => e.id === story.epicId) : null;
+      const storyCycles = cycles.filter(c => c.storyId === story.id);
+      
+      return {
+        ...story,
+        epic: epic ? {
+          id: epic.id,
+          title: epic.title,
+          type: epic.type,
+          phase: epic.phase,
+          mvpPriority: epic.mvpPriority,
+        } : null,
+        cycles: storyCycles.map(c => ({
+          id: c.id,
+          title: c.title,
+          phase: c.phase,
+          status: c.status,
+        })),
+        agentTasks: [], // TODO: Implement agent tasks in portable format
         _count: {
-          select: {
-            agentTasks: true,
-            queuedTasks: true,
-          },
+          agentTasks: 0, // TODO: Count agent tasks when implemented
+          queuedTasks: 0, // TODO: Count queued tasks when implemented
         },
-      },
-      orderBy: { position: 'asc' },
+      };
     });
+    
+    // Sort by position
+    enhancedCards.sort((a, b) => a.position - b.position);
 
     return NextResponse.json({
       success: true,
-      data: cards,
+      data: enhancedCards,
     });
   } catch (error) {
     console.error('Error fetching cards:', error);
@@ -81,104 +105,84 @@ export async function POST(
   try {
     const body = await request.json();
     const validatedData = createCardSchema.parse(body);
+    const projectId = params.id;
 
-    // Check if project can be operated on
-    const accessCheck = await checkProjectOperationAccess(params.id);
-
-    if (!accessCheck.allowed) {
-      return accessCheck.response;
+    // Find the project
+    const discoveryService = getProjectDiscoveryService();
+    const projects = await discoveryService.discoverProjects();
+    const project = projects.find(p => p.metadata.id === projectId);
+    
+    if (!project) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Project not found',
+        },
+        { status: 404 }
+      );
     }
+    
+    const metadataManager = new ProjectMetadataManager(project.path);
 
     // Get the next position for the card
-    const lastCard = await prisma.kanbanCard.findFirst({
-      where: { projectId: params.id },
-      orderBy: { position: 'desc' },
-    });
+    const existingStories = await metadataManager.getStories();
+    const lastPosition = Math.max(0, ...existingStories.map(s => s.position));
+    const nextPosition = (validatedData.position ?? lastPosition) + 1;
 
-    const nextPosition = (lastCard?.position ?? 0) + 1;
+    // Create the story/card
+    const now = new Date().toISOString();
+    const storyId = `story-${Date.now()}`;
+    
+    const story: Story = {
+      id: storyId,
+      epicId: validatedData.epicId,
+      sprintId: undefined,
+      title: validatedData.title,
+      description: validatedData.description,
+      status: validatedData.status,
+      position: nextPosition,
+      assignedAgent: validatedData.assignedAgent,
+      targetBranch: undefined,
+      storyPoints: validatedData.storyPoints,
+      priority: validatedData.priority,
+      sequence: nextPosition,
+      tddEnabled: validatedData.tddEnabled,
+      acceptanceCriteria: validatedData.acceptanceCriteria,
+      createdAt: now,
+      updatedAt: now,
+      dependencies: [],
+      dependents: [],
+    };
 
-    const card = await prisma.kanbanCard.create({
-      data: {
-        title: validatedData.title,
-        description: validatedData.description,
-        status: validatedData.status,
-        assignedAgent: validatedData.assignedAgent,
-        projectId: params.id,
-        position: nextPosition,
-        epicId: validatedData.epicId,
-        storyPoints: validatedData.storyPoints,
-        priority: validatedData.priority,
-        tddEnabled: validatedData.tddEnabled,
-        acceptanceCriteria: validatedData.acceptanceCriteria,
-      },
-      include: {
-        agentTasks: true,
-        _count: {
-          select: {
-            agentTasks: true,
-            queuedTasks: true,
-          },
-        },
-      },
-    });
+    await metadataManager.saveStory(story);
 
-    // Log the card creation
-    projectLogger.info(
-      params.id,
-      'kanban-card-create',
-      `📋 New card created: "${card.title}"`,
-      {
-        action: 'card_created',
-        cardId: card.id,
-        cardTitle: card.title,
-        cardData: {
-          status: card.status,
-          position: card.position,
-          priority: card.priority,
-          tddEnabled: card.tddEnabled,
-          storyPoints: card.storyPoints,
-          assignedAgent: card.assignedAgent,
-          epicId: card.epicId
-        },
-        updateSource: 'manual'
-      }
-    );
-
-    // TODO: Trigger automatic Kanban board optimization after adding new card
-    // setImmediate(async () => {
-    //   try {
-    //     const { ProjectManagerAgent } = await import('@/lib/agents/project-manager');
-    //     const projectManager = new ProjectManagerAgent();
-    //     
-    //     projectLogger.info(
-    //       params.id,
-    //       'kanban-auto-optimize',
-    //       '🎯 Triggering automatic Kanban optimization after card creation',
-    //       { action: 'auto_optimization_trigger', cardId: card.id }
-    //     );
-    //     
-    //     // await projectManager.manageKanbanBoard(params.id);
-    //     
-    //     projectLogger.info(
-    //       params.id,
-    //       'kanban-auto-optimize',
-    //       '✅ Automatic Kanban optimization completed',
-    //       { action: 'auto_optimization_complete', cardId: card.id }
-    //     );
-    //   } catch (error) {
-    //     projectLogger.error(
-    //       params.id,
-    //       'kanban-auto-optimize',
-    //       `❌ Automatic Kanban optimization failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-    //       { action: 'auto_optimization_error', cardId: card.id }
-    //     );
+    // TODO: Log the card creation when project logger is migrated
+    // projectLogger.info(
+    //   params.id,
+    //   'kanban-card-create',
+    //   `📋 New card created: "${story.title}"`,
+    //   {
+    //     action: 'card_created',
+    //     cardId: story.id,
+    //     cardTitle: story.title,
+    //     updateSource: 'manual'
     //   }
-    // });
+    // );
+
+    // Return enhanced card data
+    const response = {
+      ...story,
+      agentTasks: [], // TODO: Implement agent tasks in portable format
+      _count: {
+        agentTasks: 0,
+        queuedTasks: 0,
+      },
+    };
 
     return NextResponse.json(
       {
         success: true,
-        data: card,
+        data: response,
       },
       { status: 201 }
     );

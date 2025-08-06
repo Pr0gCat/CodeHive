@@ -8,7 +8,7 @@ import {
 } from '../../helpers/test-utils';
 
 // Mock AgentExecutor
-jest.mock('@/lib/agents/executor', () => ({
+jest.mock('@/lib/claude-code/executor', () => ({
   AgentExecutor: jest.fn().mockImplementation(() => ({
     execute: jest.fn().mockResolvedValue({
       success: true,
@@ -108,7 +108,7 @@ describe('AITDDIntegration', () => {
     };
 
     it('should generate implementation code using AI', async () => {
-      const { AgentExecutor } = require('@/lib/agents/executor');
+      const { AgentExecutor } = require('@/lib/claude-code/executor');
       const mockExecutor = new AgentExecutor();
       mockExecutor.execute.mockResolvedValue({
         success: true,
@@ -139,7 +139,7 @@ describe('AITDDIntegration', () => {
     });
 
     it('should handle implementation failures with decision query', async () => {
-      const { AgentExecutor } = require('@/lib/agents/executor');
+      const { AgentExecutor } = require('@/lib/claude-code/executor');
       const mockExecutor = new AgentExecutor();
       mockExecutor.execute.mockResolvedValue({
         success: false,
@@ -177,7 +177,7 @@ describe('AITDDIntegration', () => {
     };
 
     it('should refactor code using AI', async () => {
-      const { AgentExecutor } = require('@/lib/agents/executor');
+      const { AgentExecutor } = require('@/lib/claude-code/executor');
       const mockExecutor = new AgentExecutor();
       mockExecutor.execute.mockResolvedValue({
         success: true,
@@ -205,7 +205,7 @@ describe('AITDDIntegration', () => {
     });
 
     it('should handle refactoring failures gracefully', async () => {
-      const { AgentExecutor } = require('@/lib/agents/executor');
+      const { AgentExecutor } = require('@/lib/claude-code/executor');
       const mockExecutor = new AgentExecutor();
       mockExecutor.execute.mockResolvedValue({
         success: false,

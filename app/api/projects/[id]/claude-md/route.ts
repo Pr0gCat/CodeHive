@@ -1,4 +1,5 @@
-import { ProjectManagerAgent } from '@/lib/agents/project-manager';
+import { ProjectManagerAgent } from '@/lib/project-manager';
+import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
 import { prisma } from '@/lib/db';
 import { promises as fs } from 'fs';
 import { NextRequest, NextResponse } from 'next/server';
@@ -11,10 +12,33 @@ export async function GET(
   try {
     const projectId = params.id;
 
-    // Get project details
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
-    });
+    // Try to find project using discovery service first (for portable projects)
+    const discoveryService = getProjectDiscoveryService();
+    const projects = await discoveryService.discoverProjects();
+    let project = projects.find(p => p.metadata.id === projectId);
+
+    // If not found in portable projects, try database
+    if (!project) {
+      const dbProject = await prisma.project.findUnique({
+        where: { id: projectId },
+      });
+      
+      if (dbProject) {
+        // Convert database project to portable project format
+        project = {
+          path: dbProject.localPath,
+          metadata: {
+            id: dbProject.id,
+            name: dbProject.name,
+            description: dbProject.description || undefined,
+            localPath: dbProject.localPath,
+            status: dbProject.status,
+            createdAt: dbProject.createdAt.toISOString(),
+            updatedAt: dbProject.updatedAt.toISOString()
+          }
+        };
+      }
+    }
 
     if (!project) {
       return NextResponse.json(
@@ -26,7 +50,7 @@ export async function GET(
       );
     }
 
-    const claudeMdPath = `${project.localPath}/CLAUDE.md`;
+    const claudeMdPath = `${project.path || project.metadata.localPath}/CLAUDE.md`;
 
     try {
       // Read current CLAUDE.md content
@@ -92,7 +116,7 @@ export async function PUT(
       );
     }
 
-    const claudeMdPath = `${project.localPath}/CLAUDE.md`;
+    const claudeMdPath = `${project.path || project.metadata.localPath}/CLAUDE.md`;
     const updatedContent = await fs.readFile(claudeMdPath, 'utf8');
 
     return NextResponse.json({
