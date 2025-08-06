@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
 import { SQLiteMetadataManager } from '@/lib/portable/sqlite-metadata-manager';
+import { getProjectIndexService } from '@/lib/db/project-index';
 import { logProjectEvent } from '@/lib/logging/project-logger';
 import { addInitialProjectLogs } from '@/lib/logging/init-logs';
 import { z } from 'zod';
@@ -20,13 +21,39 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const discoveryService = getProjectDiscoveryService();
-    const projects = await discoveryService.discoverProjects();
-    
-    // Find project by ID
-    const project = projects.find(p => p.metadata.id === params.id);
+    // Try fast path: lookup in system database first
+    const indexService = getProjectIndexService();
+    let projectPath: string | null = null;
+    let projectMetadata: any = null;
 
-    if (!project) {
+    try {
+      const indexedProject = await indexService.getProjectById(params.id);
+      if (indexedProject) {
+        projectPath = indexedProject.localPath;
+        // Mark as accessed (updates lastAccessedAt)
+        await indexService.markProjectAccessed(params.id);
+        
+        // Get full metadata from project's SQLite database
+        const metadataManager = new SQLiteMetadataManager(projectPath);
+        projectMetadata = await metadataManager.getProjectMetadata();
+      }
+    } catch (indexError) {
+      console.warn('Database lookup failed, falling back to discovery:', indexError);
+    }
+
+    // Fallback: use discovery service if database lookup failed
+    if (!projectPath || !projectMetadata) {
+      const discoveryService = getProjectDiscoveryService();
+      const projects = await discoveryService.discoverProjects();
+      
+      const discoveredProject = projects.find(p => p.metadata.id === params.id);
+      if (discoveredProject) {
+        projectPath = discoveredProject.path;
+        projectMetadata = discoveredProject.metadata;
+      }
+    }
+
+    if (!projectPath || !projectMetadata) {
       return NextResponse.json(
         {
           success: false,
@@ -37,10 +64,10 @@ export async function GET(
     }
 
     // Add initial project logs when accessed (server-side only)
-    addInitialProjectLogs(project.metadata.id, project.metadata.name);
+    addInitialProjectLogs(projectMetadata.id, projectMetadata.name);
 
     // Get additional project data from portable format
-    const metadataManager = new SQLiteMetadataManager(project.path);
+    const metadataManager = new SQLiteMetadataManager(projectPath);
     
     // Load actual data
     const stories = await metadataManager.getStories();
@@ -50,20 +77,20 @@ export async function GET(
     
     // Transform portable project data to match expected format
     const projectData = {
-      id: project.metadata.id,
-      name: project.metadata.name,
-      description: project.metadata.description,
-      status: project.metadata.status,
-      gitUrl: project.metadata.gitUrl,
-      localPath: project.metadata.localPath,
-      framework: project.metadata.framework,
-      language: project.metadata.language,
-      packageManager: project.metadata.packageManager,
-      testFramework: project.metadata.testFramework,
-      lintTool: project.metadata.lintTool,
-      buildTool: project.metadata.buildTool,
-      createdAt: new Date(project.metadata.createdAt),
-      updatedAt: new Date(project.metadata.updatedAt),
+      id: projectMetadata.id,
+      name: projectMetadata.name,
+      description: projectMetadata.description,
+      status: projectMetadata.status,
+      gitUrl: projectMetadata.gitUrl,
+      localPath: projectMetadata.localPath,
+      framework: projectMetadata.framework,
+      language: projectMetadata.language,
+      packageManager: projectMetadata.packageManager,
+      testFramework: projectMetadata.testFramework,
+      lintTool: projectMetadata.lintTool,
+      buildTool: projectMetadata.buildTool,
+      createdAt: new Date(projectMetadata.createdAt),
+      updatedAt: new Date(projectMetadata.updatedAt),
       // Actual data from portable format
       kanbanCards: stories,
       tokenUsage: tokenUsage,

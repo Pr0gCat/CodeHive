@@ -33,7 +33,7 @@ export class ProjectDiscoveryService {
   }
 
   /**
-   * Discover all portable CodeHive projects in repos directory
+   * Discover all portable CodeHive projects from system database and repos directory
    */
   async discoverProjects(options: ProjectDiscoveryOptions = {}): Promise<DiscoveredProject[]> {
     const { includeInvalid = false, validateMetadata = true, scanDepth = 2 } = options;
@@ -43,11 +43,53 @@ export class ProjectDiscoveryService {
       await fs.mkdir(this.reposPath, { recursive: true });
       
       const projects: DiscoveredProject[] = [];
+      const indexService = getProjectIndexService();
+      const processedPaths = new Set<string>();
+
+      // First, get all projects from system database
+      try {
+        const indexedProjects = await indexService.getAllProjects({ includeInactive: false });
+        
+        for (const indexedProject of indexedProjects) {
+          try {
+            const project = await this.analyzeProject(indexedProject.localPath, validateMetadata);
+            if (project && (includeInvalid || project.isValid)) {
+              projects.push(project);
+              this.discoveryCache.set(indexedProject.localPath, project);
+              processedPaths.add(indexedProject.localPath);
+              
+              // Sync with system database (in case metadata changed)
+              await indexService.syncWithProject(project.metadata);
+            }
+          } catch (error) {
+            console.warn(`Failed to analyze indexed project at ${indexedProject.localPath}:`, error);
+            // Mark as unhealthy in database
+            await indexService.updateProjectHealth(indexedProject.id, false);
+            
+            if (includeInvalid) {
+              projects.push({
+                path: indexedProject.localPath,
+                metadata: {} as ProjectMetadata,
+                isValid: false,
+                lastModified: new Date(),
+                size: 0,
+              });
+            }
+          }
+        }
+      } catch (dbError) {
+        console.warn('Failed to query system database, falling back to filesystem scan only:', dbError);
+      }
+
+      // Then, scan repos directory for any projects not in database
       const scannedPaths = await this.scanDirectory(this.reposPath, scanDepth);
       
-      const indexService = getProjectIndexService();
-      
       for (const projectPath of scannedPaths) {
+        // Skip if already processed from database
+        if (processedPaths.has(projectPath)) {
+          continue;
+        }
+        
         try {
           const project = await this.analyzeProject(projectPath, validateMetadata);
           
@@ -55,7 +97,7 @@ export class ProjectDiscoveryService {
             projects.push(project);
             this.discoveryCache.set(projectPath, project);
             
-            // Sync with system database
+            // Sync with system database (new project found in filesystem)
             if (project.isValid) {
               try {
                 await indexService.syncWithProject(project.metadata);
