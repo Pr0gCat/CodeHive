@@ -7,6 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Legacy Project model - kept for migration compatibility
 model Project {
   id             String               @id @default(cuid())
   name           String
@@ -39,6 +40,44 @@ model Project {
   tokenUsage     TokenUsage[]
 
   @@map("projects")
+}
+
+// New portable project index - tracks all portable projects in the system
+model ProjectIndex {
+  id              String   @id // Uses the project's own ID from .codehive/
+  name            String
+  description     String?
+  localPath       String   @unique // Path to the project directory
+  gitUrl          String?
+  status          String   @default("ACTIVE") // ACTIVE, PAUSED, ARCHIVED
+  
+  // Tech stack info (cached from project metadata)
+  framework       String?
+  language        String?
+  packageManager  String?
+  testFramework   String?
+  lintTool        String?
+  buildTool       String?
+  
+  // Project type and source
+  projectType     String   @default("PORTABLE") // PORTABLE, LEGACY
+  importSource    String?  // LOCAL_FOLDER, GIT_URL, MIGRATED
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  lastAccessedAt  DateTime @default(now())
+  
+  // Cached statistics for faster queries
+  epicCount       Int      @default(0)
+  storyCount      Int      @default(0)
+  tokenUsage      Int      @default(0)
+  
+  // Health and integrity
+  isHealthy       Boolean  @default(true)
+  lastHealthCheck DateTime @default(now())
+  
+  @@map("project_index")
 }
 
 model GlobalSettings {

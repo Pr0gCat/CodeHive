@@ -7,6 +7,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { SQLiteMetadataManager } from './sqlite-metadata-manager';
 import { ProjectMetadata } from './schemas';
+import { getProjectIndexService } from '../db/project-index';
 
 export interface DiscoveredProject {
   path: string;
@@ -44,6 +45,8 @@ export class ProjectDiscoveryService {
       const projects: DiscoveredProject[] = [];
       const scannedPaths = await this.scanDirectory(this.reposPath, scanDepth);
       
+      const indexService = getProjectIndexService();
+      
       for (const projectPath of scannedPaths) {
         try {
           const project = await this.analyzeProject(projectPath, validateMetadata);
@@ -51,6 +54,15 @@ export class ProjectDiscoveryService {
           if (project && (includeInvalid || project.isValid)) {
             projects.push(project);
             this.discoveryCache.set(projectPath, project);
+            
+            // Sync with system database
+            if (project.isValid) {
+              try {
+                await indexService.syncWithProject(project.metadata);
+              } catch (syncError) {
+                console.warn(`Failed to sync project ${project.metadata.id} with system database:`, syncError);
+              }
+            }
           }
         } catch (error) {
           console.warn(`Failed to analyze project at ${projectPath}:`, error);
@@ -65,6 +77,16 @@ export class ProjectDiscoveryService {
             });
           }
         }
+      }
+      
+      // Cleanup orphaned entries in the system database
+      try {
+        const cleanup = await indexService.cleanupOrphanedEntries();
+        if (cleanup.archived > 0 || cleanup.removed > 0) {
+          console.log(`Database cleanup completed: ${cleanup.archived} archived, ${cleanup.removed} removed`);
+        }
+      } catch (cleanupError) {
+        console.warn('Failed to cleanup orphaned project entries:', cleanupError);
       }
       
       this.lastScanTime = new Date();

@@ -9,9 +9,10 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { gitClient } from '@/lib/git';
 import { taskManager } from '@/lib/tasks/task-manager';
-import { ProjectMetadataManager } from '@/lib/portable/metadata-manager';
+import { SQLiteMetadataManager } from '@/lib/portable/sqlite-metadata-manager';
 import { WorkspaceManager } from '@/lib/workspace/workspace-manager';
 import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
+import { getProjectIndexService } from '@/lib/db/project-index';
 import { 
   ProjectMetadata, 
   ProjectSettings,
@@ -152,7 +153,7 @@ export async function POST(request: NextRequest) {
       for (const entry of entries) {
         if (entry.isDirectory()) {
           const projectPath = path.join(reposDir, entry.name);
-          const metadataManager = new ProjectMetadataManager(projectPath);
+          const metadataManager = new SQLiteMetadataManager(projectPath);
           if (await metadataManager.isPortableProject()) {
             const metadata = await metadataManager.getProjectMetadata();
             if (metadata && metadata.name === name) {
@@ -220,7 +221,7 @@ export async function POST(request: NextRequest) {
       message: 'Setting up .codehive/ metadata structure...',
     });
 
-    const metadataManager = new ProjectMetadataManager(localPath);
+    const metadataManager = new SQLiteMetadataManager(localPath);
     const workspaceManager = new WorkspaceManager(localPath);
 
     // Initialize directory structures
@@ -409,6 +410,15 @@ Thumbs.db
     };
 
     await taskManager.completeTask(taskId, result);
+
+    // Register project in system database
+    const indexService = getProjectIndexService();
+    try {
+      await indexService.registerProject(projectMetadata, 'GIT_URL'); // Default for new projects
+      console.log(`Project ${projectId} registered in system database`);
+    } catch (indexError) {
+      console.warn(`Failed to register project in system database:`, indexError);
+    }
 
     // Clear discovery cache so the new project is immediately discoverable
     const discoveryService = getProjectDiscoveryService();

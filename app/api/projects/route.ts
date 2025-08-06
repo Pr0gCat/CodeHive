@@ -1,5 +1,6 @@
 import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
-import { ProjectMetadataManager } from '@/lib/portable/metadata-manager';
+import { SQLiteMetadataManager } from '@/lib/portable/sqlite-metadata-manager';
+import { getProjectIndexService } from '@/lib/db/project-index';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -7,23 +8,65 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const refresh = searchParams.get('refresh') === 'true';
     const includeStats = searchParams.get('includeStats') === 'true';
+    const useDatabase = searchParams.get('useDatabase') !== 'false'; // Default to true
 
-    const discoveryService = getProjectDiscoveryService();
-    
-    // Clear cache if refresh is requested
-    if (refresh) {
-      discoveryService.clearCache();
-    }
+    if (useDatabase && !refresh) {
+      // Fast path: Use system database for quick access
+      const indexService = getProjectIndexService();
+      const indexedProjects = await indexService.getAllProjects({
+        includeInactive: false,
+        orderBy: 'lastAccessedAt',
+        orderDirection: 'desc',
+      });
 
-    // Discover all portable projects
-    const projects = await discoveryService.discoverProjects({
-      includeInvalid: false,
-      validateMetadata: true,
-    });
+      const projectsData = indexedProjects.map(project => ({
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        gitUrl: project.gitUrl,
+        localPath: project.localPath,
+        status: project.status,
+        framework: project.framework,
+        language: project.language,
+        packageManager: project.packageManager,
+        testFramework: project.testFramework,
+        lintTool: project.lintTool,
+        buildTool: project.buildTool,
+        createdAt: project.createdAt.toISOString(),
+        updatedAt: project.updatedAt.toISOString(),
+        // Cached stats from database
+        epicCount: includeStats ? project.epicCount : undefined,
+        storyCount: includeStats ? project.storyCount : undefined,
+        tokenUsage: includeStats ? project.tokenUsage : undefined,
+        isHealthy: project.isHealthy,
+        lastAccessedAt: project.lastAccessedAt.toISOString(),
+        importSource: project.importSource,
+      }));
 
-    // Transform to match existing API response format
-    const projectsData = await Promise.all(
-      projects.map(async (project) => {
+      return NextResponse.json({
+        success: true,
+        data: projectsData,
+        total: projectsData.length,
+        source: 'database',
+      });
+    } else {
+      // Slow path: Full filesystem discovery (used for refresh or if database disabled)
+      const discoveryService = getProjectDiscoveryService();
+      
+      // Clear cache if refresh is requested
+      if (refresh) {
+        discoveryService.clearCache();
+      }
+
+      // Discover all portable projects (this will also sync with database)
+      const projects = await discoveryService.discoverProjects({
+        includeInvalid: false,
+        validateMetadata: true,
+      });
+
+      // Transform to match existing API response format
+      const projectsData = await Promise.all(
+        projects.map(async (project) => {
         const result: any = {
           id: project.metadata.id,
           name: project.metadata.name,
@@ -43,7 +86,7 @@ export async function GET(request: NextRequest) {
 
         // Add additional stats if requested
         if (includeStats) {
-          const metadataManager = new ProjectMetadataManager(project.path);
+          const metadataManager = new SQLiteMetadataManager(project.path);
           
           try {
             const [epics, stories, sprints, cycles, tokenUsage] = await Promise.all([
@@ -96,10 +139,13 @@ export async function GET(request: NextRequest) {
       new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
 
-    return NextResponse.json({
-      success: true,
-      data: projectsData,
-    });
+      return NextResponse.json({
+        success: true,
+        data: projectsData,
+        total: projectsData.length,
+        source: 'discovery',
+      });
+    }
 
   } catch (error) {
     console.error('Error fetching portable projects:', error);
