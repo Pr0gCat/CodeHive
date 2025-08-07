@@ -27,6 +27,22 @@ export default function ProjectImportModal({
 
   const [importMode, setImportMode] = useState<'remote' | 'local'>('remote');
 
+  const resetForm = () => {
+    setFormData({
+      gitUrl: '',
+      localPath: '',
+      projectName: '',
+      branch: '',
+    });
+    setError(null);
+    setIsImporting(false);
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -90,7 +106,7 @@ export default function ProjectImportModal({
 
       // Navigate directly to the created project
       router.push(`/projects/${data.data.projectId}`);
-      onClose();
+      handleClose();
     } catch (err) {
       console.error('Import request failed:', err);
       const errorMsg = '網路錯誤：無法匯入專案';
@@ -107,28 +123,10 @@ export default function ProjectImportModal({
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-primary-800 border border-primary-700 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-          <div className="flex justify-between items-center mb-6">
+          <div className="mb-6">
             <h2 className="text-2xl font-bold text-accent-50">
               從 Git 匯入專案
             </h2>
-            <button
-              onClick={onClose}
-              className="text-primary-400 hover:text-accent-50 transition-colors"
-            >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
           </div>
 
           {error && (
@@ -207,7 +205,7 @@ export default function ProjectImportModal({
             <div className="flex justify-end space-x-3 pt-4">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleClose}
                 className="px-4 py-2 text-primary-300 hover:text-accent-50 transition-colors"
                 disabled={isImporting}
               >

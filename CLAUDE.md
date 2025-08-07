@@ -180,6 +180,7 @@ project-root/
 - Treat Claude Code as a normal LLM, just give instructions and it do the job. You must make Claude Code make its questions response in certain format for the program to parse.
 - Do not change too much of the project unless it is really needed to
 - Do not launch or restart the server by yourself, ask user to do it instead
+- Texts on UI should be written Traditional Chinese
 
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.
