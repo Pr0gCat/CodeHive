@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
         // Get additional current statistics
         const [initializingProjects, pendingTasks, runningTasks, failedTasks] =
           await Promise.all([
-            prisma.project.findMany({
+            prisma.projectIndex.findMany({
               where: { status: 'INITIALIZING' },
               select: { id: true, name: true, createdAt: true },
             }),
@@ -130,10 +130,10 @@ export async function GET() {
       completedTasks,
       failedTasks,
     ] = await Promise.all([
-      prisma.project.count(),
-      prisma.project.count({ where: { status: 'INITIALIZING' } }),
-      prisma.project.count({ where: { status: 'ACTIVE' } }),
-      prisma.project.count({ where: { status: 'ARCHIVED' } }),
+      prisma.projectIndex.count(),
+      prisma.projectIndex.count({ where: { status: 'INITIALIZING' } }),
+      prisma.projectIndex.count({ where: { status: 'ACTIVE' } }),
+      prisma.projectIndex.count({ where: { status: 'ARCHIVED' } }),
       prisma.taskExecution.count(),
       prisma.taskExecution.count({ where: { status: 'PENDING' } }),
       prisma.taskExecution.count({ where: { status: 'RUNNING' } }),

@@ -307,7 +307,7 @@ export class TaskRecoveryService {
           if (files.length > 0 && isGitRepo) {
             // Project appears to be successfully created
             console.log(`Orphaned project ${project.name} appears complete, marking as ACTIVE`);
-            await prisma.project.update({
+            await prisma.projectIndex.update({
               where: { id: project.id },
               data: { status: 'ACTIVE' },
             });
@@ -361,7 +361,7 @@ export class TaskRecoveryService {
    * Mark a project as failed
    */
   private async markProjectAsFailed(projectId: string, reason: string): Promise<void> {
-    await prisma.project.update({
+    await prisma.projectIndex.update({
       where: { id: projectId },
       data: {
         status: 'ARCHIVED',
@@ -389,7 +389,7 @@ export class TaskRecoveryService {
 
     // This would be populated during the actual recovery process
     // For now, return current state
-    const initializingCount = await prisma.project.count({
+    const initializingCount = await prisma.projectIndex.count({
       where: { status: 'INITIALIZING' },
     });
 
@@ -407,7 +407,7 @@ export class TaskRecoveryService {
     gitUrl: string | null;
     createdAt: Date;
   }>> {
-    return await prisma.project.findMany({
+    return await prisma.projectIndex.findMany({
       where: { status: 'INITIALIZING' },
       select: {
         id: true,
@@ -431,7 +431,7 @@ export class TaskRecoveryService {
       console.log(`🧹 Cleaning up cancelled project: ${projectId}`);
 
       // Find the project
-      const project = await prisma.project.findUnique({
+      const project = await prisma.projectIndex.findUnique({
         where: { id: projectId },
       });
 
