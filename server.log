@@ -1,556 +1,62 @@
 $ tsx server.ts
    Using tsconfig file: ./tsconfig.json
-[2025-08-06T08:56:52.170Z] INFO: Socket.IO server initialized | module=socket
-[2025-08-06T08:56:52.171Z] INFO: 🔄 Starting task recovery process... | module=server
+[2025-08-06T16:59:06.513Z] INFO: Socket.IO server initialized | module=socket
+[2025-08-06T16:59:06.514Z] INFO: 🔄 Starting task recovery process... | module=server
 🔄 Starting task recovery process...
-🧹 Cleaning up orphaned projects older than 24 hours
-No interrupted initialization tasks to recover
-[2025-08-06T08:56:52.175Z] INFO: Task recovery completed | module=server
-[2025-08-06T08:56:52.176Z] INFO: > Ready on http://localhost:3000 | module=server
-[2025-08-06T08:56:52.176Z] INFO: > Socket.IO server initialized | module=server
-[2025-08-06T08:56:52.176Z] INFO: > Task recovery system active | module=server
- ✓ Compiled /api/projects/[id]/claude-md in 287ms (79 modules)
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
+❌ Error during task recovery: PrismaClientValidationError: 
+Invalid `prisma.taskExecution.findMany()` invocation in
+/Users/progcat/Desktop/CodeHive/lib/tasks/task-recovery.ts:52:54
+
+  49 // without depending on the database projects table
+  50 
+  51 // Find task executions that are still pending or running
+→ 52 const activeTasks = await prisma.taskExecution.findMany({
+       where: {
+         status: {
+           in: [
+             "PENDING",
+             "RUNNING"
+           ]
+         }
+       },
+       select: {
+         taskId: true,
+         projectId: true,
+         taskType: true,
+         ~~~~~~~~
+         status: true,
+         createdAt: true,
+     ?   id?: true,
+     ?   type?: true,
+     ?   progress?: true,
+     ?   currentPhase?: true,
+     ?   totalPhases?: true,
+     ?   projectName?: true,
+     ?   initiatedBy?: true,
+     ?   startedAt?: true,
+     ?   lastUpdatedAt?: true,
+     ?   completedAt?: true,
+     ?   result?: true,
+     ?   error?: true,
+     ?   events?: true,
+     ?   project?: true,
+     ?   phases?: true,
+     ?   _count?: true
+       }
+     })
+
+Unknown field `taskType` for select statement on model `TaskExecution`. Available options are marked with ?.
+    at throwValidationException (/Users/progcat/Desktop/CodeHive/node_modules/@prisma/client/src/runtime/core/errorRendering/throwValidationException.ts:45:9)
+    at ri.handleRequestError (/Users/progcat/Desktop/CodeHive/node_modules/@prisma/client/src/runtime/RequestHandler.ts:202:7)
+    at ri.handleAndLogRequestError (/Users/progcat/Desktop/CodeHive/node_modules/@prisma/client/src/runtime/RequestHandler.ts:174:12)
+    at ri.request (/Users/progcat/Desktop/CodeHive/node_modules/@prisma/client/src/runtime/RequestHandler.ts:143:12)
+    at async l (/Users/progcat/Desktop/CodeHive/node_modules/@prisma/client/src/runtime/getPrismaClient.ts:862:24)
+    at async TaskRecoveryService.recoverInterruptedTasks (/Users/progcat/Desktop/CodeHive/lib/tasks/task-recovery.ts:52:27)
+    at async <anonymous> (/Users/progcat/Desktop/CodeHive/server.ts:39:5) {
+  clientVersion: '6.13.0'
 }
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
-}
- GET /api/projects/proj-1754470252229/claude-md 404 in 753ms
- ○ Compiling /_not-found ...
- ✓ Compiled /_not-found in 1669ms (529 modules)
- ⚠ Fast Refresh had to perform a full reload due to a runtime error.
- GET /_next/static/webpack/7b663281d0597b0a.webpack.hot-update.json 404 in 1776ms
- ✓ Compiled in 143ms (243 modules)
- ✓ Compiled /projects/[id] in 360ms (636 modules)
- GET /projects/proj-1754470252229 200 in 773ms
- ✓ Compiled /api/projects/[id] in 92ms (356 modules)
- ✓ Compiled (432 modules)
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
-}
-Event-driven task queue processing started
- GET /api/projects/proj-1754470252229/claude-md 404 in 346ms
- GET /api/agents/queue 200 in 352ms
- GET /api/agents/queue 200 in 349ms
- GET /api/projects/proj-1754470252229/claude-md 404 in 22ms
- ✓ Compiled /api/agents/queue/live in 94ms (434 modules)
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
-}
-🔗 Agent Queue SSE connection established
-Event-driven task queue processing started
- GET /api/epics?projectId=proj-1754470252229 200 in 225ms
- GET /api/epics?projectId=proj-1754470252229 200 in 577ms
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
-}
-Attempted to log for non-existent project: proj-1754470252229
-Attempted to log for non-existent project: proj-1754470252229
-Attempted to log for non-existent project: proj-1754470252229
-Attempted to log for non-existent project: proj-1754470252229
- GET /api/projects/proj-1754470252229 200 in 753ms
- GET /api/projects/proj-1754470252229 200 in 754ms
-Event-driven task queue processing started
- GET /api/agents/queue 200 in 24ms
- ✓ Compiled /api/projects/[id]/queries in 73ms (436 modules)
- ✓ Compiled (454 modules)
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
-}
-🎼 Starting coordination for project: proj-1754470252229
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 411ms
- GET /api/development/coordinate?projectId=proj-1754470252229 200 in 412ms
-Event-driven task queue processing started
- GET /api/agents/queue 200 in 19ms
- GET /api/projects/proj-1754470252229/claude-md 404 in 24ms
-🎼 Starting coordination for project: proj-1754470252229
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 27ms
- GET /api/development/coordinate?projectId=proj-1754470252229 200 in 27ms
- GET /api/epics?projectId=proj-1754470252229 200 in 485ms
- GET /api/epics?projectId=proj-1754470252229 200 in 53ms
- GET /api/projects/proj-1754470252229/claude-md 404 in 10ms
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 13ms
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 14ms
- ✓ Compiled /api/tokens/monitor in 82ms (457 modules)
- GET /api/tokens/monitor?projectId=proj-1754470252229 404 in 149ms
- GET /api/tokens/monitor?projectId=proj-1754470252229 404 in 12ms
- GET /api/projects/proj-1754470252229/queries?status=PENDING 200 in 250ms
- GET /api/projects/proj-1754470252229/queries?status=PENDING 200 in 718ms
- GET /api/tokens/monitor 200 in 46ms
- GET /api/projects/proj-1754470252229/cards 200 in 778ms
- GET /api/projects/proj-1754470252229/cards 200 in 318ms
- GET /api/tokens/monitor 200 in 39ms
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
-}
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
-}
-Event-driven task queue processing started
- GET /api/agents/queue 200 in 36ms
- ✓ Compiled /api/projects in 100ms (459 modules)
- GET /api/projects 200 in 153ms
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
-}
-Event-driven task queue processing started
- GET /api/agents/queue 200 in 40ms
- GET /api/agents/queue 200 in 14ms
- GET /api/projects/proj-1754470252229/claude-md 404 in 13ms
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
-}
- GET /api/agents/queue 200 in 9ms
- GET /api/projects 200 in 15ms
- GET /api/projects/proj-1754470252229/claude-md 404 in 7ms
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
-}
- GET /api/agents/queue 200 in 15ms
-🎼 Starting coordination for project: proj-1754470252229
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 67ms
- GET /api/development/coordinate?projectId=proj-1754470252229 200 in 63ms
- GET /api/epics?projectId=proj-1754470252229 200 in 70ms
- GET /api/projects/proj-1754470252229/cards 200 in 64ms
- GET /api/agents/queue 200 in 11ms
- GET /api/agents/queue 200 in 13ms
- ✓ Compiled in 379ms (766 modules)
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
-}
-Event-driven task queue processing started
- GET /api/agents/queue 200 in 49ms
- ✓ Compiled in 163ms (766 modules)
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
-}
-Event-driven task queue processing started
- GET /api/agents/queue 200 in 44ms
- ✓ Compiled in 208ms (766 modules)
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
-}
-Event-driven task queue processing started
- GET /api/agents/queue 200 in 59ms
- GET /api/projects/proj-1754470252229/claude-md 200 in 39ms
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
-}
- GET /api/agents/queue 200 in 21ms
-🎼 Starting coordination for project: proj-1754470252229
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 44ms
- GET /api/development/coordinate?projectId=proj-1754470252229 200 in 44ms
- GET /api/epics?projectId=proj-1754470252229 200 in 39ms
- GET /api/projects/proj-1754470252229/cards 200 in 37ms
- GET /api/agents/queue 200 in 19ms
- GET /api/agents/queue 200 in 20ms
- GET /api/agents/queue 200 in 13ms
- GET /api/agents/queue 200 in 18ms
- GET /api/agents/queue 200 in 16ms
- GET /api/agents/queue 200 in 17ms
-🎼 Starting coordination for project: proj-1754470252229
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 27ms
- GET /api/development/coordinate?projectId=proj-1754470252229 200 in 28ms
- GET /api/epics?projectId=proj-1754470252229 200 in 39ms
- GET /api/projects/proj-1754470252229/cards 200 in 38ms
- GET /api/agents/queue 200 in 17ms
- GET /api/agents/queue/live 200 in 96129ms
-🔌 Agent Queue SSE client disconnected
- GET /projects/proj-1754470252229 200 in 107ms
- GET /api/agents/queue 200 in 35ms
-Attempted to log for non-existent project: proj-1754470252229
-Attempted to log for non-existent project: proj-1754470252229
- GET /api/epics?projectId=proj-1754470252229 200 in 129ms
- GET /api/projects/proj-1754470252229 200 in 128ms
- GET /api/projects/proj-1754470252229/claude-md 200 in 129ms
-🔗 Agent Queue SSE connection established
-Event-driven task queue processing started
- GET /api/agents/queue 200 in 44ms
- GET /api/agents/queue 200 in 20ms
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 29ms
-🎼 Starting coordination for project: proj-1754470252229
- GET /api/development/coordinate?projectId=proj-1754470252229 200 in 30ms
- GET /api/epics?projectId=proj-1754470252229 200 in 156ms
-Attempted to log for non-existent project: proj-1754470252229
-Attempted to log for non-existent project: proj-1754470252229
- GET /api/projects/proj-1754470252229/claude-md 200 in 153ms
- GET /api/projects/proj-1754470252229 200 in 154ms
- GET /api/agents/queue 200 in 26ms
- GET /api/projects/proj-1754470252229/queries?status=PENDING 200 in 33ms
-🎼 Starting coordination for project: proj-1754470252229
- GET /api/projects/proj-1754470252229/cards 200 in 143ms
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 30ms
- GET /api/development/coordinate?projectId=proj-1754470252229 200 in 35ms
- GET /api/epics?projectId=proj-1754470252229 200 in 164ms
- GET /api/projects/proj-1754470252229/queries?status=PENDING 200 in 26ms
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 27ms
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 16ms
- GET /api/tokens/monitor?projectId=proj-1754470252229 404 in 18ms
- GET /api/tokens/monitor?projectId=proj-1754470252229 404 in 17ms
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
-}
- GET /api/projects/proj-1754470252229/claude-md 200 in 200ms
- GET /api/epics?projectId=proj-1754470252229 200 in 157ms
- GET /api/projects/proj-1754470252229/cards 200 in 162ms
- GET /api/projects/proj-1754470252229/claude-md 200 in 133ms
- GET /api/tokens/monitor 200 in 70ms
- GET /api/tokens/monitor 200 in 57ms
- GET /api/agents/queue 200 in 14ms
- ✓ Compiled /projects in 407ms (802 modules)
- GET /api/agents/queue/live 200 in 7377ms
-🔌 Agent Queue SSE client disconnected
- ✓ Compiled /api/projects in 54ms (486 modules)
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
-}
-Event-driven task queue processing started
- GET /api/agents/queue 200 in 218ms
- GET /api/agents/queue 200 in 220ms
- GET /api/projects 200 in 232ms
- GET /api/projects 200 in 233ms
- GET /api/agents/queue 200 in 24ms
- GET /api/agents/queue 200 in 48ms
- GET /api/projects/proj-1754470252229 200 in 85ms
- GET /api/epics?projectId=proj-1754470252229 200 in 91ms
-Attempted to log for non-existent project: proj-1754470252229
-Attempted to log for non-existent project: proj-1754470252229
-Attempted to log for non-existent project: proj-1754470252229
-Attempted to log for non-existent project: proj-1754470252229
- GET /api/projects/proj-1754470252229/claude-md 200 in 86ms
- GET /api/projects/proj-1754470252229 200 in 86ms
- GET /api/projects/proj-1754470252229/claude-md 200 in 78ms
-🔗 Agent Queue SSE connection established
-Event-driven task queue processing started
- GET /api/epics?projectId=proj-1754470252229 200 in 83ms
-🎼 Starting coordination for project: proj-1754470252229
- GET /api/agents/queue 200 in 46ms
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 64ms
- GET /api/development/coordinate?projectId=proj-1754470252229 200 in 67ms
- GET /api/projects/proj-1754470252229/queries?status=PENDING 200 in 23ms
- GET /api/agents/queue 200 in 51ms
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 58ms
-🎼 Starting coordination for project: proj-1754470252229
- GET /api/development/coordinate?projectId=proj-1754470252229 200 in 44ms
- GET /api/projects/proj-1754470252229/cards 200 in 241ms
- GET /api/epics?projectId=proj-1754470252229 200 in 248ms
- GET /api/projects/proj-1754470252229/queries?status=PENDING 200 in 17ms
- GET /api/projects/proj-1754470252229/claude-md 200 in 211ms
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 24ms
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 37ms
- GET /api/projects/proj-1754470252229/cards 200 in 202ms
- GET /api/tokens/monitor?projectId=proj-1754470252229 404 in 45ms
- GET /api/epics?projectId=proj-1754470252229 200 in 198ms
- GET /api/tokens/monitor?projectId=proj-1754470252229 404 in 43ms
- GET /api/projects/proj-1754470252229/claude-md 200 in 151ms
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
-}
- GET /api/tokens/monitor 200 in 57ms
- GET /api/tokens/monitor 200 in 54ms
-🎼 Starting development coordination for project: proj-1754470252229
-Action: coordinate
-🎼 Starting coordination for project: proj-1754470252229
- POST /api/development/coordinate 200 in 17ms
-🎼 Starting coordination for project: proj-1754470252229
- GET /api/development/coordinate?projectId=proj-1754470252229 200 in 13ms
- GET /api/agents/queue 200 in 18ms
- GET /api/agents/queue/live 200 in 8796ms
-🔌 Agent Queue SSE client disconnected
- GET /projects/proj-1754470252229 200 in 114ms
- GET /api/agents/queue 200 in 28ms
- GET /api/agents/queue 200 in 30ms
-Attempted to log for non-existent project: proj-1754470252229
-Attempted to log for non-existent project: proj-1754470252229
- GET /api/epics?projectId=proj-1754470252229 200 in 96ms
-Attempted to log for non-existent project: proj-1754470252229
-Attempted to log for non-existent project: proj-1754470252229
- GET /api/projects/proj-1754470252229 200 in 89ms
- GET /api/projects/proj-1754470252229 200 in 95ms
- GET /api/projects/proj-1754470252229/claude-md 200 in 95ms
- GET /api/projects/proj-1754470252229/claude-md 200 in 74ms
-🔗 Agent Queue SSE connection established
- GET /api/epics?projectId=proj-1754470252229 200 in 72ms
-🎼 Starting coordination for project: proj-1754470252229
- GET /api/agents/queue 200 in 39ms
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 51ms
- GET /api/development/coordinate?projectId=proj-1754470252229 200 in 52ms
- GET /api/projects/proj-1754470252229/queries?status=PENDING 200 in 24ms
- GET /api/agents/queue 200 in 39ms
-🎼 Starting coordination for project: proj-1754470252229
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 59ms
- GET /api/development/coordinate?projectId=proj-1754470252229 200 in 46ms
- GET /api/projects/proj-1754470252229/cards 200 in 202ms
- GET /api/epics?projectId=proj-1754470252229 200 in 207ms
- GET /api/projects/proj-1754470252229/queries?status=PENDING 200 in 22ms
- GET /api/projects/proj-1754470252229/claude-md 200 in 189ms
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 30ms
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 28ms
- GET /api/projects/proj-1754470252229/cards 200 in 150ms
- GET /api/tokens/monitor?projectId=proj-1754470252229 404 in 17ms
- GET /api/epics?projectId=proj-1754470252229 200 in 145ms
- GET /api/tokens/monitor?projectId=proj-1754470252229 404 in 15ms
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
-}
- GET /api/projects/proj-1754470252229/claude-md 200 in 123ms
- GET /api/tokens/monitor 200 in 58ms
- GET /api/tokens/monitor 200 in 59ms
- GET /api/agents/queue 200 in 18ms
- GET /api/agents/queue 200 in 21ms
- GET /api/agents/queue 200 in 14ms
-Task queue paused
- PUT /api/agents/queue 200 in 20ms
-Task queue resumed
- PUT /api/agents/queue 200 in 22ms
- GET /api/agents/queue 200 in 22ms
- GET /api/agents/queue 200 in 23ms
-🎼 Starting coordination for project: proj-1754470252229
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 49ms
- GET /api/development/coordinate?projectId=proj-1754470252229 200 in 45ms
- GET /api/epics?projectId=proj-1754470252229 200 in 55ms
- GET /api/projects/proj-1754470252229/cards 200 in 53ms
- GET /api/agents/queue 200 in 6ms
- GET /api/agents/queue 200 in 17ms
- GET /api/agents/queue 200 in 25ms
- GET /api/agents/queue 200 in 24ms
- GET /api/agents/queue 200 in 18ms
- GET /api/agents/queue 200 in 20ms
-🎼 Starting coordination for project: proj-1754470252229
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 52ms
- GET /api/development/coordinate?projectId=proj-1754470252229 200 in 49ms
- GET /api/epics?projectId=proj-1754470252229 200 in 61ms
- GET /api/projects/proj-1754470252229/cards 200 in 58ms
- GET /api/agents/queue 200 in 5ms
- GET /api/agents/queue 200 in 19ms
- GET /api/agents/queue 200 in 31ms
- GET /api/agents/queue 200 in 24ms
- GET /api/agents/queue/live 200 in 80252ms
-🔌 Agent Queue SSE client disconnected
- GET /projects/proj-1754470252229 200 in 50ms
- GET /api/agents/queue 200 in 17ms
- GET /api/agents/queue 200 in 31ms
- GET /api/epics?projectId=proj-1754470252229 200 in 73ms
-Attempted to log for non-existent project: proj-1754470252229
-Attempted to log for non-existent project: proj-1754470252229
- GET /api/projects/proj-1754470252229 200 in 73ms
-Attempted to log for non-existent project: proj-1754470252229
-Attempted to log for non-existent project: proj-1754470252229
- GET /api/projects/proj-1754470252229 200 in 74ms
- GET /api/projects/proj-1754470252229/claude-md 200 in 76ms
- GET /api/projects/proj-1754470252229/claude-md 200 in 56ms
- GET /api/epics?projectId=proj-1754470252229 200 in 57ms
-🔗 Agent Queue SSE connection established
- GET /api/agents/queue 200 in 32ms
-🎼 Starting coordination for project: proj-1754470252229
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 46ms
- GET /api/development/coordinate?projectId=proj-1754470252229 200 in 51ms
- GET /api/projects/proj-1754470252229/queries?status=PENDING 200 in 28ms
- GET /api/agents/queue 200 in 33ms
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 42ms
-🎼 Starting coordination for project: proj-1754470252229
- GET /api/development/coordinate?projectId=proj-1754470252229 200 in 44ms
- GET /api/epics?projectId=proj-1754470252229 200 in 205ms
- GET /api/projects/proj-1754470252229/cards 200 in 203ms
- GET /api/projects/proj-1754470252229/queries?status=PENDING 200 in 25ms
- GET /api/projects/proj-1754470252229/claude-md 200 in 201ms
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 37ms
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 35ms
- GET /api/projects/proj-1754470252229/cards 200 in 178ms
- GET /api/epics?projectId=proj-1754470252229 200 in 159ms
- GET /api/projects/proj-1754470252229/claude-md 200 in 93ms
- GET /api/tokens/monitor?projectId=proj-1754470252229 404 in 25ms
- GET /api/tokens/monitor?projectId=proj-1754470252229 404 in 38ms
-Unified configuration loaded: {
-  nodeEnv: 'development',
-  appUrl: 'http://localhost:3000',
-  wsUrl: 'ws://localhost:3000',
-  claudePath: 'claude',
-  tokenLimit: '100M',
-  rateLimit: 50,
-  warningThreshold: 0.75,
-  criticalThreshold: 0.9,
-  databaseUrl: 'file:/Users/progcat/Desktop/CodeHive/prisma/codehive.db'
-}
- GET /api/tokens/monitor 200 in 34ms
- GET /api/tokens/monitor 200 in 36ms
- GET /api/agents/queue 200 in 21ms
- GET /api/agents/queue 200 in 20ms
- GET /api/agents/queue 200 in 22ms
- GET /api/agents/queue 200 in 21ms
- GET /api/agents/queue 200 in 21ms
-🎼 Starting coordination for project: proj-1754470252229
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 30ms
- GET /api/development/coordinate?projectId=proj-1754470252229 200 in 33ms
- GET /api/epics?projectId=proj-1754470252229 200 in 45ms
- GET /api/projects/proj-1754470252229/cards 200 in 42ms
- GET /api/agents/queue 200 in 21ms
- GET /api/agents/queue 200 in 22ms
- GET /api/agents/queue 200 in 22ms
- GET /api/agents/queue 200 in 21ms
- GET /api/agents/queue 200 in 20ms
- GET /api/agents/queue 200 in 13ms
-🎼 Starting coordination for project: proj-1754470252229
- GET /api/progress/overview?projectId=proj-1754470252229 200 in 32ms
- GET /api/development/coordinate?projectId=proj-1754470252229 200 in 33ms
- GET /api/epics?projectId=proj-1754470252229 200 in 48ms
- GET /api/projects/proj-1754470252229/cards 200 in 44ms
- GET /api/agents/queue 200 in 19ms
- GET /api/agents/queue 200 in 18ms
- GET /api/agents/queue 200 in 20ms
-[2025-08-06T09:01:35.649Z] INFO: SIGTERM signal received: closing HTTP server | module=server
-[2025-08-06T09:01:40.651Z] ERROR: Shutdown timeout reached, forcing exit | module=server
-error: script "dev" exited with code 1
+[2025-08-06T16:59:06.528Z] INFO: Task recovery completed | module=server
+[2025-08-06T16:59:06.529Z] INFO: > Ready on http://localhost:3000 | module=server
+[2025-08-06T16:59:06.529Z] INFO: > Socket.IO server initialized | module=server
+[2025-08-06T16:59:06.529Z] INFO: > Task recovery system active | module=server
+error: script "dev" exited with code 137

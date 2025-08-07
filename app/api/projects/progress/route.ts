@@ -1,118 +1,206 @@
-import { prisma } from '@/lib/db';
+import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
+import { SQLiteManager } from '@/lib/portable/sqlite-manager';
 import { NextResponse } from 'next/server';
+import path from 'path';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    // Fetch projects with their related data
-    const projects = await prisma.project.findMany({
-      where: {
-        status: {
-          in: ['ACTIVE', 'PAUSED'], // Only show active and paused projects
-        },
-      },
-      include: {
-        kanbanCards: true,
-        tokenUsage: {
-          where: {
-            timestamp: {
-              gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24 hours
-            },
-          },
-        },
-        queuedTasks: {
-          where: {
-            status: {
-              in: ['PENDING', 'RUNNING'],
-            },
-          },
-        },
-      },
-      orderBy: {
-        updatedAt: 'desc',
-      },
-    });
+    // Lazy load prisma to ensure it's initialized
+    const { prisma } = await import('@/lib/db');
+    
+    // Get all portable projects
+    const discoveryService = getProjectDiscoveryService();
+    const projects = await discoveryService.discoverProjects();
 
     // Transform data for the progress dashboard
     const projectProgress = await Promise.all(
       projects.map(async project => {
-        // Calculate task progress
-        const tasks = {
-          backlog: project.kanbanCards.filter(card => card.status === 'BACKLOG')
-            .length,
-          todo: project.kanbanCards.filter(card => card.status === 'TODO')
-            .length,
-          inProgress: project.kanbanCards.filter(
-            card => card.status === 'IN_PROGRESS'
-          ).length,
-          review: project.kanbanCards.filter(card => card.status === 'REVIEW')
-            .length,
-          done: project.kanbanCards.filter(card => card.status === 'DONE')
-            .length,
-        };
+        let sqliteManager: SQLiteManager | null = null;
+        
+        try {
+          // Get token usage for today
+          const todayStart = new Date();
+          todayStart.setHours(0, 0, 0, 0);
+          
+          const tokenUsage = await prisma.tokenUsage.findMany({
+            where: {
+              projectId: project.metadata.id,
+              timestamp: {
+                gte: todayStart
+              }
+            }
+          });
 
-        const totalTasks = Object.values(tasks).reduce(
-          (sum, count) => sum + count,
-          0
-        );
-        const completedTasks = tasks.done;
-        const progressPercentage =
-          totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+          const todayTokenUsage = tokenUsage.reduce(
+            (sum, usage) => sum + usage.inputTokens + usage.outputTokens,
+            0
+          );
 
-        // Calculate token usage for today
-        const todayTokenUsage = project.tokenUsage.reduce(
-          (sum, usage) => sum + usage.inputTokens + usage.outputTokens,
-          0
-        );
+          // Get token usage trend (compare with yesterday)
+          const yesterdayStart = new Date(Date.now() - 48 * 60 * 60 * 1000);
+          const yesterdayEnd = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-        // Get token usage trend (compare with yesterday)
-        const yesterdayStart = new Date(Date.now() - 48 * 60 * 60 * 1000);
-        const yesterdayEnd = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-        const yesterdayUsage = await prisma.tokenUsage.aggregate({
-          where: {
-            projectId: project.id,
-            timestamp: {
-              gte: yesterdayStart,
-              lt: yesterdayEnd,
+          const yesterdayUsage = await prisma.tokenUsage.aggregate({
+            where: {
+              projectId: project.metadata.id,
+              timestamp: {
+                gte: yesterdayStart,
+                lt: yesterdayEnd,
+              },
             },
-          },
-          _sum: {
-            inputTokens: true,
-            outputTokens: true,
-          },
-        });
+            _sum: {
+              inputTokens: true,
+              outputTokens: true,
+            },
+          });
 
-        const yesterdayTotal =
-          (yesterdayUsage._sum.inputTokens || 0) +
-          (yesterdayUsage._sum.outputTokens || 0);
-        let trend: 'up' | 'down' | 'stable' = 'stable';
+          const yesterdayTotal =
+            (yesterdayUsage._sum.inputTokens || 0) +
+            (yesterdayUsage._sum.outputTokens || 0);
+          let trend: 'up' | 'down' | 'stable' = 'stable';
 
-        if (todayTokenUsage > yesterdayTotal * 1.1) {
-          trend = 'up';
-        } else if (todayTokenUsage < yesterdayTotal * 0.9) {
-          trend = 'down';
+          if (todayTokenUsage > yesterdayTotal * 1.1) {
+            trend = 'up';
+          } else if (todayTokenUsage < yesterdayTotal * 0.9) {
+            trend = 'down';
+          }
+
+          // Get task execution status
+          const recentExecutions = await prisma.taskExecution.findMany({
+            where: {
+              projectId: project.metadata.id,
+              createdAt: {
+                gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24 hours
+              }
+            },
+            orderBy: {
+              createdAt: 'desc'
+            },
+            take: 5
+          });
+
+          const activeExecutions = recentExecutions.filter(
+            exec => exec.status === 'RUNNING'
+          ).length;
+
+          const completedExecutions = recentExecutions.filter(
+            exec => exec.status === 'COMPLETED'
+          ).length;
+
+          const failedExecutions = recentExecutions.filter(
+            exec => exec.status === 'FAILED'
+          ).length;
+
+          // Get recent activity
+          const recentActivity = await getRecentActivity(project.metadata.id, prisma);
+
+          // Read kanban data from project's SQLite database
+          let tasks = {
+            backlog: 0,
+            todo: 0,
+            inProgress: 0,
+            review: 0,
+            done: 0,
+          };
+
+          let progressPercentage = 0;
+
+          try {
+            // Initialize SQLite manager for this project
+            sqliteManager = new SQLiteManager(project.path, { readonly: true });
+            await sqliteManager.initialize();
+
+            // Get stories (kanban cards) from the project's SQLite database
+            const stories = await sqliteManager.getStories();
+
+            if (stories && stories.length > 0) {
+              tasks = {
+                backlog: stories.filter(story => story.status === 'BACKLOG').length,
+                todo: stories.filter(story => story.status === 'TODO').length,
+                inProgress: stories.filter(story => story.status === 'IN_PROGRESS').length,
+                review: stories.filter(story => story.status === 'REVIEW').length,
+                done: stories.filter(story => story.status === 'DONE').length,
+              };
+
+              const totalTasks = Object.values(tasks).reduce(
+                (sum, count) => sum + count,
+                0
+              );
+              const completedTasks = tasks.done;
+              progressPercentage =
+                totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+            }
+          } catch (error) {
+            console.warn(`Failed to read kanban data for project ${project.metadata.name}:`, error);
+            // Continue with zero values if kanban data cannot be read
+          } finally {
+            // Always close the SQLite connection
+            if (sqliteManager) {
+              sqliteManager.close();
+            }
+          }
+
+          return {
+            id: project.metadata.id,
+            name: project.metadata.name,
+            status: project.metadata.status || 'ACTIVE',
+            progress: {
+              completed: tasks.done,
+              total: Object.values(tasks).reduce((sum, count) => sum + count, 0),
+              percentage: progressPercentage,
+            },
+            tasks,
+            activeAgents: activeExecutions,
+            recentActivity,
+            tokenUsage: {
+              used: todayTokenUsage,
+              trend,
+            },
+            executions: {
+              active: activeExecutions,
+              completed: completedExecutions,
+              failed: failedExecutions,
+            }
+          };
+        } catch (error) {
+          console.warn(`Failed to get progress for project ${project.metadata.name}:`, error);
+          // Return minimal progress data on error
+          return {
+            id: project.metadata.id,
+            name: project.metadata.name,
+            status: project.metadata.status || 'ACTIVE',
+            progress: {
+              completed: 0,
+              total: 0,
+              percentage: 0,
+            },
+            tasks: {
+              backlog: 0,
+              todo: 0,
+              inProgress: 0,
+              review: 0,
+              done: 0,
+            },
+            activeAgents: 0,
+            recentActivity: 'Unable to fetch activity',
+            tokenUsage: {
+              used: 0,
+              trend: 'stable' as const,
+            },
+            executions: {
+              active: 0,
+              completed: 0,
+              failed: 0,
+            }
+          };
+        } finally {
+          // Ensure SQLite connection is closed even on error
+          if (sqliteManager) {
+            sqliteManager.close();
+          }
         }
-
-        // Get recent activity
-        const recentActivity = await getRecentActivity(project.id);
-
-        return {
-          id: project.id,
-          name: project.name,
-          status: project.status,
-          progress: {
-            completed: completedTasks,
-            total: totalTasks,
-            percentage: progressPercentage,
-          },
-          tasks,
-          activeAgents: project.queuedTasks.length,
-          recentActivity,
-          tokenUsage: {
-            used: todayTokenUsage,
-            trend,
-          },
-        };
       })
     );
 
@@ -132,29 +220,10 @@ export async function GET() {
   }
 }
 
-async function getRecentActivity(projectId: string): Promise<string> {
+async function getRecentActivity(projectId: string, prisma: any): Promise<string> {
   try {
-    // Check for recent agent tasks
-    const recentAgentTask = await prisma.agentTask.findFirst({
-      where: {
-        card: {
-          projectId: projectId,
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-
-    if (
-      recentAgentTask &&
-      recentAgentTask.createdAt > new Date(Date.now() - 60 * 60 * 1000)
-    ) {
-      return `Agent ${recentAgentTask.agentType} ${recentAgentTask.status.toLowerCase()} - ${formatTimeAgo(recentAgentTask.createdAt)}`;
-    }
-
-    // Check for recent card updates
-    const recentCard = await prisma.kanbanCard.findFirst({
+    // Check for recent task executions
+    const recentExecution = await prisma.taskExecution.findFirst({
       where: {
         projectId: projectId,
       },
@@ -164,28 +233,30 @@ async function getRecentActivity(projectId: string): Promise<string> {
     });
 
     if (
-      recentCard &&
-      recentCard.updatedAt > new Date(Date.now() - 60 * 60 * 1000)
+      recentExecution &&
+      recentExecution.updatedAt > new Date(Date.now() - 60 * 60 * 1000)
     ) {
-      return `Card "${recentCard.title}" updated - ${formatTimeAgo(recentCard.updatedAt)}`;
+      return `Task "${recentExecution.name}" ${recentExecution.status.toLowerCase()} - ${formatTimeAgo(recentExecution.updatedAt)}`;
     }
 
-    // Check for queued tasks
-    const queuedTask = await prisma.queuedTask.findFirst({
+    // Check for recent token usage
+    const recentTokenUsage = await prisma.tokenUsage.findFirst({
       where: {
         projectId: projectId,
-        status: 'PENDING',
       },
       orderBy: {
-        createdAt: 'desc',
+        timestamp: 'desc',
       },
     });
 
-    if (queuedTask) {
-      return `${queuedTask.agentType} task queued - ${formatTimeAgo(queuedTask.createdAt)}`;
+    if (
+      recentTokenUsage &&
+      recentTokenUsage.timestamp > new Date(Date.now() - 60 * 60 * 1000)
+    ) {
+      return `${recentTokenUsage.agentType || 'Agent'} activity - ${formatTimeAgo(recentTokenUsage.timestamp)}`;
     }
 
-    return `Last updated ${formatTimeAgo(new Date())}`;
+    return `No recent activity`;
   } catch {
     return 'No recent activity';
   }

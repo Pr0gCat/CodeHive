@@ -191,12 +191,12 @@ export class ProjectIndexService {
   }
 
   /**
-   * Remove project from index
+   * Remove project from index (DISABLED - projects can only be archived)
    */
   async removeProject(projectId: string): Promise<void> {
-    await prisma.projectIndex.delete({
-      where: { id: projectId }
-    });
+    // Projects cannot be removed, only archived
+    console.warn(`Project removal attempted for ${projectId} - archiving instead`);
+    await this.archiveProject(projectId);
   }
 
   /**
@@ -361,13 +361,14 @@ export class ProjectIndexService {
 
   /**
    * Cleanup orphaned index entries (projects that no longer exist on disk)
+   * Modified to only archive projects, never remove them
    */
   async cleanupOrphanedEntries(): Promise<{ removed: number; archived: number }> {
     const { promises: fs } = await import('fs');
     const path = await import('path');
     
     const allProjects = await this.getAllProjects({ includeInactive: true });
-    let removed = 0;
+    let removed = 0; // Always 0 now - we don't remove projects
     let archived = 0;
 
     for (const project of allProjects) {
@@ -384,16 +385,12 @@ export class ProjectIndexService {
           await this.updateProjectHealth(project.id, true);
         }
       } catch (error) {
-        // Project doesn't exist on disk
-        if (project.status === 'ARCHIVED') {
-          // Remove archived projects that don't exist
-          await this.removeProject(project.id);
-          removed++;
-        } else {
-          // Archive active projects that don't exist
+        // Project doesn't exist on disk - archive it if not already archived
+        if (project.status !== 'ARCHIVED') {
           await this.archiveProject(project.id);
           archived++;
         }
+        // Note: We no longer remove archived projects - they stay archived
       }
     }
 

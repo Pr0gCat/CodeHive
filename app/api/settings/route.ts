@@ -1,7 +1,5 @@
 import { configCache } from '@/lib/config';
 import { globalSettingsManager } from '@/lib/portable/global-settings-manager';
-import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
-import { ProjectMetadataManager } from '@/lib/portable/metadata-manager';
 import { globalSettingsSchema } from '@/lib/validations/settings';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -78,38 +76,31 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// Helper function to recalculate project budgets when global settings change (portable version)
+// Helper function to recalculate project budgets when global settings change
 async function recalculatePortableProjectBudgets(globalSettings: GlobalSettings) {
   try {
-    const discoveryService = getProjectDiscoveryService();
-    const projects = await discoveryService.discoverProjects();
+    // Lazy load prisma to ensure it's initialized
+    const { prisma } = await import('@/lib/db');
+    
+    // Get all project budgets from system database
+    const budgets = await prisma.projectBudget.findMany();
 
     // Update each project budget with new daily token amounts
-    for (const project of projects) {
-      try {
-        const metadataManager = new ProjectMetadataManager(project.path);
-        const budget = await metadataManager.getProjectBudget();
-        
-        if (budget) {
-          const newDailyBudget = Math.floor(
-            globalSettings.dailyTokenLimit * budget.allocatedPercentage
-          );
+    for (const budget of budgets) {
+      const newDailyBudget = Math.floor(
+        globalSettings.dailyTokenLimit * budget.allocatedPercentage
+      );
 
-          const updatedBudget = {
-            ...budget,
-            dailyTokenBudget: newDailyBudget,
-            updatedAt: new Date().toISOString(),
-          };
-
-          await metadataManager.saveProjectBudget(updatedBudget);
-        }
-      } catch (error) {
-        console.warn(`Failed to update budget for project ${project.metadata.name}:`, error);
-        // Continue with other projects
-      }
+      await prisma.projectBudget.update({
+        where: { id: budget.id },
+        data: {
+          dailyTokenBudget: newDailyBudget,
+          updatedAt: new Date(),
+        },
+      });
     }
   } catch (error) {
-    console.error('Error recalculating portable project budgets:', error);
+    console.error('Error recalculating project budgets:', error);
     // Don't throw here, as the global settings update was successful
   }
 }

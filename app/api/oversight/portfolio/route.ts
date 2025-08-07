@@ -1,69 +1,147 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
+import { SQLiteManager } from '@/lib/portable/sqlite-manager';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get all projects with their current stats
-    const projects = await prisma.project.findMany({
-      include: {
-        budget: true,
-        tokenUsage: {
+    // Lazy load prisma to ensure it's initialized
+    const { prisma } = await import('@/lib/db');
+    
+    // Get all portable projects
+    const discoveryService = getProjectDiscoveryService();
+    const projects = await discoveryService.discoverProjects();
+
+    // Calculate today's start time for token usage
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    // Initialize portfolio statistics
+    let totalTokensUsed = 0;
+    let totalTokensRemaining = 0;
+    let dailyBurnRate = 0;
+    let totalProgress = 0;
+    let projectsWithProgress = 0;
+    
+    const statusCounts = {
+      active: 0,
+      paused: 0,
+      completed: 0,
+      archived: 0,
+    };
+
+    // Process each project to gather statistics
+    for (const project of projects) {
+      let sqliteManager: SQLiteManager | null = null;
+      
+      try {
+        // Count project status
+        const status = (project.metadata.status || 'ACTIVE').toLowerCase();
+        if (status in statusCounts) {
+          statusCounts[status as keyof typeof statusCounts]++;
+        }
+
+        // Get token usage from central database
+        const tokenUsage = await prisma.tokenUsage.findMany({
           where: {
+            projectId: project.metadata.id,
             timestamp: {
-              gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24 hours
-            },
-          },
-        },
-        epics: {
-          include: {
-            stories: true,
-          },
-        },
+              gte: todayStart
+            }
+          }
+        });
+
+        const projectDailyUsage = tokenUsage.reduce(
+          (sum, usage) => sum + usage.inputTokens + usage.outputTokens,
+          0
+        );
+        
+        dailyBurnRate += projectDailyUsage;
+        totalTokensUsed += projectDailyUsage;
+
+        // Get budget from project settings
+        const projectSettings = project.settings || {};
+        const budgetTokens = projectSettings.dailyTokenBudget || 0;
+        const remainingTokens = Math.max(0, budgetTokens - projectDailyUsage);
+        totalTokensRemaining += remainingTokens;
+
+        // Get progress from project's SQLite database (stories/kanban cards)
+        try {
+          sqliteManager = new SQLiteManager(project.path, { readonly: true });
+          await sqliteManager.initialize();
+
+          // Get stories to calculate progress
+          const stories = await sqliteManager.getStories();
+          
+          if (stories && stories.length > 0) {
+            const completedStories = stories.filter(
+              story => story.status === 'DONE' || story.status === 'COMPLETED'
+            ).length;
+            const progress = (completedStories / stories.length) * 100;
+            totalProgress += progress;
+            projectsWithProgress++;
+          }
+
+          // Also check for epics if stories are empty
+          if (!stories || stories.length === 0) {
+            const epics = await sqliteManager.getEpics();
+            if (epics && epics.length > 0) {
+              const completedEpics = epics.filter(
+                epic => epic.status === 'COMPLETED' || epic.phase === 'DONE'
+              ).length;
+              const progress = (completedEpics / epics.length) * 100;
+              totalProgress += progress;
+              projectsWithProgress++;
+            }
+          }
+        } catch (error) {
+          console.warn(`Failed to read progress data for project ${project.metadata.name}:`, error);
+          // Continue without progress data for this project
+        } finally {
+          if (sqliteManager) {
+            sqliteManager.close();
+          }
+        }
+      } catch (error) {
+        console.warn(`Failed to process project ${project.metadata.name}:`, error);
+      } finally {
+        if (sqliteManager) {
+          sqliteManager.close();
+        }
+      }
+    }
+
+    // Calculate average progress
+    const averageProgress = projectsWithProgress > 0 
+      ? totalProgress / projectsWithProgress 
+      : 0;
+
+    // Get global token usage statistics for all time
+    const allTimeTokenUsage = await prisma.tokenUsage.aggregate({
+      _sum: {
+        inputTokens: true,
+        outputTokens: true,
       },
     });
+
+    const allTimeTokensUsed = 
+      (allTimeTokenUsage._sum.inputTokens || 0) + 
+      (allTimeTokenUsage._sum.outputTokens || 0);
 
     // Calculate portfolio statistics
     const portfolioStats = {
       totalProjects: projects.length,
-      activeProjects: projects.filter(p => p.status === 'ACTIVE').length,
-      pausedProjects: projects.filter(p => p.status === 'PAUSED').length,
-      completedProjects: projects.filter(p => p.status === 'COMPLETED').length,
-      archivedProjects: projects.filter(p => p.status === 'ARCHIVED').length,
-      totalTokensUsed: projects.reduce(
-        (sum, p) => sum + (p.budget?.usedTokens || 0),
-        0
-      ),
-      totalTokensRemaining: projects.reduce(
-        (sum, p) =>
-          sum + (p.budget?.dailyTokenBudget || 0) - (p.budget?.usedTokens || 0),
-        0
-      ),
-      dailyBurnRate: projects.reduce((sum, p) => {
-        const dailyUsage = p.tokenUsage.reduce(
-          (usage, tu) => usage + tu.inputTokens + tu.outputTokens,
-          0
-        );
-        return sum + dailyUsage;
-      }, 0),
-      averageProgress:
-        projects.length > 0
-          ? projects.reduce((sum, p) => {
-              const totalStories = p.epics.reduce(
-                (count, epic) => count + epic.stories.length,
-                0
-              );
-              const completedStories = p.epics.reduce(
-                (count, epic) =>
-                  count +
-                  epic.stories.filter(story => story.status === 'COMPLETED')
-                    .length,
-                0
-              );
-              const progress =
-                totalStories > 0 ? (completedStories / totalStories) * 100 : 0;
-              return sum + progress;
-            }, 0) / projects.length
-          : 0,
+      activeProjects: statusCounts.active,
+      pausedProjects: statusCounts.paused,
+      completedProjects: statusCounts.completed,
+      archivedProjects: statusCounts.archived,
+      totalTokensUsed: allTimeTokensUsed,
+      totalTokensRemaining,
+      dailyBurnRate,
+      averageProgress,
+      todayTokensUsed: totalTokensUsed,
+      projectsWithData: projectsWithProgress,
     };
 
     return NextResponse.json({

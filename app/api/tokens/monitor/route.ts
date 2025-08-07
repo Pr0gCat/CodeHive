@@ -1,7 +1,7 @@
 import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
 import { globalSettingsManager } from '@/lib/portable/global-settings-manager';
-import { prisma } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import type { PrismaClient } from '@prisma/client';
 
 interface GlobalSettings {
   dailyTokenLimit: number;
@@ -13,6 +13,9 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    // Lazy load prisma to ensure it's initialized
+    const { prisma } = await import('@/lib/db');
+    
     const projectId = request.nextUrl.searchParams.get('projectId');
 
     // Get global settings
@@ -24,10 +27,10 @@ export async function GET(request: NextRequest) {
 
     if (projectId) {
       // Get specific project monitoring data
-      return await getProjectMonitorData(projectId, globalSettings, todayStart);
+      return await getProjectMonitorData(projectId, globalSettings, todayStart, prisma);
     } else {
       // Get global monitoring data
-      return await getGlobalMonitorData(globalSettings, todayStart);
+      return await getGlobalMonitorData(globalSettings, todayStart, prisma);
     }
   } catch (error) {
     console.error('Error fetching token monitor data:', error);
@@ -43,7 +46,8 @@ export async function GET(request: NextRequest) {
 
 async function getGlobalMonitorData(
   globalSettings: GlobalSettings,
-  todayStart: Date
+  todayStart: Date,
+  prisma: PrismaClient
 ) {
   // Get all portable projects
   const discoveryService = getProjectDiscoveryService();
@@ -56,45 +60,34 @@ async function getGlobalMonitorData(
   // Process each project to get usage data
   for (const project of projects) {
     try {
-      // Find corresponding database project
-      const dbProject = await prisma.project.findFirst({
+      // Get token usage for this project from the database
+      const tokenUsage = await prisma.tokenUsage.findMany({
         where: {
-          OR: [
-            { id: project.metadata.id },
-            { localPath: project.path }
-          ]
-        },
-        include: {
-          budget: true,
-          tokenUsage: true
+          projectId: project.metadata.id,
+          timestamp: {
+            gte: todayStart
+          }
         }
       });
 
-      // Get project budget from database
-      const budget = dbProject?.budget || null;
-
-      // Get token usage for today from database
-      const tokenUsage = dbProject?.tokenUsage || [];
-
-      // Filter usage for today
-      const todayUsage = tokenUsage.filter(usage => {
-        const usageDate = new Date(usage.timestamp);
-        return usageDate >= todayStart;
-      });
-
       // Calculate project totals
-      const projectTokensUsed = todayUsage.reduce(
+      const projectTokensUsed = tokenUsage.reduce(
         (sum, usage) => sum + usage.inputTokens + usage.outputTokens,
         0
       );
-      const projectRequestsToday = todayUsage.length;
+      const projectRequestsToday = tokenUsage.length;
 
       // Add to global totals
       totalTokensUsed += projectTokensUsed;
       totalRequestsToday += projectRequestsToday;
 
-      // Calculate project stats
-      const budgetTokens = budget?.dailyTokenBudget || 0;
+      // Get budget from database
+      const projectBudget = await prisma.projectBudget.findUnique({
+        where: { projectId: project.metadata.id }
+      });
+      
+      const budgetTokens = projectBudget?.dailyTokenBudget || 0;
+      const allocatedPercentage = projectBudget?.allocatedPercentage || 0;
       const percentage = budgetTokens > 0 ? (projectTokensUsed / budgetTokens) * 100 : 0;
 
       projectData.push({
@@ -102,10 +95,10 @@ async function getGlobalMonitorData(
         name: project.metadata.name,
         usedTokens: projectTokensUsed,
         budgetTokens,
-        allocatedPercentage: budget?.allocatedPercentage || 0,
+        allocatedPercentage: allocatedPercentage,
         usagePercentage: percentage,
         status: getUsageStatus(percentage, globalSettings),
-        isOverBudget: projectTokensUsed > budgetTokens,
+        isOverBudget: budgetTokens > 0 && projectTokensUsed > budgetTokens,
       });
     } catch (error) {
       console.warn(`Failed to get monitoring data for project ${project.metadata.name}:`, error);
@@ -165,7 +158,8 @@ async function getGlobalMonitorData(
 async function getProjectMonitorData(
   projectId: string,
   globalSettings: GlobalSettings,
-  todayStart: Date
+  todayStart: Date,
+  prisma: PrismaClient
 ) {
   // Get portable project first
   const discoveryService = getProjectDiscoveryService();
@@ -182,25 +176,15 @@ async function getProjectMonitorData(
     );
   }
 
-  // Find corresponding database project
-  const dbProject = await prisma.project.findFirst({
+  // Get token usage from database
+  const allTokenUsage = await prisma.tokenUsage.findMany({
     where: {
-      OR: [
-        { id: projectId },
-        { localPath: portableProject.path }
-      ]
+      projectId: projectId
     },
-    include: {
-      budget: true,
-      tokenUsage: true
+    orderBy: {
+      timestamp: 'desc'
     }
   });
-
-  // Get project budget from database (if exists)
-  const budget = dbProject?.budget || null;
-
-  // Get token usage from database (if exists)
-  const allTokenUsage = dbProject?.tokenUsage || [];
 
   // Filter for today's usage
   const todayUsage = allTokenUsage.filter(usage => {
@@ -208,15 +192,18 @@ async function getProjectMonitorData(
     return usageDate >= todayStart;
   });
 
-  // Sort by timestamp descending
-  todayUsage.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
   const totalUsage = todayUsage.reduce(
     (sum, usage) => sum + usage.inputTokens + usage.outputTokens,
     0
   );
 
-  const budgetTokens = budget?.dailyTokenBudget || 0;
+  // Get budget from database
+  const projectBudget = await prisma.projectBudget.findUnique({
+    where: { projectId: projectId }
+  });
+  
+  const budgetTokens = projectBudget?.dailyTokenBudget || 0;
+  const allocatedPercentage = projectBudget?.allocatedPercentage || 0;
   const usagePercentage = budgetTokens > 0 ? (totalUsage / budgetTokens) * 100 : 0;
 
   // Get hourly usage for the chart
@@ -230,12 +217,12 @@ async function getProjectMonitorData(
         name: portableProject.metadata.name,
         usedTokens: totalUsage,
         budgetTokens,
-        allocatedPercentage: budget?.allocatedPercentage || 0,
+        allocatedPercentage: allocatedPercentage,
         usagePercentage,
         status: getUsageStatus(usagePercentage, globalSettings),
-        isOverBudget: totalUsage > budgetTokens,
+        isOverBudget: budgetTokens > 0 && totalUsage > budgetTokens,
         remainingBudget: Math.max(0, budgetTokens - totalUsage),
-        lastResetAt: budget?.lastResetAt || new Date(),
+        lastResetAt: projectBudget?.lastResetAt || new Date(),
       },
       usage: {
         hourly: hourlyUsage,

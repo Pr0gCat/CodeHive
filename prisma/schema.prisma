@@ -7,76 +7,30 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Legacy Project model - kept for migration compatibility
-model Project {
-  id             String               @id @default(cuid())
-  name           String
-  description    String?
-  summary        String?
-  gitUrl         String?
-  localPath      String               @unique
-  status         String               @default("INITIALIZING")
-  framework      String?
-  language       String?
-  packageManager String?
-  testFramework  String?
-  lintTool       String?
-  buildTool      String?
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-  agentSpecs     AgentSpecification[]
-  cycles         Cycle[]
-  epics          Epic[]
-  kanbanCards    KanbanCard[]
-  mvpPhases      MVPPhase[]
-  budget         ProjectBudget?
-  logs           ProjectLog[]
-  settings       ProjectSettings?
-  queries        Query[]
-  queuedTasks    QueuedTask[]
-  milestones     RoadmapMilestone[]
-  sprints        Sprint[]
-  taskExecutions TaskExecution[]
-  tokenUsage     TokenUsage[]
-
-  @@map("projects")
-}
-
-// New portable project index - tracks all portable projects in the system
 model ProjectIndex {
-  id              String   @id // Uses the project's own ID from .codehive/
+  id              String   @id
   name            String
   description     String?
-  localPath       String   @unique // Path to the project directory
+  localPath       String   @unique
   gitUrl          String?
-  status          String   @default("ACTIVE") // ACTIVE, PAUSED, ARCHIVED
-  
-  // Tech stack info (cached from project metadata)
+  status          String   @default("ACTIVE")
   framework       String?
   language        String?
   packageManager  String?
   testFramework   String?
   lintTool        String?
   buildTool       String?
-  
-  // Project type and source
-  projectType     String   @default("PORTABLE") // PORTABLE, LEGACY
-  importSource    String?  // LOCAL_FOLDER, GIT_URL, MIGRATED
-  
-  // Timestamps
+  projectType     String   @default("PORTABLE")
+  importSource    String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   lastAccessedAt  DateTime @default(now())
-  
-  // Cached statistics for faster queries
   epicCount       Int      @default(0)
   storyCount      Int      @default(0)
   tokenUsage      Int      @default(0)
-  
-  // Health and integrity
   isHealthy       Boolean  @default(true)
   lastHealthCheck DateTime @default(now())
-  
+
   @@map("project_index")
 }
 
@@ -96,10 +50,22 @@ model GlobalSettings {
   @@map("global_settings")
 }
 
+model TokenUsage {
+  id           String   @id @default(cuid())
+  projectId    String?
+  agentType    String
+  taskId       String?
+  inputTokens  Int
+  outputTokens Int
+  timestamp    DateTime @default(now())
+
+  @@map("token_usage")
+}
+
 model ProjectBudget {
   id                  String   @id @default(cuid())
   projectId           String   @unique
-  allocatedPercentage Float    @default(0.0)
+  allocatedPercentage Float    @default(0)
   dailyTokenBudget    Int      @default(0)
   usedTokens          Int      @default(0)
   lastResetAt         DateTime @default(now())
@@ -107,129 +73,8 @@ model ProjectBudget {
   criticalNotified    Boolean  @default(false)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
-  project             Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("project_budgets")
-}
-
-model ProjectSettings {
-  id                    String   @id @default(cuid())
-  projectId             String   @unique
-  maxTokensPerDay       Int      @default(10000)
-  maxTokensPerRequest   Int      @default(4000)
-  maxRequestsPerMinute  Int      @default(20)
-  maxRequestsPerHour    Int      @default(100)
-  agentTimeout          Int      @default(300000)
-  maxRetries            Int      @default(3)
-  parallelAgentLimit    Int      @default(2)
-  autoReviewOnImport    Boolean  @default(true)
-  maxQueueSize          Int      @default(50)
-  taskPriority          String   @default("NORMAL")
-  autoExecuteTasks      Boolean  @default(true)
-  emailNotifications    Boolean  @default(false)
-  slackWebhookUrl       String?
-  discordWebhookUrl     String?
-  notifyOnTaskComplete  Boolean  @default(true)
-  notifyOnTaskFail      Boolean  @default(true)
-  codeAnalysisDepth     String   @default("STANDARD")
-  testCoverageThreshold Float    @default(80.0)
-  enforceTypeChecking   Boolean  @default(true)
-  autoFixLintErrors     Boolean  @default(false)
-  claudeModel           String   @default("claude-3-5-sonnet-20241022")
-  customInstructions    String?
-  excludePatterns       String?
-  includeDependencies   Boolean  @default(true)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-  project               Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@map("project_settings")
-}
-
-model KanbanCard {
-  id                 String            @id @default(cuid())
-  projectId          String
-  epicId             String?
-  sprintId           String?
-  title              String
-  description        String?
-  status             String            @default("BACKLOG")
-  position           Int
-  assignedAgent      String?
-  targetBranch       String?
-  storyPoints        Int?
-  priority           String            @default("MEDIUM")
-  sequence           Int               @default(0)
-  tddEnabled         Boolean           @default(false)
-  acceptanceCriteria String?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-  agentTasks         AgentTask[]
-  cycles             Cycle[]
-  sprint             Sprint?           @relation(fields: [sprintId], references: [id])
-  epic               Epic?             @relation(fields: [epicId], references: [id])
-  project            Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  queuedTasks        QueuedTask[]
-  dependents         StoryDependency[] @relation("StoryDependents")
-  dependencies       StoryDependency[] @relation("StoryDependencies")
-
-  @@map("kanban_cards")
-}
-
-model StoryDependency {
-  id          String     @id @default(cuid())
-  storyId     String
-  dependsOnId String
-  type        String     @default("BLOCKS")
-  description String?
-  createdAt   DateTime   @default(now())
-  dependsOn   KanbanCard @relation("StoryDependents", fields: [dependsOnId], references: [id], onDelete: Cascade)
-  story       KanbanCard @relation("StoryDependencies", fields: [storyId], references: [id], onDelete: Cascade)
-
-  @@unique([storyId, dependsOnId])
-  @@map("story_dependencies")
-}
-
-model AgentTask {
-  id          String     @id @default(cuid())
-  cardId      String
-  agentType   String
-  command     String
-  status      String     @default("PENDING")
-  output      String?
-  error       String?
-  startedAt   DateTime?
-  completedAt DateTime?
-  createdAt   DateTime   @default(now())
-  card        KanbanCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
-
-  @@map("agent_tasks")
-}
-
-model TokenUsage {
-  id           String   @id @default(cuid())
-  projectId    String
-  agentType    String
-  taskId       String?
-  inputTokens  Int
-  outputTokens Int
-  timestamp    DateTime @default(now())
-  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@map("token_usage")
-}
-
-model RoadmapMilestone {
-  id          String    @id @default(cuid())
-  projectId   String
-  title       String
-  description String?
-  dueDate     DateTime?
-  status      String    @default("PLANNED")
-  createdAt   DateTime  @default(now())
-  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@map("roadmap_milestones")
 }
 
 model TaskExecution {
@@ -250,7 +95,6 @@ model TaskExecution {
   error         String?
   createdAt     DateTime    @default(now())
   events        TaskEvent[]
-  project       Project?    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   phases        TaskPhase[]
 
   @@map("task_executions")
@@ -292,333 +136,4 @@ model TaskEvent {
   task      TaskExecution @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
 
   @@map("task_events")
-}
-
-model QueuedTask {
-  id          String      @id @default(cuid())
-  projectId   String
-  cardId      String?
-  taskId      String
-  agentType   String
-  payload     String
-  priority    Int         @default(0)
-  status      String      @default("PENDING")
-  createdAt   DateTime    @default(now())
-  pausedAt    DateTime?
-  resumedAt   DateTime?
-  completedAt DateTime?
-  error       String?
-  card        KanbanCard? @relation(fields: [cardId], references: [id])
-  project     Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@map("queued_tasks")
-}
-
-model AgentSpecification {
-  id           String             @id @default(cuid())
-  projectId    String
-  name         String
-  type         String
-  purpose      String
-  capabilities String
-  dependencies String
-  prompt       String
-  constraints  String
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  createdBy    String             @default("project-manager-agent")
-  evolution    AgentEvolution[]
-  performance  AgentPerformance[]
-  project      Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@unique([projectId, name], name: "projectId_name")
-  @@map("agent_specifications")
-}
-
-model AgentPerformance {
-  id             String             @id @default(cuid())
-  agentId        String
-  executionTime  Int
-  tokensUsed     Int
-  success        Boolean
-  errorMessage   String?
-  taskComplexity String?
-  timestamp      DateTime           @default(now())
-  agent          AgentSpecification @relation(fields: [agentId], references: [id], onDelete: Cascade)
-
-  @@map("agent_performance")
-}
-
-model AgentEvolution {
-  id                String             @id @default(cuid())
-  agentId           String
-  version           Int
-  changes           String
-  performanceBefore String
-  performanceAfter  String?
-  reason            String
-  timestamp         DateTime           @default(now())
-  agent             AgentSpecification @relation(fields: [agentId], references: [id], onDelete: Cascade)
-
-  @@map("agent_evolution")
-}
-
-model UsageTracking {
-  id           String   @id @default(cuid())
-  timestamp    DateTime @default(now())
-  tokenCount   Int
-  requestCount Int      @default(1)
-  projectId    String?
-  agentType    String?
-  resetPeriod  String
-
-  @@map("usage_tracking")
-}
-
-model UsageLimit {
-  id           String   @id @default(cuid())
-  limitType    String   @unique
-  limitValue   Int
-  currentUsage Int      @default(0)
-  resetAt      DateTime
-  updatedAt    DateTime @updatedAt
-
-  @@map("usage_limits")
-}
-
-model Epic {
-  id                   String           @id @default(cuid())
-  projectId            String
-  title                String
-  description          String?
-  type                 String           @default("FEATURE")
-  phase                String           @default("PLANNING")
-  status               String           @default("ACTIVE")
-  mvpPriority          String           @default("MEDIUM")
-  coreValue            String?
-  sequence             Int              @default(0)
-  estimatedStoryPoints Int              @default(0)
-  actualStoryPoints    Int              @default(0)
-  startDate            DateTime?
-  dueDate              DateTime?
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
-  completedAt          DateTime?
-  dependents           EpicDependency[] @relation("EpicDependents")
-  dependencies         EpicDependency[] @relation("EpicDependencies")
-  project              Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  stories              KanbanCard[]
-  sprintEpics          SprintEpic[]
-
-  @@map("epics")
-}
-
-model EpicDependency {
-  id          String   @id @default(cuid())
-  epicId      String
-  dependsOnId String
-  type        String   @default("BLOCKS")
-  description String?
-  createdAt   DateTime @default(now())
-  dependsOn   Epic     @relation("EpicDependents", fields: [dependsOnId], references: [id], onDelete: Cascade)
-  epic        Epic     @relation("EpicDependencies", fields: [epicId], references: [id], onDelete: Cascade)
-
-  @@unique([epicId, dependsOnId])
-  @@map("epic_dependencies")
-}
-
-model MVPPhase {
-  id                   String    @id @default(cuid())
-  projectId            String
-  name                 String
-  description          String?
-  sequence             Int       @default(0)
-  status               String    @default("PLANNING")
-  targetDate           DateTime?
-  coreFeatures         String
-  plannedStoryPoints   Int       @default(0)
-  completedStoryPoints Int       @default(0)
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  releasedAt           DateTime?
-  project              Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@map("mvp_phases")
-}
-
-model Cycle {
-  id                 String      @id @default(cuid())
-  projectId          String
-  storyId            String?
-  title              String
-  description        String?
-  phase              String      @default("RED")
-  status             String      @default("ACTIVE")
-  sequence           Int         @default(0)
-  acceptanceCriteria String
-  constraints        String?
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
-  completedAt        DateTime?
-  artifacts          Artifact[]
-  story              KanbanCard? @relation(fields: [storyId], references: [id])
-  project            Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  queries            Query[]
-  tests              Test[]
-
-  @@map("cycles")
-}
-
-model Test {
-  id          String    @id @default(cuid())
-  cycleId     String
-  name        String
-  description String?
-  code        String
-  filePath    String?
-  status      String    @default("FAILING")
-  lastRun     DateTime?
-  duration    Int?
-  errorOutput String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  cycle       Cycle     @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-
-  @@map("tests")
-}
-
-model Query {
-  id         String         @id @default(cuid())
-  projectId  String
-  cycleId    String?
-  type       String
-  title      String
-  question   String
-  context    String
-  urgency    String         @default("ADVISORY")
-  priority   String         @default("MEDIUM")
-  status     String         @default("PENDING")
-  answer     String?
-  answeredAt DateTime?
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-  cycle      Cycle?         @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-  project    Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  comments   QueryComment[]
-
-  @@map("queries")
-}
-
-model QueryComment {
-  id        String   @id @default(cuid())
-  queryId   String
-  content   String
-  author    String   @default("user")
-  createdAt DateTime @default(now())
-  query     Query    @relation(fields: [queryId], references: [id], onDelete: Cascade)
-
-  @@map("query_comments")
-}
-
-model Artifact {
-  id        String   @id @default(cuid())
-  cycleId   String
-  type      String
-  name      String
-  path      String
-  content   String
-  purpose   String?
-  phase     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  cycle     Cycle    @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-
-  @@map("artifacts")
-}
-
-model Sprint {
-  id                   String              @id @default(cuid())
-  projectId            String
-  name                 String
-  goal                 String?
-  startDate            DateTime
-  endDate              DateTime
-  duration             Int
-  status               String              @default("PLANNING")
-  plannedStoryPoints   Int                 @default(0)
-  commitedStoryPoints  Int                 @default(0)
-  completedStoryPoints Int                 @default(0)
-  velocity             Float?
-  planningNotes        String?
-  reviewNotes          String?
-  retrospectiveNotes   String?
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
-  completedAt          DateTime?
-  stories              KanbanCard[]
-  burndown             SprintBurndown[]
-  dailyUpdates         SprintDailyUpdate[]
-  sprintEpics          SprintEpic[]
-  project              Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@map("sprints")
-}
-
-model SprintEpic {
-  id                   String   @id @default(cuid())
-  sprintId             String
-  epicId               String
-  plannedStoryPoints   Int      @default(0)
-  completedStoryPoints Int      @default(0)
-  createdAt            DateTime @default(now())
-  epic                 Epic     @relation(fields: [epicId], references: [id], onDelete: Cascade)
-  sprint               Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
-
-  @@unique([sprintId, epicId])
-  @@map("sprint_epics")
-}
-
-model SprintBurndown {
-  id                   String   @id @default(cuid())
-  sprintId             String
-  date                 DateTime
-  remainingStoryPoints Int
-  completedStoryPoints Int
-  idealRemainingPoints Float
-  createdAt            DateTime @default(now())
-  sprint               Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
-
-  @@unique([sprintId, date])
-  @@map("sprint_burndown")
-}
-
-model SprintDailyUpdate {
-  id                String   @id @default(cuid())
-  sprintId          String
-  date              DateTime
-  storiesCompleted  Int      @default(0)
-  storiesInProgress Int      @default(0)
-  blockers          String?
-  notes             String?
-  createdAt         DateTime @default(now())
-  sprint            Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
-
-  @@unique([sprintId, date])
-  @@map("sprint_daily_updates")
-}
-
-model ProjectLog {
-  id        String   @id @default(cuid())
-  projectId String
-  level     String
-  message   String
-  source    String
-  metadata  String?
-  createdAt DateTime @default(now())
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@index([projectId, createdAt])
-  @@index([projectId, level])
-  @@index([projectId, source])
-  @@map("project_logs")
 }

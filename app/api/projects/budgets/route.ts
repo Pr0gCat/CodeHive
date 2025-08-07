@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
 import { globalSettingsManager } from '@/lib/portable/global-settings-manager';
-import { prisma } from '@/lib/db';
 import { z } from 'zod';
 
 const budgetAllocationSchema = z
@@ -27,9 +25,13 @@ const budgetAllocationSchema = z
 
 export async function GET() {
   try {
-    // Get all portable projects
-    const discoveryService = getProjectDiscoveryService();
-    const projects = await discoveryService.discoverProjects();
+    // Lazy load prisma to ensure it's initialized
+    const { prisma } = await import('@/lib/db');
+    
+    // Get all projects from system database (project index)
+    const projects = await prisma.projectIndex.findMany({
+      where: { status: 'ACTIVE' }
+    });
 
     // Get global settings for context
     const globalSettings = await globalSettingsManager.getGlobalSettings();
@@ -37,22 +39,14 @@ export async function GET() {
     const budgetData = await Promise.all(
       projects.map(async (project) => {
         try {
-          // Find corresponding database project
-          const dbProject = await prisma.project.findFirst({
-            where: {
-              OR: [
-                { id: project.metadata.id },
-                { localPath: project.path }
-              ]
-            },
-            include: { budget: true }
+          // Get budget from system database
+          const budget = await prisma.projectBudget.findUnique({
+            where: { projectId: project.id }
           });
-
-          const budget = dbProject?.budget;
           
           return {
-            projectId: project.metadata.id,
-            projectName: project.metadata.name,
+            projectId: project.id,
+            projectName: project.name,
             allocatedPercentage: budget?.allocatedPercentage || 0,
             dailyTokenBudget: budget?.dailyTokenBudget || 0,
             usedTokens: budget?.usedTokens || 0,
@@ -64,11 +58,11 @@ export async function GET() {
             criticalNotified: budget?.criticalNotified || false,
           };
         } catch (error) {
-          console.warn(`Failed to get budget for project ${project.metadata.name}:`, error);
+          console.warn(`Failed to get budget for project ${project.name}:`, error);
           // Return default budget data for projects without budgets
           return {
-            projectId: project.metadata.id,
-            projectName: project.metadata.name,
+            projectId: project.id,
+            projectName: project.name,
             allocatedPercentage: 0,
             dailyTokenBudget: 0,
             usedTokens: 0,
@@ -109,16 +103,20 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
+    // Lazy load prisma to ensure it's initialized
+    const { prisma } = await import('@/lib/db');
+    
     const body = await request.json();
     const budgetAllocations = budgetAllocationSchema.parse(body);
 
     // Get global settings to calculate actual token amounts
     const globalSettings = await globalSettingsManager.getGlobalSettings();
 
-    // Get all projects to validate project IDs
-    const discoveryService = getProjectDiscoveryService();
-    const projects = await discoveryService.discoverProjects();
-    const projectMap = new Map(projects.map(p => [p.metadata.id, p]));
+    // Get all projects from system database to validate project IDs
+    const projects = await prisma.projectIndex.findMany({
+      where: { status: 'ACTIVE' }
+    });
+    const projectMap = new Map(projects.map(p => [p.id, p]));
 
     // Update or create budget allocations
     const results = [];
@@ -134,95 +132,38 @@ export async function PUT(request: NextRequest) {
         globalSettings.dailyTokenLimit * allocation.allocatedPercentage
       );
 
-      // Find corresponding database project
-      let dbProject = await prisma.project.findFirst({
-        where: {
-          OR: [
-            { id: allocation.projectId },
-            { localPath: project.path }
-          ]
-        },
-        include: { budget: true }
-      });
-
-      // If database project doesn't exist, create it for portable projects
-      if (!dbProject) {
-        console.log(`Creating database record for portable project: ${allocation.projectId}`);
-        try {
-          dbProject = await prisma.project.create({
-            data: {
-              id: project.metadata.id,
-              name: project.metadata.name,
-              description: project.metadata.description || '',
-              localPath: project.path,
-              gitUrl: project.metadata.gitUrl || null,
-              createdAt: new Date(),
-              updatedAt: new Date(),
-            },
-            include: { budget: true }
-          });
-        } catch (error) {
-          console.error(`Failed to create database project for ${allocation.projectId}:`, error);
-          continue;
-        }
+      // Update budget in system database
+      try {
+        const updatedBudget = await prisma.projectBudget.upsert({
+          where: { projectId: allocation.projectId },
+          update: {
+            allocatedPercentage: allocation.allocatedPercentage,
+            dailyTokenBudget,
+            warningNotified: false,
+            criticalNotified: false,
+            updatedAt: new Date(),
+          },
+          create: {
+            projectId: allocation.projectId,
+            allocatedPercentage: allocation.allocatedPercentage,
+            dailyTokenBudget,
+            usedTokens: 0,
+            lastResetAt: new Date(),
+            warningNotified: false,
+            criticalNotified: false,
+          },
+        });
+        
+        results.push({
+          projectId: allocation.projectId,
+          projectName: project.name,
+          allocatedPercentage: updatedBudget.allocatedPercentage,
+          dailyTokenBudget: updatedBudget.dailyTokenBudget,
+        });
+      } catch (error) {
+        console.error(`Failed to update budget for project ${allocation.projectId}:`, error);
+        continue;
       }
-
-      // Update or create budget in database
-      const updatedBudget = await prisma.projectBudget.upsert({
-        where: { projectId: dbProject.id },
-        update: {
-          allocatedPercentage: allocation.allocatedPercentage,
-          dailyTokenBudget,
-          updatedAt: new Date(),
-        },
-        create: {
-          projectId: dbProject.id,
-          allocatedPercentage: allocation.allocatedPercentage,
-          dailyTokenBudget,
-          usedTokens: 0,
-          lastResetAt: new Date(),
-          warningNotified: false,
-          criticalNotified: false,
-        }
-      });
-
-      // Also update or create project settings to sync the token limits
-      await prisma.projectSettings.upsert({
-        where: { projectId: dbProject.id },
-        update: {
-          maxTokensPerDay: dailyTokenBudget,
-          updatedAt: new Date(),
-        },
-        create: {
-          projectId: dbProject.id,
-          maxTokensPerDay: dailyTokenBudget,
-          maxTokensPerRequest: 4000,
-          maxRequestsPerMinute: 20,
-          maxRequestsPerHour: 100,
-          agentTimeout: 300000,
-          maxRetries: 3,
-          parallelAgentLimit: 2,
-          autoReviewOnImport: true,
-          maxQueueSize: 50,
-          taskPriority: 'NORMAL',
-          autoExecuteTasks: true,
-          emailNotifications: false,
-          notifyOnTaskComplete: true,
-          notifyOnTaskFail: true,
-          codeAnalysisDepth: 'STANDARD',
-          testCoverageThreshold: 80.0,
-          enforceTypeChecking: true,
-          autoFixLintErrors: false,
-          claudeModel: 'claude-3-5-sonnet-20241022',
-        }
-      });
-
-      results.push({
-        projectId: allocation.projectId,
-        projectName: project.metadata.name,
-        allocatedPercentage: updatedBudget.allocatedPercentage,
-        dailyTokenBudget: updatedBudget.dailyTokenBudget,
-      });
     }
 
     return NextResponse.json({
@@ -255,41 +196,27 @@ export async function PUT(request: NextRequest) {
 // Endpoint to reset daily usage (typically called by a cron job)
 export async function POST(request: NextRequest) {
   try {
+    // Lazy load prisma to ensure it's initialized
+    const { prisma } = await import('@/lib/db');
+    
     const { action } = await request.json();
 
     if (action === 'reset_daily_usage') {
-      // Get all projects
-      const discoveryService = getProjectDiscoveryService();
-      const projects = await discoveryService.discoverProjects();
-
       const now = new Date().toISOString();
       let resetCount = 0;
 
-      // Reset daily usage for all projects that have budgets in the database
-      const dbProjects = await prisma.project.findMany({
-        include: { budget: true }
+      // Reset daily usage for all projects in system database
+      const result = await prisma.projectBudget.updateMany({
+        data: {
+          usedTokens: 0,
+          lastResetAt: new Date(),
+          warningNotified: false,
+          criticalNotified: false,
+          updatedAt: new Date(),
+        },
       });
-
-      for (const dbProject of dbProjects) {
-        try {
-          if (dbProject.budget) {
-            await prisma.projectBudget.update({
-              where: { projectId: dbProject.id },
-              data: {
-                usedTokens: 0,
-                lastResetAt: new Date(),
-                warningNotified: false,
-                criticalNotified: false,
-                updatedAt: new Date(),
-              }
-            });
-            resetCount++;
-          }
-        } catch (error) {
-          console.warn(`Failed to reset budget for project ${dbProject.name}:`, error);
-          // Continue with other projects
-        }
-      }
+      
+      resetCount = result.count;
 
       return NextResponse.json({
         success: true,

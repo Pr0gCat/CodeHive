@@ -4,407 +4,161 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CodeHive is a multi-agent software development platform where users provide feature requests and feedback, while the Project Manager agent autonomously manages project backlogs through Epic and Story organization. The system uses AI-driven Test-Driven Development with minimal human interruption.
-
-**Current Status**: AI-Native TDD Development System - All Projects Are Portable ✅
-
-- Next.js 14 + TypeScript + Tailwind CSS with complete UI
-- **ALL PROJECTS ARE PORTABLE**: Every project stores metadata in `.codehive/` directories
-- No centralized database dependency - projects are fully self-contained
-- 5 specialized agents with command validation and real execution tracking
-- User-controlled tech stack preferences system
-- ESLint, Prettier, and code quality tools configured
-
-**User Experience Philosophy**: Just Feature Requests & Feedback
-
-- 🎯 **User Role**: Provide feature requests and feedback only - no manual project management
-- 🤖 **Project Manager Agent**: Autonomously breaks down features into Epics and Stories
-- 🔄 **TDD Phases**: RED (generate tests) → GREEN (implement) → REFACTOR (improve) → REVIEW
-- 📋 **Backlog Management**: AI manages Epic/Story hierarchy, priorities, and dependencies
-- 🎨 **Simple UI**: Focus on development progress, not ceremony
-
-**Foundation Complete**:
-
-- ✅ Database models for Cycles, Tests, Queries, and Artifacts
-- ✅ TDD Cycle Engine with RED-GREEN-REFACTOR-REVIEW phases
-- ✅ Type-safe status constants and database client
-- ✅ Project Manager with Claude Code integration for intelligent descriptions
-- ✅ Real-time project logs with Server-Sent Events
-- ✅ **REAL PROGRESS TRACKING**: Unified task system for both project creation and import
-- ✅ **DATABASE-BACKED SSE**: Persistent progress tracking with TaskExecution, TaskPhase, TaskEvent models
-- ✅ **GENUINE GIT PROGRESS**: Real Git clone progress parsing from stderr output
-- ✅ **ACTUAL FILE SCANNING**: Real project analysis with file-by-file progress updates
-- ✅ **NO FAKE PROGRESS**: All progress indicators reflect real operations, no setTimeout simulations
-- ✅ Improved UI layout with better information organization
-- ✅ **Epic/Story Management**: Complete Epic and Story data models with detailed views
-- ✅ **Kanban Integration**: Serializable kanban boards with real-time optimization
-- ✅ **Epic Generation API**: Automated epic creation and breakdown system
-- ✅ **PORTABLE PROJECT SYSTEM**: Complete project portability with `.codehive/` metadata
-- ✅ **PROJECT MIGRATION**: Convert existing projects to portable format
-- ✅ **PROJECT DISCOVERY**: Automatic scanning of repos/ for portable projects
-- ✅ **PROJECT VALIDATION**: Comprehensive integrity checking and repair tools
-- ✅ **EXPORT/IMPORT**: Full project backup and transfer capabilities
-- 🔄 Autonomous backlog management (in progress)
-- 🔄 Feature request processing pipeline (in progress)
-
-## Project System (All Projects Are Portable)
-
-**CodeHive projects are fully portable by default.** All project metadata is stored in `.codehive/` directories within each project, making them completely self-contained and transferable between different CodeHive installations.
-
-### Portable Project Structure
-
-```
-project-root/
-├── .codehive/
-│   ├── project.json          # Project metadata and settings
-│   ├── settings.json         # CodeHive configuration
-│   ├── budget.json           # Token budget allocation (optional)
-│   ├── epics/               # Epic definitions (JSON files)
-│   ├── stories/             # Story/card data (JSON files)
-│   ├── sprints/             # Sprint planning data (JSON files)
-│   ├── cycles/              # TDD cycle data (JSON files)
-│   ├── agents/              # Agent specifications (JSON files)
-│   ├── usage/               # Token usage tracking
-│   ├── logs/                # Project-specific logs
-│   ├── workspaces/          # Workspace snapshots
-│   ├── locks/               # File locking
-│   └── backups/             # Automatic backups
-├── src/                     # Your project source code
-├── README.md               # Generated project documentation
-└── .gitignore              # Includes .codehive/ exclusion
-```
-
-### Portable Project Commands
-
-```bash
-# Migration from legacy database format
-tsx scripts/migrate-to-portable.ts --all          # Migrate all projects
-tsx scripts/migrate-to-portable.ts --project <id> # Migrate specific project
-tsx scripts/migrate-to-portable.ts --dry-run      # Preview migration
-
-# Create new projects (all are portable)
-curl -X POST http://localhost:3000/api/projects/create \
-  -H "Content-Type: application/json" \
-  -d '{"name":"My Project","description":"A portable project"}'
-
-# Import existing repositories
-curl -X POST http://localhost:3000/api/projects/import \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Imported Project","gitUrl":"https://github.com/user/repo"}'
-
-# List all projects
-curl http://localhost:3000/api/projects
-
-# Project validation and repair
-# (Available programmatically via lib/portable/validation.ts)
-```
-
-### Key Benefits
-
-- ✅ **Full Portability**: Move projects between different CodeHive installations
-- ✅ **No Database Dependency**: Projects work independently of centralized database
-- ✅ **Version Control Friendly**: All metadata can be committed with your code
-- ✅ **Backup Simplified**: Back up entire projects by copying directories
-- ✅ **Team Collaboration**: Share projects easily with team members
-- ✅ **Self-Contained**: Each project contains all its metadata and configuration
-
-## Core Development Commands
-
-**CodeHive Platform Commands:**
-
-```bash
-# Quick Start - Two simple commands
-bun install              # Install dependencies (run first)
-bun run app              # Setup database, build, and start with WebSocket server
-
-# Individual operations (if needed)
-bun run db:setup         # Initialize database and run migrations
-bun run db:migrate       # Run new migrations
-bun run db:generate      # Regenerate Prisma client
-
-# Development
-bun run dev              # Start custom server with WebSocket support
-bun run build            # Build for production
-bun run start            # Start custom production server with WebSocket
-
-# Code quality
-bun run lint             # Run ESLint
-bun run lint:fix         # Fix auto-fixable lint issues
-bun run format           # Format all files with Prettier
-bun run format:check     # Check if files are formatted
-bun run type-check       # Run TypeScript type checking
-
-# Testing
-bun test                 # Run all tests
-bun test --watch         # Run tests in watch mode
-bun test:coverage        # Run tests with coverage
-bun test:ci             # Run tests in CI environment
-```
+CodeHive is a multi-agent software development platform that orchestrates Claude Code agents for intelligent project management and automated development. It features a portable project system where all metadata is stored locally in `.codehive/` directories, making projects fully self-contained.
 
 ## Architecture Overview
 
-### Real Progress Tracking System
-
-**ALL PROGRESS IS REAL - NO FAKE ANIMATIONS**
-
-1. **Unified Task System**: Both project creation and import use the same TaskManager
-2. **Database Persistence**: TaskExecution, TaskPhase, TaskEvent models store real progress
-3. **WebSocket Events**: Real-time updates via Socket.IO for reliable communication
-4. **Genuine Operations**: Git clone, file scanning, project analysis all report actual progress
-
-### Key Components
-
-1. **TaskManager** (`/lib/tasks/task-manager.ts`)
-   - Creates and manages task execution records
-   - Updates phase progress with real operation status
-   - Provides SSE-compatible progress callbacks
-
-2. **Git Integration** (`/lib/git/index.ts`)
-   - Parses Git stderr for real clone progress
-   - Reports actual percentages from Git operations
-   - No simulated progress bars
-
-3. **Project Analysis** (`/lib/analysis/project-analyzer.ts`)
-   - Scans files with real progress tracking
-   - Reports progress based on actual files processed
-   - Updates progress every N files processed
-
-4. **WebSocket Server** (`/lib/socket/server.ts`)
-   - Socket.IO server integrated with Next.js
-   - Real-time task progress broadcasting
-   - Database-backed event streaming
+### Core Technologies
+- **Next.js 14** with App Router and TypeScript
+- **SQLite + Prisma ORM** for data persistence
+- **Tailwind CSS** for UI styling
+- **Socket.IO** for real-time WebSocket communication
+- **Bun** as package manager and runtime
 
 ### Project Structure
-
-- `/app` - Next.js 14 App Router pages and API routes
-  - `/app/api` - REST API endpoints with real progress tracking
-    - `/app/api/projects/[id]/epics` - Epic generation and management endpoints
-    - `/app/api/projects/[id]/kanban` - Kanban board serialization and optimization
-  - `/app/components` - Reusable React components
-    - `EpicDetailView.tsx` - Detailed epic and story viewer modal
-  - `/app/projects` - Project-specific pages
-- `/lib` - Core business logic organized by domain:
-  - `/lib/config` - Database-driven configuration system
-  - `/lib/db` - Database client, types, and status constants
-  - `/lib/utils` - Common utilities and helper functions
-  - `/lib/agents` - Claude Code agent orchestration
-  - `/lib/git` - Real Git operations and progress tracking
-  - `/lib/tasks` - Task management and real progress tracking
-  - `/lib/usage` - Token usage monitoring
-  - `/lib/socket` - WebSocket server and client utilities
-  - `/lib/kanban` - Kanban board serialization and Claude Code integration
-- `/repos` - Local storage for managed project git repositories
-- `/prisma` - Database schema, migrations, and seed data
-- `/docs` - Project documentation and guides
-- `/server.ts` - Custom Next.js server with Socket.IO integration
-
-### Git Repository Management
-
-**All CodeHive projects are Git-managed repositories by default:**
-
-- **Local Git Repositories**: Every project is initialized as a Git repository
-- **Optional Remote**: Remote repositories (GitHub, GitLab, etc.) are optional and can be added later
-- **Automatic Initialization**: New projects automatically run `git init` and create initial commit
-- **Existing Repository Import**: Can import existing local or remote Git repositories with real clone progress
-- **Branch Management**: Full Git operations through specialized agents
-- **Conventional Commits**: Required for all project commits
-
-## Configuration System
-
-CodeHive uses a **database-driven configuration system** - no `.env` file needed! All application settings are managed through the Settings page at `/settings`.
-
-### Using Configuration in Code
-
-```typescript
-import { getConfig } from '@/lib/config';
-
-// Get runtime configuration (async)
-const config = await getConfig();
-const dbUrl = config.databaseUrl;
-const isProduction = config.isProduction;
-
-// For synchronous access when database might not be available
-import { fallbackConfig } from '@/lib/config';
-const claudePath = fallbackConfig.claudeCodePath;
+```
+CodeHive/
+├── app/                    # Next.js App Router
+│   ├── api/               # API routes (project management, agents, tokens)
+│   ├── projects/          # Project pages and components
+│   └── settings/          # Configuration pages
+├── components/            # Shared React components
+├── lib/                   # Core business logic
+│   ├── agents/           # Claude Code agent orchestration
+│   ├── portable/         # Portable project system (.codehive/ metadata)
+│   ├── tasks/            # Task management and execution
+│   ├── workspace/        # Workspace and snapshot management
+│   ├── db/               # Database client and schemas
+│   └── socket/           # Real-time WebSocket communication
+├── prisma/               # Database schema and migrations
+└── repos/                # Local Git repositories (auto-created)
 ```
 
-### Configuration Management
+### Key Systems
 
-- **UI-Based**: All settings configurable through `/settings` page
-- **Database Storage**: Settings stored in `GlobalSettings` table
-- **Real-time Updates**: Changes take effect immediately with cache invalidation
-- **Fallback System**: Hardcoded defaults if database unavailable
-- **No Environment Files**: `.env` file has been removed
+#### Portable Projects
+- **Self-contained**: All project metadata stored in `.codehive/` directories
+- **No central database dependency**: Projects are fully portable between systems
+- **Migration support**: Convert existing projects to portable format
+- **Discovery service**: Automatic scanning and validation of portable projects
 
-## Agent System Architecture
+#### Task Management
+- **Unified execution system**: `TaskExecution`, `TaskPhase`, `TaskEvent` models
+- **Real-time progress tracking**: Genuine progress indicators, no fake setTimeout delays
+- **WebSocket integration**: Socket.IO for live updates during operations
+- **Recovery system**: Task cancellation and recovery mechanisms
 
-### Core Agents and Their Responsibilities
+#### Agent Orchestration
+- **Multi-agent coordination**: Project Manager, TDD Developer, Code Reviewer agents
+- **Claude Code integration**: Subprocess execution with token tracking
+- **Command validation**: Real execution tracking and output parsing
 
-1. **Project Manager Agent** (`/lib/agents/project-manager.ts`)
-   - Analyzes projects and generates CLAUDE.md files
-   - Breaks down features into Epics and Stories
-   - Manages project roadmaps and priorities
+#### TDD Cycle Engine
+- **RED-GREEN-REFACTOR-REVIEW phases**: Complete TDD workflow automation
+- **Test management**: Automated test creation and execution
+- **Workspace snapshots**: File versioning and change tracking
 
-2. **TDD Developer Agent** (`/lib/agents/specs/tdd-developer.ts`)
-   - Implements RED-GREEN-REFACTOR-REVIEW cycle
-   - Writes tests first, then implementations
-   - Handles code refactoring
+## Development Commands
 
-3. **Code Reviewer Agent** (`/lib/agents/specs/code-reviewer.ts`)
-   - Reviews code quality and standards
-   - Suggests improvements
-   - Ensures best practices
+```bash
+# Primary workflow
+bun run app                # Setup database + build + start production
+bun run dev               # Start development server
 
-4. **Git Operations Agent** (`/lib/agents/specs/git-operations.ts`)
-   - Manages version control
-   - Handles branching and commits
-   - Tracks changes
+# Database operations
+bun run db:setup          # Initialize database and generate Prisma client
+bun run db:migrate        # Run migrations
+bun run db:studio         # Open Prisma Studio
 
-5. **Documentation Agent** (`/lib/agents/specs/documentation.ts`)
-   - Generates README files
-   - Updates technical documentation
-   - Maintains API docs
+# Code quality
+bun run lint              # ESLint check
+bun run lint:fix          # Auto-fix ESLint issues
+bun run type-check        # TypeScript type checking
+bun run format            # Prettier formatting
 
-### Agent Execution System
-
-- **Unified Executor** (`/lib/agents/executor.ts`): Handles all Claude Code CLI interactions
-- **Rate Limiting**: Project-level token and request limits
-- **Retry Logic**: Exponential backoff with max 3 retries
-- **Progress Tracking**: Real-time progress updates via database
-- **Token Usage**: Tracks usage per agent and project
-
-## Development Workflow
-
-### Unified Project Creation and Import
-
-**Both operations now use the same real-time task system:**
-
-1. **Project Creation** (`/api/projects/create`)
-   - Real validation, directory creation, Git initialization
-   - Actual file generation and project analysis
-   - Database-backed progress tracking
-
-2. **Project Import** (`/api/projects/import`)
-   - Real Git clone with stderr progress parsing
-   - Actual repository analysis and file scanning
-   - Database-backed progress tracking
-
-3. **Real-Time Animation** (`HiveInitializationAnimation`)
-   - Displays actual progress from database via SSE
-   - Shows real phase transitions and progress percentages
-   - No fake timeouts or simulated progress
-
-### Task System Architecture
-
-```typescript
-// Real task creation
-await taskManager.createTask(taskId, 'PROJECT_CREATE', phases, options);
-await taskManager.startTask(taskId);
-
-// Real progress updates
-await taskManager.updatePhaseProgress(taskId, phaseId, actualProgress, {
-  type: 'PROGRESS',
-  message: 'Actual operation status',
-});
-
-// Real completion
-await taskManager.completeTask(taskId, actualResult);
+# Testing
+bun test                  # Run Jest tests
+bun test --watch          # Run tests in watch mode
+bun test --coverage       # Run tests with coverage
 ```
 
-## TDD Cycle Implementation
+## Key APIs and Routes
 
-### Database Models
+### Project Management
+- `POST /api/projects/create` - Create new projects with real-time progress
+- `POST /api/projects/import` - Import existing Git repositories
+- `GET /api/projects` - List all discovered projects
+- `GET /api/projects/[id]` - Project details and metadata
 
-- **Cycle**: Represents a complete TDD cycle (RED → GREEN → REFACTOR → REVIEW)
-- **Test**: Individual test cases within a cycle
-- **Query**: AI-to-user questions (blocking or suggestion types)
-- **Artifact**: Generated code, tests, or documentation
+### Task Execution
+- `POST /api/tasks/[taskId]/cancel` - Cancel running tasks
+- `GET /api/projects/[id]/logs/stream` - Real-time task progress via SSE
 
-### Phase Transitions
+### Agent Coordination
+- `POST /api/agents/execute` - Execute Claude Code agents
+- `GET /api/agents/queue/live` - Live agent queue status
+- `POST /api/development/coordinate` - Multi-agent coordination
 
-1. **RED Phase**: Generate failing tests based on requirements
-2. **GREEN Phase**: Implement minimum code to pass tests
-3. **REFACTOR Phase**: Improve code quality while maintaining tests
-4. **REVIEW Phase**: AI and human review of implementation
+### Token Management
+- `GET /api/tokens/total` - Token usage analytics
+- `POST /api/tokens/monitor` - Token limit monitoring
+- `GET /api/projects/budgets` - Project token budgets
 
-## Code Quality Standards
+### Project Registry Cleanup
+- `GET /api/registry/cleanup` - Get cleanup scheduler status
+- `POST /api/registry/cleanup` - Control cleanup scheduler
+  - `{"action": "run"}` - Run cleanup immediately
+  - `{"action": "start"}` - Start automatic cleanup scheduler
+  - `{"action": "stop"}` - Stop automatic cleanup scheduler
+  - `{"action": "status"}` - Get scheduler status
+  - `{"action": "update-interval", "intervalMinutes": 30}` - Update cleanup interval
 
-- All code must pass TypeScript compilation
-- ESLint and Prettier rules are enforced
-- Use the provided utility functions in `/lib/utils`
-- Follow existing patterns for error handling and validation
-- **NEVER implement fake progress or simulated delays**
+## Database Schema
 
-## Testing Strategy
+The system uses SQLite with Prisma ORM. Key models:
 
-- Jest configured with Next.js support
-- Test files: `**/__tests__/**/*.(ts|tsx|js)` or `**/*.(test|spec).(ts|tsx|js)`
-- Coverage targets: `/lib` and `/app` directories
-- Test timeout: 10 seconds
-- Run single test: `bun test path/to/test.spec.ts`
+### Core Models
+- **Project**: Main project entity with portable metadata support
+- **TaskExecution/TaskPhase/TaskEvent**: Unified task management system
+- **GlobalSettings/ProjectSettings**: Configuration management
+- **TokenUsage/ProjectBudget**: Resource tracking and limits
 
-## WebSocket Implementation
+### Development Models
+- **Epic/KanbanCard**: Project management and story hierarchy
+- **Cycle/Test/Artifact**: TDD workflow management
+- **Query/QueryComment**: Agent communication system
+- **Sprint/SprintBurndown**: Sprint planning and tracking
 
-CodeHive uses **Socket.IO for real-time communication** instead of Server-Sent Events:
+### Agent Models  
+- **AgentSpecification/AgentPerformance**: Dynamic agent system
+- **QueuedTask/AgentTask**: Task queue and execution tracking
 
-- ✅ **Socket.IO Server**: Custom Next.js server with integrated Socket.IO
-- ✅ **WebSocket Client**: React hook for managing Socket.IO connections
-- ✅ **Real-time Progress**: Task progress tracking via WebSocket events
-- ✅ **Database-Backed**: All events still stored in TaskExecution/TaskPhase/TaskEvent models
-- ✅ **Reliable Connection**: Auto-reconnection and fallback to polling
+## Technical Patterns
 
-## Usage Limit Management
-
-CodeHive includes comprehensive usage limit management:
-
-- **Token Tracking**: Real-time monitoring of Claude Code API usage
-- **Project-Level Limits**: Configurable token and request limits per project
-- **Rate Limiting**: Built-in exponential backoff and retry logic
-- **Usage Analytics**: Historical usage data and trend analysis
-- **Limit Enforcement**: Automatic throttling when approaching limits
-
-## Epic and Story Management
-
-### Epic Generation System
-
-- **Automated Epic Creation**: AI-powered epic generation from feature requests
-- **Story Breakdown**: Epics automatically broken into manageable user stories
-- **Acceptance Criteria**: AI-generated acceptance criteria for each story
-- **Priority Assignment**: Intelligent MVP priority assignment based on business value
-
-### Kanban Board Integration
-
-- **Serializable Boards**: Complete board state can be serialized for Claude Code analysis
-- **Real-time Optimization**: AI can analyze and optimize card positioning and priorities
-- **Progress Tracking**: Story points and completion tracking across the board
-- **Agent Assignment**: Stories can be assigned to specific Claude Code agents
-
-### Epic Data Structure
-
-```typescript
-interface Epic {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  type: string; // FEATURE, BUG, REFACTOR, etc.
-  mvpPriority: string; // HIGH, MEDIUM, LOW
-  estimatedStoryPoints: number;
-  actualStoryPoints: number;
-  stories: Story[];
-}
-
-interface Story {
-  id: string;
-  title: string;
-  description: string;
-  status: string; // BACKLOG, TODO, IN_PROGRESS, REVIEW, DONE
-  storyPoints: number;
-  priority: string;
-  acceptanceCriteria: string[];
-  assignedAgent?: string;
-}
+### Portable Project System
+All projects store metadata in `.codehive/` directories:
 ```
+project-root/
+├── .codehive/
+│   ├── project.json      # Project metadata
+│   ├── settings.json     # Project settings
+│   ├── kanban.json       # Kanban board state
+│   └── database.sqlite   # Local project database
+└── [project files]
+```
+
+### Task Execution Flow
+1. **Task Creation**: Create `TaskExecution` record
+2. **Phase Management**: Track progress through `TaskPhase`
+3. **Event Logging**: Record all events in `TaskEvent`
+4. **WebSocket Updates**: Broadcast real-time progress via Socket.IO
+5. **Recovery Support**: Handle cancellation and recovery
+
+### Agent Coordination
+- **Subprocess Execution**: Claude Code runs as child process
+- **Token Tracking**: Monitor API usage across all agents
+- **Command Validation**: Verify agent commands before execution
+- **Progress Parsing**: Extract real progress from agent output
 
 ## Memories
 
@@ -420,6 +174,15 @@ interface Story {
 - **PORTABLE BY DEFAULT**: All projects use the portable format with `.codehive/` directories
 - **NO DATABASE DEPENDENCY**: Projects are fully self-contained and portable
 - **STANDARD APIS**: Use `/api/projects/create` and `/api/projects/import` for all project operations
+- **AUTOMATIC CLEANUP**: Project registry automatically cleans up orphaned entries every 30 minutes
+- **REGISTRY SYNC**: When projects are removed from repos/ directory, they're automatically removed from registry
 - This project is not just for frontend developement
 - Treat Claude Code as a normal LLM, just give instructions and it do the job. You must make Claude Code make its questions response in certain format for the program to parse.
 - Do not change too much of the project unless it is really needed to
+- Do not launch or restart the server by yourself, ask user to do it instead
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.

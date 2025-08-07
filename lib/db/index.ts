@@ -5,37 +5,30 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+});
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
+// Initialize connection and log connection status
+prisma.$connect()
+  .then(() => {
+    console.log('✅ Database connected successfully');
+  })
+  .catch((error) => {
+    console.error('❌ Database connection failed:', error);
+    process.exit(1);
+  });
+
 // Type exports for use throughout the application
 export type {
-  Project,
-  ProjectSettings,
+  ProjectIndex,
   GlobalSettings,
-  ProjectBudget,
-  KanbanCard,
-  AgentTask,
   TokenUsage,
-  RoadmapMilestone,
-  QueuedTask,
-  AgentSpecification,
-  AgentPerformance,
-  AgentEvolution,
-  UsageTracking,
-  UsageLimit,
-  // Epic-Kanban-TDD Integration Models
-  Epic,
-  EpicDependency,
-  MVPPhase,
-  StoryDependency,
-  // AI-Native TDD Models
-  Cycle,
-  Test,
-  Query,
-  QueryComment,
-  Artifact,
+  TaskExecution,
+  TaskPhase,
+  TaskEvent,
 } from '@prisma/client';
 
 // Status type definitions (since SQLite doesn't support enums)

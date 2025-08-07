@@ -482,6 +482,23 @@ async function handleLocalFolderImport(
       message: 'Local folder validation completed',
     });
 
+    // Check if project already has .codehive/ structure
+    const codehivePath = path.join(localPath, '.codehive');
+    try {
+      await fs.access(codehivePath);
+      await taskManager.updatePhaseProgress(taskId, 'analyze', 100, {
+        type: 'ERROR',
+        message: 'Project already contains .codehive folder',
+      });
+      
+      return NextResponse.json({
+        success: false,
+        error: 'This project already contains a .codehive folder and is automatically accessible. Import is only for projects without CodeHive metadata.',
+      }, { status: 400 });
+    } catch {
+      // .codehive doesn't exist - proceed with import
+    }
+
     // Phase 2: Analyze Project
     await taskManager.updatePhaseProgress(taskId, 'analyze', 0, {
       type: 'INFO',
@@ -766,6 +783,30 @@ async function handleGitUrlImport(
       type: 'PHASE_COMPLETE',
       message: 'Repository cloned successfully',
     });
+
+    // Check if cloned project already has .codehive/ structure
+    const codehivePath = path.join(finalLocalPath, '.codehive');
+    try {
+      await fs.access(codehivePath);
+      await taskManager.updatePhaseProgress(taskId, 'analyze', 100, {
+        type: 'ERROR',
+        message: 'Cloned project already contains .codehive folder',
+      });
+      
+      // Clean up the cloned directory
+      try {
+        await fs.rm(finalLocalPath, { recursive: true, force: true });
+      } catch (cleanupError) {
+        console.warn('Failed to cleanup cloned directory:', cleanupError);
+      }
+      
+      return NextResponse.json({
+        success: false,
+        error: 'This project already contains a .codehive folder and is automatically accessible. Import is only for projects without CodeHive metadata.',
+      }, { status: 400 });
+    } catch {
+      // .codehive doesn't exist - proceed with import
+    }
 
     // Phase 3: Analyze Project
     await taskManager.updatePhaseProgress(taskId, 'analyze', 0, {

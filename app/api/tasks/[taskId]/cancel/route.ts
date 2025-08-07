@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { taskManager } from '@/lib/tasks/task-manager';
 import { taskRecoveryService } from '@/lib/tasks/task-recovery';
-import { prisma } from '@/lib/db';
 
 export async function POST(
   request: NextRequest,
@@ -10,6 +9,9 @@ export async function POST(
   const { taskId } = params;
 
   try {
+    // Lazy load prisma to ensure it's initialized
+    const { prisma } = await import('@/lib/db');
+    
     console.log(`🚫 Received cancellation request for task: ${taskId}`);
 
     // Get task details first

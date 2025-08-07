@@ -45,36 +45,56 @@ export class TaskRecoveryService {
     console.log('🔄 Starting task recovery process...');
 
     try {
-      // 1. First, clean up old orphaned projects (older than 24 hours)
-      const cleanedCount = await this.cleanupOrphanedProjects(24);
+      // Since we're using portable projects, we only recover active task executions
+      // without depending on the database projects table
       
-      // 2. Find all remaining projects in INITIALIZING state
-      const initializingProjects = await prisma.project.findMany({
-        where: { status: 'INITIALIZING' },
-        select: {
-          id: true,
-          name: true,
-          localPath: true,
-          gitUrl: true,
-          createdAt: true,
-        },
-      });
-
-      if (initializingProjects.length === 0) {
-        console.log('No interrupted initialization tasks to recover');
-        if (cleanedCount > 0) {
-          console.log(`🧹 Cleaned up ${cleanedCount} old orphaned projects`);
+      // Find task executions that are still pending or running
+      let activeTasks;
+      try {
+        activeTasks = await prisma.taskExecution.findMany({
+          where: {
+            status: { in: ['PENDING', 'RUNNING'] },
+          },
+          select: {
+            taskId: true,
+            projectId: true,
+            type: true,
+            status: true,
+            createdAt: true,
+          },
+        });
+      } catch (dbError) {
+        // If tables don't exist yet, skip recovery
+        if (dbError.code === 'P2021') {
+          console.log('Database tables not initialized yet, skipping task recovery');
+          return;
         }
+        throw dbError; // Re-throw if it's a different error
+      }
+
+      if (activeTasks.length === 0) {
+        console.log('No interrupted initialization tasks to recover');
         return;
       }
 
       console.log(
-        `🔍 Found ${initializingProjects.length} projects in INITIALIZING state (after cleanup)`
+        `🔍 Found ${activeTasks.length} active task executions to clean up`
       );
 
-      // 3. Process each interrupted project
-      for (const project of initializingProjects) {
-        await this.recoverProjectTask(project);
+      // Mark stale tasks as failed (older than 1 hour)
+      const staleThreshold = new Date(Date.now() - 60 * 60 * 1000); // 1 hour ago
+      let recoveredCount = 0;
+
+      for (const task of activeTasks) {
+        if (task.createdAt < staleThreshold) {
+          await this.failStaleTask(task.taskId, task.projectId);
+          recoveredCount++;
+          console.log(`🔧 Marked stale task as failed: ${task.taskId}`);
+        }
+      }
+
+      if (recoveredCount > 0) {
+        console.log(`🔧 Recovered ${recoveredCount} stale tasks`);
       }
 
       console.log('Task recovery process completed');
@@ -213,42 +233,48 @@ export class TaskRecoveryService {
   }
 
   /**
-   * Clean up old orphaned projects automatically
+   * Clean up old orphaned tasks automatically
+   * Note: Updated for portable project system - cleans tasks not projects
    */
   async cleanupOrphanedProjects(maxAgeHours: number = 24): Promise<number> {
     console.log(`🧹 Cleaning up orphaned projects older than ${maxAgeHours} hours`);
     
+    // For portable projects, we just clean up old task executions
+    // The projects themselves are managed through the portable system
     const cutoffTime = new Date(Date.now() - maxAgeHours * 60 * 60 * 1000);
     
-    const orphanedProjects = await prisma.project.findMany({
-      where: {
-        status: 'INITIALIZING',
-        createdAt: { lt: cutoffTime },
-      },
-    });
+    let oldTasks;
+    try {
+      oldTasks = await prisma.taskExecution.findMany({
+        where: {
+          status: { in: ['PENDING', 'RUNNING'] },
+          createdAt: { lt: cutoffTime },
+        },
+        select: {
+          taskId: true,
+          projectId: true,
+          type: true,
+        },
+      });
+    } catch (dbError) {
+      // If tables don't exist yet, skip cleanup
+      if (dbError.code === 'P2021') {
+        console.log('Database tables not initialized yet, skipping cleanup');
+        return 0;
+      }
+      throw dbError; // Re-throw if it's a different error
+    }
 
     let cleanedCount = 0;
     
-    for (const project of orphanedProjects) {
-      const hasActiveTask = await prisma.taskExecution.findFirst({
-        where: {
-          projectId: project.id,
-          status: { in: ['PENDING', 'RUNNING'] },
-        },
-      });
-
-      if (!hasActiveTask) {
-        await this.markProjectAsFailed(
-          project.id,
-          `Automatically cleaned up - orphaned for more than ${maxAgeHours} hours`
-        );
-        cleanedCount++;
-        console.log(`🗑️ Cleaned up orphaned project: ${project.name}`);
-      }
+    for (const task of oldTasks) {
+      await this.failStaleTask(task.taskId, task.projectId);
+      cleanedCount++;
+      console.log(`🗑️ Cleaned up orphaned task: ${task.taskId} (${task.type})`);
     }
 
     if (cleanedCount > 0) {
-      console.log(`Cleaned up ${cleanedCount} orphaned projects`);
+      console.log(`Cleaned up ${cleanedCount} orphaned tasks`);
     }
     
     return cleanedCount;

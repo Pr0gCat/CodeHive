@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { readdirSync, statSync, readFileSync } from 'fs';
 import { join } from 'path';
-import { prisma } from '@/lib/db';
+import { getProjectDiscoveryService } from '@/lib/portable/project-discovery';
 
 export async function GET() {
   try {
@@ -29,18 +29,17 @@ export async function GET() {
       }
     });
 
-    // Get all existing project local paths to filter out already indexed projects
-    const existingProjects = await prisma.project.findMany({
-      select: {
-        localPath: true,
-        name: true,
-      },
+    // Get all existing portable projects to filter out already indexed projects
+    const discoveryService = getProjectDiscoveryService();
+    const existingProjects = await discoveryService.discoverProjects({
+      includeInvalid: false,
+      validateMetadata: true,
     });
 
     // Create a set of existing paths for quick lookup
-    const existingPaths = new Set(existingProjects.map(p => p.localPath));
+    const existingPaths = new Set(existingProjects.map(p => p.path));
 
-    // Filter out folders that are already indexed as projects
+    // Filter out folders that are already indexed as portable projects
     const availableFolders = folders
       .map(folder => {
         const fullPath = join(reposPath, folder);
@@ -50,8 +49,7 @@ export async function GET() {
           name: folder,
           path: fullPath,
           relativePath: relativePath,
-          isAvailable:
-            !existingPaths.has(fullPath) && !existingPaths.has(relativePath),
+          isAvailable: !existingPaths.has(fullPath),
         };
       })
       .filter(folder => folder.isAvailable)

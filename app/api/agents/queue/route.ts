@@ -63,6 +63,7 @@ export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
     const { action } = body;
+    const projectId = request.nextUrl.searchParams.get('projectId');
 
     const queue = getTaskQueue();
 
@@ -89,6 +90,32 @@ export async function PUT(request: NextRequest) {
     }
 
     const status = await queue.getQueueStatus();
+    
+    // If projectId is provided, get project-specific limits (same logic as GET)
+    if (projectId) {
+      try {
+        const monitorResponse = await fetch(`${request.nextUrl.origin}/api/tokens/monitor?projectId=${projectId}`);
+        if (monitorResponse.ok) {
+          const monitorData = await monitorResponse.json();
+          if (monitorData.success && monitorData.data.project) {
+            // Override rate limit status with project-specific data
+            status.rateLimitStatus = {
+              dailyTokens: {
+                used: monitorData.data.project.usedTokens,
+                limit: monitorData.data.project.budgetTokens,
+                percentage: monitorData.data.project.usagePercentage,
+                remaining: monitorData.data.project.remainingBudget,
+              },
+              minuteRequests: status.rateLimitStatus.minuteRequests, // Keep original minute requests
+            };
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to get project-specific limits:', error);
+        // Fall back to default limits if project lookup fails
+      }
+    }
+
     const currentStatus = queue.getStatus();
     const actionPerformed =
       currentStatus === QueueStatus.ACTIVE ? 'resumed' : 'paused';

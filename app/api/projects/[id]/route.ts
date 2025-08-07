@@ -50,6 +50,14 @@ export async function GET(
       if (discoveredProject) {
         projectPath = discoveredProject.path;
         projectMetadata = discoveredProject.metadata;
+        
+        // Sync discovered project with index for future fast lookups
+        try {
+          await indexService.syncWithProject(discoveredProject.metadata);
+          console.log(`Synced project ${params.id} with system database`);
+        } catch (syncError) {
+          console.warn('Failed to sync project with index:', syncError);
+        }
       }
     }
 
@@ -146,7 +154,7 @@ export async function PUT(
     }
 
     // Update project metadata
-    const metadataManager = new ProjectMetadataManager(project.path);
+    const metadataManager = new SQLiteMetadataManager(project.path);
     const currentMetadata = project.metadata;
     
     const updatedMetadata = {
@@ -207,43 +215,4 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const discoveryService = getProjectDiscoveryService();
-    const projects = await discoveryService.discoverProjects();
-    
-    // Find project by ID
-    const project = projects.find(p => p.metadata.id === params.id);
-
-    if (!project) {
-      return NextResponse.json(
-        { success: false, error: 'Project not found' },
-        { status: 404 }
-      );
-    }
-
-    // Delete project directory
-    const fs = await import('fs/promises');
-    await fs.rm(project.path, { recursive: true, force: true });
-
-    // Log the project deletion
-    logProjectEvent.projectDeleted(params.id, project.metadata.name);
-
-    return NextResponse.json({
-      success: true,
-      message: 'Project deleted successfully',
-    });
-  } catch (error) {
-    console.error('Error deleting project:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to delete project',
-      },
-      { status: 500 }
-    );
-  }
-}
+// DELETE functionality removed - projects cannot be deleted, only archived

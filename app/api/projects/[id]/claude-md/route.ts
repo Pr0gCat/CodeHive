@@ -19,7 +19,7 @@ export async function GET(
 
     // If not found in portable projects, try database
     if (!project) {
-      const dbProject = await prisma.project.findUnique({
+      const dbProject = await prisma.projectIndex.findUnique({
         where: { id: projectId },
       });
       
@@ -102,7 +102,7 @@ export async function PUT(
     await projectManager.maintainProjectClaudeMd(projectId);
 
     // Get the updated content to return
-    const project = await prisma.project.findUnique({
+    const project = await prisma.projectIndex.findUnique({
       where: { id: projectId },
     });
 
@@ -116,7 +116,7 @@ export async function PUT(
       );
     }
 
-    const claudeMdPath = `${project.path || project.metadata.localPath}/CLAUDE.md`;
+    const claudeMdPath = `${project.localPath}/CLAUDE.md`;
     const updatedContent = await fs.readFile(claudeMdPath, 'utf8');
 
     return NextResponse.json({

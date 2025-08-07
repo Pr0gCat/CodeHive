@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
 import { getDefaultProjectId } from '@/lib/config';
-
-const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
   try {
+    // Lazy load prisma to ensure it's initialized
+    const { prisma } = await import('@/lib/db');
     const { searchParams } = new URL(request.url);
     const projectId =
       searchParams.get('projectId') || (await getDefaultProjectId());
@@ -20,27 +19,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get all epics with their progress
-    const epics = await prisma.epic.findMany({
-      where: { projectId },
-      include: {
-        stories: {
-          include: {
-            cycles: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
+    // Get project info from ProjectIndex
+    const project = await prisma.projectIndex.findUnique({
+      where: { id: projectId },
     });
 
-    // Get pending queries
-    const queries = await prisma.query.findMany({
-      where: {
-        projectId,
-        status: 'PENDING',
-      },
-      orderBy: { priority: 'desc' },
-    });
+    if (!project) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Project not found',
+        },
+        { status: 404 }
+      );
+    }
 
     // Get real token usage for today
     const today = new Date();
@@ -54,40 +46,6 @@ export async function GET(request: NextRequest) {
         },
       },
     });
-
-    // Calculate epic progress
-    const epicsWithProgress = epics.map(epic => {
-      const totalStories = epic.stories.length;
-      const completedStories = epic.stories.filter(
-        story => story.status === 'DONE'
-      ).length;
-      const progress = totalStories > 0 ? completedStories / totalStories : 0;
-
-      // Find current work
-      const activeStory = epic.stories.find(
-        story => story.status === 'IN_PROGRESS'
-      );
-
-      return {
-        id: epic.id,
-        title: epic.title,
-        progress,
-        status: epic.status,
-        currentWork: activeStory
-          ? `Working on: ${activeStory.title}`
-          : 'Planning next work',
-      };
-    });
-
-    // Format queries
-    const formattedQueries = queries.map(query => ({
-      id: query.id,
-      question: query.question,
-      priority: query.priority as 'HIGH' | 'MEDIUM' | 'LOW',
-      blockedCycles: 0, // TODO: Calculate actual blocked cycles
-      context: query.context,
-      createdAt: query.createdAt.toISOString(),
-    }));
 
     // Get project budget for real token limits
     const projectBudget = await prisma.projectBudget.findUnique({
@@ -110,62 +68,15 @@ export async function GET(request: NextRequest) {
       100000;
     const tokensRemaining = Math.max(0, dailyLimit - todayTokens);
 
-    // Calculate real performance metrics
+    // Calculate burn rate (tokens per hour)
     const now = new Date();
     const startOfDay = new Date(now);
     startOfDay.setHours(0, 0, 0, 0);
-
-    // Get cycles completed today
-    const cyclesCompletedToday = await prisma.cycle.count({
-      where: {
-        projectId,
-        status: 'COMPLETED',
-        completedAt: {
-          gte: startOfDay,
-        },
-      },
-    });
-
-    // Get average cycle duration (in minutes)
-    const completedCycles = await prisma.cycle.findMany({
-      where: {
-        projectId,
-        status: 'COMPLETED',
-        completedAt: { not: null },
-      },
-      select: {
-        createdAt: true,
-        completedAt: true,
-      },
-    });
-
-    const avgCycleDuration =
-      completedCycles.length > 0
-        ? completedCycles.reduce((acc, cycle) => {
-            const duration =
-              cycle.completedAt!.getTime() - cycle.createdAt.getTime();
-            return acc + duration;
-          }, 0) /
-          completedCycles.length /
-          (1000 * 60) // Convert to minutes
-        : 0;
-
-    // Calculate burn rate (tokens per hour)
     const hoursSinceStartOfDay =
       (now.getTime() - startOfDay.getTime()) / (1000 * 60 * 60);
     const burnRate =
       hoursSinceStartOfDay > 0
         ? Math.round(todayTokens / hoursSinceStartOfDay)
-        : 0;
-
-    // Calculate success rate (cycles completed vs failed)
-    const totalCycles = await prisma.cycle.count({ where: { projectId } });
-    const completedCyclesTotal = await prisma.cycle.count({
-      where: { projectId, status: 'COMPLETED' },
-    });
-    const successRate =
-      totalCycles > 0
-        ? Math.round((completedCyclesTotal / totalCycles) * 100)
         : 0;
 
     // Get real historical token usage
@@ -198,9 +109,16 @@ export async function GET(request: NextRequest) {
       0
     );
 
+    // Get current task executions for activity
+    const recentTasks = await prisma.taskExecution.findMany({
+      where: { projectId },
+      orderBy: { lastUpdatedAt: 'desc' },
+      take: 5,
+    });
+
     return NextResponse.json({
-      epics: epicsWithProgress,
-      queries: formattedQueries,
+      epics: [], // No epics in simplified schema
+      queries: [], // No queries in simplified schema  
       resources: {
         tokensUsed: todayTokens,
         tokensRemaining,
@@ -213,9 +131,9 @@ export async function GET(request: NextRequest) {
       },
       performance: {
         burnRate,
-        dailyCycles: cyclesCompletedToday,
-        avgCycleDuration: Math.round(avgCycleDuration),
-        successRate,
+        dailyCycles: 0, // No cycles in simplified schema
+        avgCycleDuration: 0,
+        successRate: 100, // Default success rate
       },
       tokenUsage: {
         today: todayTokens,
@@ -224,7 +142,8 @@ export async function GET(request: NextRequest) {
       },
       project: {
         id: projectId,
-        lastActivity: new Date().toISOString(),
+        name: project.name,
+        lastActivity: recentTasks[0]?.lastUpdatedAt.toISOString() || new Date().toISOString(),
       },
     });
   } catch (error) {

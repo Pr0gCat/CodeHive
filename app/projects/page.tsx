@@ -3,10 +3,9 @@
 import { Project } from '@/lib/db';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import ProjectImportModal from '@/components/ProjectImportModal';
-import ConfirmationModal from '@/components/ConfirmationModal';
 
 interface ProjectTask {
   taskId: string;
@@ -26,20 +25,12 @@ export default function ProjectsPage() {
   const [projectTasks, setProjectTasks] = useState<Record<string, ProjectTask>>(
     {}
   );
-  const [cancellingProjects, setCancellingProjects] = useState<Set<string>>(
-    new Set()
-  );
-  const [confirmModal, setConfirmModal] = useState<{
-    isOpen: boolean;
-    projectId: string;
-    projectName: string;
-    isFailed: boolean;
-  }>({
-    isOpen: false,
-    projectId: '',
-    projectName: '',
-    isFailed: false,
-  });
+  // Removed cancelling projects and confirmation modal - no deletion allowed
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshMessage, setRefreshMessage] = useState<{
+    type: 'success' | 'error' | null;
+    text: string;
+  }>({ type: null, text: '' });
 
   const fetchAgentStatus = async () => {
     try {
@@ -66,9 +57,10 @@ export default function ProjectsPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const fetchProjects = async () => {
+  const fetchProjects = async (forceRefresh = false) => {
     try {
-      const response = await fetch('/api/projects');
+      const url = forceRefresh ? '/api/projects?refresh=true' : '/api/projects';
+      const response = await fetch(url);
       const data = await response.json();
 
       if (data.success) {
@@ -107,83 +99,75 @@ export default function ProjectsPage() {
     }
   };
 
-  const handleCancelProject = (projectId: string, projectName: string) => {
-    const task = projectTasks[projectId];
+  // Project deletion/cancellation removed - projects cannot be deleted
 
-    // If already cancelling, ignore
-    if (cancellingProjects.has(projectId)) return;
-
-    // For INITIALIZING projects without active tasks, we can still attempt cleanup
-    if (!task) {
-      console.log(
-        `No active task found for project ${projectId}, but attempting cleanup for INITIALIZING project`
-      );
-    }
-
-    // Show confirmation modal
-    setConfirmModal({
-      isOpen: true,
-      projectId,
-      projectName,
-      isFailed: task?.status === 'FAILED',
-    });
-  };
-
-  const handleConfirmCancel = async () => {
-    const { projectId, projectName } = confirmModal;
-    const task = projectTasks[projectId];
-
-    setConfirmModal(prev => ({ ...prev, isOpen: false }));
-    setCancellingProjects(prev => new Set(prev).add(projectId));
-
+  const handleRefreshProjects = async () => {
+    setIsRefreshing(true);
+    setRefreshMessage({ type: null, text: '' });
+    
     try {
-      let response, result;
-
-      if (task && task.taskId) {
-        // If we have an active task, cancel it via task endpoint
-        response = await fetch(`/api/tasks/${task.taskId}/cancel`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-        });
-        result = await response.json();
-      } else {
-        // If no active task, try to clean up the project directly
-        response = await fetch(`/api/projects/${projectId}/cleanup`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ reason: 'manual_cancellation' }),
-        });
-        result = await response.json();
-      }
-
-      if (result.success) {
-        console.log('✅ Project cancelled successfully:', result);
-        // Refresh projects list to show updated status
-        fetchProjects();
-        // Remove from tasks tracking
-        setProjectTasks(prev => {
-          const newTasks = { ...prev };
-          delete newTasks[projectId];
-          return newTasks;
-        });
-      } else {
-        console.error('❌ Failed to cancel project:', result.error);
-        alert(`Failed to cancel project: ${result.error}`);
-      }
-    } catch (error) {
-      console.error('❌ Error cancelling project:', error);
-      alert('Error cancelling project. Please try again.');
-    } finally {
-      setCancellingProjects(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(projectId);
-        return newSet;
+      // Trigger cleanup and discovery
+      const cleanupResponse = await fetch('/api/registry/cleanup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'run' }),
       });
-    }
-  };
 
-  const handleCancelModalClose = () => {
-    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      const cleanupData = await cleanupResponse.json();
+      
+      if (cleanupData.success) {
+        console.log('✅ Registry cleanup completed:', cleanupData.data);
+        
+        // Show user feedback
+        const { removed, archived, healthChecked } = cleanupData.data;
+        if (removed > 0 || archived > 0) {
+          setRefreshMessage({
+            type: 'success',
+            text: `Registry refreshed! ${archived} projects archived, ${removed} removed, ${healthChecked} health-checked.`
+          });
+        } else {
+          setRefreshMessage({
+            type: 'success',
+            text: `Registry refreshed successfully! ${healthChecked} projects health-checked.`
+          });
+        }
+        
+        // Clear message after 5 seconds
+        setTimeout(() => {
+          setRefreshMessage({ type: null, text: '' });
+        }, 5000);
+      } else {
+        console.warn('⚠️ Registry cleanup had issues:', cleanupData.error);
+        setRefreshMessage({
+          type: 'error',
+          text: `Refresh failed: ${cleanupData.error}`
+        });
+        
+        // Clear error message after 5 seconds
+        setTimeout(() => {
+          setRefreshMessage({ type: null, text: '' });
+        }, 5000);
+      }
+
+      // Refresh the projects list with forced discovery
+      await fetchProjects(true);
+      
+    } catch (error) {
+      console.error('❌ Error refreshing projects:', error);
+      setRefreshMessage({
+        type: 'error',
+        text: 'Failed to refresh projects. Please try again.'
+      });
+      
+      // Clear error message after 5 seconds
+      setTimeout(() => {
+        setRefreshMessage({ type: null, text: '' });
+      }, 5000);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const getAgentStatusColor = (status: string) => {
@@ -265,6 +249,15 @@ export default function ProjectsPage() {
           </div>
           <div className="flex space-x-3">
             <button
+              onClick={handleRefreshProjects}
+              disabled={isRefreshing}
+              className="px-4 py-2 bg-primary-800 text-accent-50 rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              title="Refresh project registry and clean up removed projects"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? '更新中...' : '重新整理'}
+            </button>
+            <button
               onClick={() => setShowImportModal(true)}
               className="px-4 py-2 bg-primary-700 text-accent-50 rounded-lg hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
             >
@@ -278,6 +271,28 @@ export default function ProjectsPage() {
             </Link>
           </div>
         </div>
+
+        {/* Refresh Message Toast */}
+        {refreshMessage.type && (
+          <div className={`fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg flex items-center gap-3 transition-all duration-300 ${
+            refreshMessage.type === 'success' 
+              ? 'bg-green-900 border border-green-700 text-green-100' 
+              : 'bg-red-900 border border-red-700 text-red-100'
+          }`}>
+            {refreshMessage.type === 'success' ? (
+              <CheckCircle className="w-5 h-5 text-green-400" />
+            ) : (
+              <XCircle className="w-5 h-5 text-red-400" />
+            )}
+            <span className="text-sm font-medium">{refreshMessage.text}</span>
+            <button
+              onClick={() => setRefreshMessage({ type: null, text: '' })}
+              className="ml-2 text-current opacity-70 hover:opacity-100"
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         {projects.length === 0 ? (
           <div className="text-center py-12">
@@ -367,38 +382,13 @@ export default function ProjectsPage() {
                               </div>
                               <div className="text-xs text-primary-400 mt-1">
                                 {projectTasks[project.id].status === 'FAILED'
-                                  ? 'Failed - click Cancel to clean up'
+                                  ? 'Failed - manual cleanup required'
                                   : `${projectTasks[project.id].progress}% complete`}
                               </div>
                             </div>
                           )}
                         </div>
 
-                        {/* Cancel Button */}
-                        <div className="ml-4">
-                          <button
-                            onClick={() =>
-                              handleCancelProject(project.id, project.name)
-                            }
-                            disabled={cancellingProjects.has(project.id)}
-                            className={`
-                              inline-flex items-center px-4 py-2 border border-red-600 
-                              text-red-400 font-medium rounded-lg transition-all duration-200
-                              ${
-                                cancellingProjects.has(project.id)
-                                  ? 'bg-red-600/10 cursor-not-allowed opacity-50'
-                                  : 'hover:bg-red-600/20 hover:border-red-500 hover:text-red-300'
-                              }
-                            `}
-                          >
-                            <X className="w-4 h-4 mr-2" />
-                            {cancellingProjects.has(project.id)
-                              ? 'Cleaning up...'
-                              : projectTasks[project.id]?.status === 'FAILED'
-                                ? 'Clean up'
-                                : 'Cancel'}
-                          </button>
-                        </div>
                       </div>
 
                       {project.summary && (
@@ -591,25 +581,6 @@ export default function ProjectsPage() {
         onClose={() => setShowImportModal(false)}
       />
 
-      <ConfirmationModal
-        isOpen={confirmModal.isOpen}
-        onClose={handleCancelModalClose}
-        onConfirm={handleConfirmCancel}
-        title={
-          confirmModal.isFailed
-            ? 'Clean Up Failed Project'
-            : 'Cancel Project Initialization'
-        }
-        message={
-          confirmModal.isFailed
-            ? `Are you sure you want to clean up the failed project "${confirmModal.projectName}"?\n\nThis will remove all created files and database records.`
-            : `Are you sure you want to cancel the initialization of "${confirmModal.projectName}"?\n\nThis will stop the process and clean up all created files and database records.`
-        }
-        confirmText={confirmModal.isFailed ? 'Clean Up' : 'Cancel Project'}
-        cancelText="Keep Project"
-        variant="danger"
-        isLoading={cancellingProjects.has(confirmModal.projectId)}
-      />
     </div>
   );
 }

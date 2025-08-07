@@ -8,6 +8,7 @@ import path from 'path';
 import { SQLiteMetadataManager } from './sqlite-metadata-manager';
 import { ProjectMetadata } from './schemas';
 import { getProjectIndexService } from '../db/project-index';
+import { getCleanupScheduler } from '../registry/cleanup-scheduler';
 
 export interface DiscoveredProject {
   path: string;
@@ -39,6 +40,8 @@ export class ProjectDiscoveryService {
     const { includeInvalid = false, validateMetadata = true, scanDepth = 2 } = options;
     
     try {
+      console.log(`Starting project discovery in: ${this.reposPath}`);
+      
       // Ensure repos directory exists
       await fs.mkdir(this.reposPath, { recursive: true });
       
@@ -83,8 +86,10 @@ export class ProjectDiscoveryService {
 
       // Then, scan repos directory for any projects not in database
       const scannedPaths = await this.scanDirectory(this.reposPath, scanDepth);
+      console.log(`Found ${scannedPaths.length} potential project paths from filesystem scan`);
       
       for (const projectPath of scannedPaths) {
+        console.log(`Analyzing discovered path: ${projectPath}`);
         // Skip if already processed from database
         if (processedPaths.has(projectPath)) {
           continue;
@@ -131,6 +136,24 @@ export class ProjectDiscoveryService {
         console.warn('Failed to cleanup orphaned project entries:', cleanupError);
       }
       
+      // Trigger additional cleanup through scheduler if significant changes detected
+      const totalChanges = projects.length;
+      if (totalChanges === 0 || this.lastScanTime === null) {
+        try {
+          const scheduler = getCleanupScheduler();
+          const status = scheduler.getStatus();
+          
+          // Only run if not already running and haven't run recently (within 10 minutes)
+          if (!status.isRunning && (!status.lastRun || 
+              Date.now() - status.lastRun.getTime() > 10 * 60 * 1000)) {
+            console.log('Triggering comprehensive cleanup due to no projects found or first scan');
+            await scheduler.runCleanup();
+          }
+        } catch (schedulerError) {
+          console.warn('Failed to trigger scheduler cleanup:', schedulerError);
+        }
+      }
+      
       this.lastScanTime = new Date();
       return projects.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
     } catch (error) {
@@ -147,16 +170,16 @@ export class ProjectDiscoveryService {
     if (this.discoveryCache.has(projectPath)) {
       const cached = this.discoveryCache.get(projectPath)!;
       
-      // Check if cache is still valid (metadata file not modified)
+      // Check if cache is still valid (database not modified)
       try {
-        const metadataPath = path.join(projectPath, '.codehive', 'project.json');
+        const metadataPath = path.join(projectPath, '.codehive', 'project.db');
         const stats = await fs.stat(metadataPath);
         
         if (stats.mtime <= cached.lastModified) {
           return cached;
         }
       } catch {
-        // Metadata file might not exist, proceed with re-analysis
+        // Database file might not exist, proceed with re-analysis
       }
     }
 
@@ -176,10 +199,10 @@ export class ProjectDiscoveryService {
   async isPortableProject(projectPath: string): Promise<boolean> {
     try {
       const codehivePath = path.join(projectPath, '.codehive');
-      const projectJsonPath = path.join(codehivePath, 'project.json');
+      const projectDbPath = path.join(codehivePath, 'project.db');
       
       await fs.access(codehivePath);
-      await fs.access(projectJsonPath);
+      await fs.access(projectDbPath);
       
       return true;
     } catch {
@@ -199,7 +222,7 @@ export class ProjectDiscoveryService {
     
     for (const [projectPath, cachedProject] of this.discoveryCache) {
       try {
-        const metadataPath = path.join(projectPath, '.codehive', 'project.json');
+        const metadataPath = path.join(projectPath, '.codehive', 'project.db');
         const stats = await fs.stat(metadataPath);
         
         if (stats.mtime > this.lastScanTime) {
@@ -281,13 +304,17 @@ export class ProjectDiscoveryService {
 
     try {
       const entries = await fs.readdir(dirPath, { withFileTypes: true });
+      console.log(`Scanning ${dirPath} (depth ${currentDepth}): found ${entries.length} entries`);
       
       for (const entry of entries) {
         if (entry.isDirectory() && !entry.name.startsWith('.')) {
           const fullPath = path.join(dirPath, entry.name);
           
           // Check if this directory is a portable project
-          if (await this.isPortableProject(fullPath)) {
+          const isPortable = await this.isPortableProject(fullPath);
+          console.log(`  Checking ${entry.name}: portable=${isPortable}`);
+          
+          if (isPortable) {
             projectPaths.push(fullPath);
           } else if (currentDepth < maxDepth - 1) {
             // Recursively scan subdirectories
@@ -309,8 +336,12 @@ export class ProjectDiscoveryService {
       
       // Check if it's a portable project
       if (!(await metadataManager.isPortableProject())) {
+        console.log(`Not a portable project: ${projectPath}`);
         return null;
       }
+
+      // Initialize the database connection
+      await metadataManager.initialize();
 
       // Load metadata
       const metadata = await metadataManager.getProjectMetadata({
@@ -319,11 +350,16 @@ export class ProjectDiscoveryService {
       });
 
       if (!metadata) {
+        console.warn(`No metadata found in portable project: ${projectPath}`);
+        metadataManager.close();
         return null;
       }
 
       // Get directory stats
       const stats = await this.getDirectoryStats(projectPath);
+      
+      // Close database connection
+      metadataManager.close();
       
       return {
         path: projectPath,

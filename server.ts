@@ -4,6 +4,9 @@ import { parse } from 'url';
 import { initializeSocket } from './lib/socket/server';
 import { taskRecoveryService } from './lib/tasks/task-recovery';
 import { logger } from './lib/logging/structured-logger';
+import { validateDatabaseSchema } from './lib/db/schema-validator';
+import { prisma } from './lib/db';
+import { initCleanupScheduler, stopCleanupScheduler } from './lib/registry/cleanup-scheduler';
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
@@ -14,6 +17,14 @@ const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
 app.prepare().then(async () => {
+  // Validate database schema before starting server
+  try {
+    await validateDatabaseSchema(prisma);
+  } catch (error) {
+    logger.error('Database validation failed during startup', { module: 'server' }, error as Error);
+    process.exit(1);
+  }
+
   // Create HTTP server
   const server = createServer(async (req, res) => {
     try {
@@ -33,18 +44,12 @@ app.prepare().then(async () => {
   // Initialize Socket.IO
   const io = initializeSocket(server);
 
-  // Start task recovery process
-  logger.info('🔄 Starting task recovery process...', { module: 'server' });
+  // Initialize project registry cleanup scheduler
   try {
-    await taskRecoveryService.recoverInterruptedTasks();
-    logger.info('Task recovery completed', { module: 'server' });
+    await initCleanupScheduler();
+    logger.info('> Project registry cleanup scheduler initialized', { module: 'server' });
   } catch (error) {
-    logger.error(
-      '❌ Task recovery failed',
-      { module: 'server' },
-      error as Error
-    );
-    // Don't prevent server startup due to recovery failure
+    logger.error('Failed to initialize cleanup scheduler', { module: 'server' }, error as Error);
   }
 
   server
@@ -86,6 +91,15 @@ app.prepare().then(async () => {
 
     server.close(() => {
       logger.info('HTTP server closed', { module: 'server' });
+      
+      // Stop cleanup scheduler
+      try {
+        stopCleanupScheduler();
+        logger.info('Project registry cleanup scheduler stopped', { module: 'server' });
+      } catch (error) {
+        logger.warn('Error stopping cleanup scheduler', { module: 'server' }, error as Error);
+      }
+      
       if (io) {
         io.close(() => {
           logger.info('Socket.IO server closed', { module: 'server' });

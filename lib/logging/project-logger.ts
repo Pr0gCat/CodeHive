@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { prisma } from '@/lib/db';
+// TODO: Import SQLiteMetadataManager when logs are moved to project SQLite databases
 
 export interface LogEntry {
   id: string;
@@ -130,33 +130,9 @@ class ProjectLogger extends EventEmitter {
       metadata,
     };
 
-    // Store in database for persistence
-    try {
-      // Verify projectId exists before creating log (except for system logs)
-      if (projectId !== 'system') {
-        const projectExists = await prisma.project.findUnique({
-          where: { id: projectId },
-          select: { id: true }
-        });
-        
-        if (!projectExists) {
-          console.warn(`Attempted to log for non-existent project: ${projectId}`);
-          return; // Skip logging for non-existent projects
-        }
-      }
-      
-      await prisma.projectLog.create({
-        data: {
-          projectId,
-          level,
-          message,
-          source,
-          metadata: metadata ? JSON.stringify(metadata) : null,
-        },
-      });
-    } catch (error) {
-      console.error('Failed to save log to database:', error);
-    }
+    // TODO: Store in project's SQLite database for persistence
+    // For now, we'll just use in-memory storage since ProjectLog table was removed
+    // and logs should be stored in each project's .codehive/project.db
 
     // Store log in memory cache for real-time updates
     if (!this.logs.has(projectId)) {
@@ -194,33 +170,15 @@ class ProjectLogger extends EventEmitter {
     }
   }
 
-  // Get logs for a specific project from database
+  // Get logs for a specific project from memory cache
   async getProjectLogs(projectId: string, limit?: number): Promise<LogEntry[]> {
-    try {
-      const dbLogs = await prisma.projectLog.findMany({
-        where: { projectId },
-        orderBy: { createdAt: 'desc' },
-        take: limit || this.maxLogsPerProject,
-      });
-
-      return dbLogs.map(log => ({
-        id: log.id,
-        timestamp: log.createdAt,
-        level: log.level as LogLevel,
-        message: log.message,
-        source: log.source,
-        projectId: log.projectId,
-        metadata: log.metadata ? JSON.parse(log.metadata) : undefined,
-      }));
-    } catch (error) {
-      console.error('Failed to fetch logs from database:', error);
-      // Fallback to in-memory cache
-      const logs = this.logs.get(projectId) || [];
-      if (limit) {
-        return logs.slice(-limit);
-      }
-      return [...logs];
+    // TODO: Fetch from project's SQLite database when implemented
+    // For now, use in-memory cache only
+    const logs = this.logs.get(projectId) || [];
+    if (limit) {
+      return logs.slice(-limit);
     }
+    return [...logs];
   }
 
   // Synchronous method for backward compatibility (uses cache only)
@@ -234,19 +192,11 @@ class ProjectLogger extends EventEmitter {
 
   // Clear logs for a project
   async clearProjectLogs(projectId: string): Promise<number> {
-    let deletedCount = 0;
-
-    try {
-      // Clear from database
-      const result = await prisma.projectLog.deleteMany({
-        where: { projectId },
-      });
-      deletedCount = result.count;
-    } catch (error) {
-      console.error('Failed to clear logs from database:', error);
-      throw error;
-    }
-
+    // TODO: Clear from project's SQLite database when implemented
+    // For now, just clear from memory cache
+    const logs = this.logs.get(projectId) || [];
+    const deletedCount = logs.length;
+    
     // Clear from memory cache
     this.logs.delete(projectId);
     this.emit(`clear:${projectId}`);

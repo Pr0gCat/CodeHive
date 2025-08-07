@@ -11,6 +11,8 @@ export * from './schemas';
 
 // Project metadata management
 export { ProjectMetadataManager } from './metadata-manager';
+export { SQLiteMetadataManager } from './sqlite-metadata-manager';
+export { SQLiteManager } from './sqlite-manager';
 
 // Project discovery and scanning
 export { 

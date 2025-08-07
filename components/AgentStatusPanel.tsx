@@ -63,7 +63,7 @@ export default function AgentStatusPanel({ projectId }: AgentStatusPanelProps) {
 
   const handleQueueToggle = async () => {
     try {
-      const response = await fetch('/api/agents/queue', {
+      const response = await fetch(`/api/agents/queue?projectId=${projectId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
