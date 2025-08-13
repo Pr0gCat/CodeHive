@@ -52,8 +52,25 @@ export class ProjectIndexService {
     metadata: ProjectMetadata,
     importSource?: 'LOCAL_FOLDER' | 'GIT_URL' | 'MIGRATED'
   ): Promise<ProjectIndex> {
-    const projectIndex = await prisma.projectIndex.create({
-      data: {
+    const projectIndex = await prisma.projectIndex.upsert({
+      where: {
+        localPath: metadata.localPath,
+      },
+      update: {
+        id: metadata.id,
+        name: metadata.name,
+        description: metadata.description,
+        gitUrl: metadata.gitUrl,
+        status: metadata.status,
+        framework: metadata.framework,
+        language: metadata.language,
+        packageManager: metadata.packageManager,
+        testFramework: metadata.testFramework,
+        lintTool: metadata.lintTool,
+        buildTool: metadata.buildTool,
+        updatedAt: new Date(),
+      },
+      create: {
         id: metadata.id,
         name: metadata.name,
         description: metadata.description,
@@ -315,8 +332,8 @@ export class ProjectIndexService {
         AND: [
           {
             OR: [
-              { name: { contains: query, mode: 'insensitive' } },
-              { description: { contains: query, mode: 'insensitive' } }
+              { name: { contains: query } },
+              { description: { contains: query } }
             ]
           },
           includeInactive ? {} : {

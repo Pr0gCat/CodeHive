@@ -100,7 +100,7 @@ describe('KanbanBoard', () => {
   });
 
   it('should render kanban columns for each TDD phase', () => {
-    render(<KanbanBoard {...defaultProps} />);
+    render(<KanbanBoard {...defaultProps} projectId={mockProject.id} />);
 
     expect(screen.getByText('RED')).toBeInTheDocument();
     expect(screen.getByText('GREEN')).toBeInTheDocument();
@@ -109,7 +109,7 @@ describe('KanbanBoard', () => {
   });
 
   it('should display cycles in correct columns based on phase', () => {
-    render(<KanbanBoard {...defaultProps} />);
+    render(<KanbanBoard {...defaultProps} projectId={mockProject.id} />);
 
     expect(screen.getByText('User Authentication')).toBeInTheDocument();
     expect(screen.getByText('Data Validation')).toBeInTheDocument();

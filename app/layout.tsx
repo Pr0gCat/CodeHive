@@ -22,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full">
-      <body className={`${inter.className} min-h-full`}>
+      <body className={`${inter.className} h-full overflow-hidden`}>
         <ThemeProvider>
           <ToastManager>{children}</ToastManager>
         </ThemeProvider>

@@ -83,20 +83,67 @@ export async function GET(
     const epics = await metadataManager.getEpics();
     const agents = await metadataManager.getAgents();
     
+    // Get project phase from system database
+    let projectPhase = 'REQUIREMENTS'; // Default phase
+    try {
+      const indexedProject = await indexService.getProjectById(params.id);
+      if (indexedProject && indexedProject.phase) {
+        projectPhase = indexedProject.phase;
+      }
+    } catch (error) {
+      console.warn('Failed to get project phase, using default:', error);
+    }
+
+    // Get additional project info from system database if available
+    let systemProjectInfo = null;
+    try {
+      const indexedProject = await indexService.getProjectById(params.id);
+      if (indexedProject) {
+        systemProjectInfo = indexedProject;
+      }
+    } catch (error) {
+      console.warn('Failed to get system project info:', error);
+    }
+
+    // Use system database info to fill in missing portable metadata
+    // Try to infer project name from git URL or path if not set
+    let effectiveName = projectMetadata.name || systemProjectInfo?.name;
+    if (!effectiveName || effectiveName === '未命名專案') {
+      // Try to extract name from git URL
+      if (projectMetadata.gitUrl) {
+        const gitMatch = projectMetadata.gitUrl.match(/\/([^\/]+)\.git$/);
+        if (gitMatch) {
+          effectiveName = gitMatch[1];
+        }
+      }
+      // Fallback to local path directory name
+      if (!effectiveName && projectMetadata.localPath) {
+        const pathParts = projectMetadata.localPath.split('/');
+        effectiveName = pathParts[pathParts.length - 1];
+      }
+      // Final fallback
+      if (!effectiveName) {
+        effectiveName = '未命名專案';
+      }
+    }
+
+    const effectiveDescription = projectMetadata.description || systemProjectInfo?.description || '';
+
     // Transform portable project data to match expected format
     const projectData = {
       id: projectMetadata.id,
-      name: projectMetadata.name,
-      description: projectMetadata.description,
+      name: effectiveName,
+      description: effectiveDescription,
       status: projectMetadata.status,
+      phase: projectPhase,
       gitUrl: projectMetadata.gitUrl,
       localPath: projectMetadata.localPath,
-      framework: projectMetadata.framework,
-      language: projectMetadata.language,
-      packageManager: projectMetadata.packageManager,
-      testFramework: projectMetadata.testFramework,
-      lintTool: projectMetadata.lintTool,
-      buildTool: projectMetadata.buildTool,
+      framework: projectMetadata.framework || systemProjectInfo?.framework,
+      language: projectMetadata.language || systemProjectInfo?.language,
+      packageManager: projectMetadata.packageManager || systemProjectInfo?.packageManager,
+      testFramework: projectMetadata.testFramework || systemProjectInfo?.testFramework,
+      lintTool: projectMetadata.lintTool || systemProjectInfo?.lintTool,
+      buildTool: projectMetadata.buildTool || systemProjectInfo?.buildTool,
       createdAt: new Date(projectMetadata.createdAt),
       updatedAt: new Date(projectMetadata.updatedAt),
       // Actual data from portable format

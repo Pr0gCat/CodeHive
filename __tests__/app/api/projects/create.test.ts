@@ -6,7 +6,7 @@ import { mockPrisma, clearAllMocks } from '@/__tests__/helpers/test-utils';
 // Mock the entire db module
 jest.mock('@/lib/db', () => ({
   prisma: {
-    project: {
+    projectIndex: {
       findFirst: jest.fn(),
       create: jest.fn(),
     },
@@ -30,9 +30,9 @@ jest.mock('fs/promises', () => ({
 
 // Type the mocked prisma client properly
 const mockPrismaDb = {
-  project: {
-    findFirst: prisma.project.findFirst as jest.MockedFunction<typeof prisma.project.findFirst>,
-    create: prisma.project.create as jest.MockedFunction<typeof prisma.project.create>,
+  projectIndex: {
+    findFirst: prisma.projectIndex.findFirst as jest.MockedFunction<typeof prisma.projectIndex.findFirst>,
+    create: prisma.projectIndex.create as jest.MockedFunction<typeof prisma.projectIndex.create>,
   },
   taskExecution: {
     create: prisma.taskExecution.create as jest.MockedFunction<typeof prisma.taskExecution.create>,
@@ -80,7 +80,7 @@ describe('/api/projects/create', () => {
         updatedAt: new Date(),
       };
 
-      mockPrismaDb.project.findFirst.mockResolvedValueOnce(null);
+      mockPrismaDb.projectIndex.findFirst.mockResolvedValueOnce(null);
       fs.access.mockRejectedValueOnce(new Error('Path does not exist'));
       createProjectAsync.mockResolvedValueOnce({
         success: true,
@@ -141,7 +141,7 @@ describe('/api/projects/create', () => {
         updatedAt: new Date(),
       };
 
-      mockPrismaDb.project.findFirst.mockResolvedValueOnce(existingProject);
+      mockPrismaDb.projectIndex.findFirst.mockResolvedValueOnce(existingProject);
 
       const request = new NextRequest('http://localhost:3000/api/projects/create', {
         method: 'POST',
@@ -157,7 +157,7 @@ describe('/api/projects/create', () => {
     });
 
     it('should return 409 for existing directory path', async () => {
-      mockPrismaDb.project.findFirst.mockResolvedValueOnce(null);
+      mockPrismaDb.projectIndex.findFirst.mockResolvedValueOnce(null);
       fs.access.mockResolvedValueOnce(undefined); // Directory exists
 
       const request = new NextRequest('http://localhost:3000/api/projects/create', {
@@ -174,7 +174,7 @@ describe('/api/projects/create', () => {
     });
 
     it('should handle project creation failure', async () => {
-      mockPrismaDb.project.findFirst.mockResolvedValueOnce(null);
+      mockPrismaDb.projectIndex.findFirst.mockResolvedValueOnce(null);
       fs.access.mockRejectedValueOnce(new Error('Path does not exist'));
       createProjectAsync.mockResolvedValueOnce({
         success: false,
@@ -228,7 +228,7 @@ describe('/api/projects/create', () => {
     });
 
     it('should handle database errors gracefully', async () => {
-      mockPrismaDb.project.findFirst.mockRejectedValueOnce(
+      mockPrismaDb.projectIndex.findFirst.mockRejectedValueOnce(
         new Error('Database connection failed')
       );
 

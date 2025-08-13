@@ -1,0 +1,31 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Run pre-commit checks
+echo "🔍 Running pre-commit checks..."
+
+# Type checking
+echo "📝 Type checking..."
+bun run type-check
+if [ $? -ne 0 ]; then
+  echo "❌ Type checking failed. Please fix TypeScript errors."
+  exit 1
+fi
+
+# Linting
+echo "🎨 Linting..."
+bun run lint
+if [ $? -ne 0 ]; then
+  echo "❌ Linting failed. Run 'bun run lint:fix' to fix issues."
+  exit 1
+fi
+
+# Unit tests
+echo "🧪 Running unit tests..."
+bun run test:unit
+if [ $? -ne 0 ]; then
+  echo "❌ Unit tests failed. Please fix the failing tests."
+  exit 1
+fi
+
+echo "✅ All pre-commit checks passed!"

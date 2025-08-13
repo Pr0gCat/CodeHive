@@ -446,7 +446,7 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
                 </div>
 
                 {/* Cards */}
-                <div className="p-4 space-y-3 min-h-[200px]">
+                <div className="p-4 space-y-3 min-h-[200px] max-h-[600px] overflow-y-auto">
                   {columnStories.map(story => (
                     <div
                       key={story.id}

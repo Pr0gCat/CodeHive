@@ -29,6 +29,10 @@ export type {
   TaskExecution,
   TaskPhase,
   TaskEvent,
+  Cycle,
+  Test,
+  Artifact,
+  Query,
 } from '@prisma/client';
 
 // Status type definitions (since SQLite doesn't support enums)

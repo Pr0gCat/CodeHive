@@ -75,3 +75,66 @@ body {
 .scrollbar-auto-hide::-webkit-scrollbar-thumb:hover {
   background: rgb(107, 114, 128);
 }
+
+/* Markdown content styles */
+.markdown-content {
+  line-height: 1.6;
+}
+
+.markdown-content > *:first-child {
+  margin-top: 0 !important;
+}
+
+.markdown-content > *:last-child {
+  margin-bottom: 0 !important;
+}
+
+/* Code block syntax highlighting adjustments for dark theme */
+.markdown-content pre code {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+.markdown-content pre {
+  background: rgb(31, 41, 55) !important; /* primary-800 */
+  border: 1px solid rgb(75, 85, 99); /* primary-600 */
+}
+
+/* Adjust highlight.js colors for our dark theme */
+.hljs {
+  color: rgb(229, 231, 235) !important; /* primary-100 */
+  background: rgb(31, 41, 55) !important; /* primary-800 */
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in {
+  color: rgb(251, 191, 36) !important; /* accent-400 */
+}
+
+.hljs-string,
+.hljs-title,
+.hljs-section {
+  color: rgb(34, 197, 94) !important; /* green-500 */
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: rgb(156, 163, 175) !important; /* primary-400 */
+  font-style: italic;
+}
+
+.hljs-number,
+.hljs-literal {
+  color: rgb(239, 68, 68) !important; /* red-500 */
+}
+
+.hljs-function,
+.hljs-class {
+  color: rgb(59, 130, 246) !important; /* blue-500 */
+}
+
+.hljs-variable,
+.hljs-attr {
+  color: rgb(168, 85, 247) !important; /* purple-500 */
+}

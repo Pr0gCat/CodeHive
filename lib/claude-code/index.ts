@@ -77,6 +77,8 @@ export interface ClaudeCodeOptions {
   outputFormat?: 'text' | 'json' | 'stream-json';
   projectId?: string; // For logging purposes
   onProgress?: (event: StreamEvent) => void; // For stream-json mode
+  systemPrompt?: string; // System prompt to append to the default
+  debugMode?: boolean; // Enable debug output (default: false for clean responses)
 }
 
 export interface ClaudeCodeResult {
@@ -107,7 +109,7 @@ class ClaudeCode {
     prompt: string, 
     options: ClaudeCodeOptions = {}
   ): Promise<ClaudeCodeResult> {
-    const { workingDirectory, environment, timeout = 120000, outputFormat = 'stream-json', projectId, onProgress } = options; // Default to stream-json for real-time progress
+    const { workingDirectory, environment, timeout = 120000, outputFormat = 'stream-json', projectId, onProgress, systemPrompt, debugMode = false } = options; // Default to stream-json for real-time progress
     
     return new Promise((resolve) => {
       let stdout = '';
@@ -123,9 +125,17 @@ class ClaudeCode {
         args.push('--output-format', 'stream-json', '--verbose');
         // stream-json requires --verbose
       } else {
-        // Add debug mode for text output for better visibility
-        args.push('--debug');
+        // Only add debug mode when explicitly requested
+        if (debugMode) {
+          args.push('--debug');
+        }
       }
+      
+      // Add system prompt if provided
+      if (systemPrompt) {
+        args.push('--append-system-prompt', systemPrompt);
+      }
+      
       args.push(prompt);
       
       const nodeProcess = process; // Save reference to avoid scoping issues
@@ -391,8 +401,23 @@ class ClaudeCode {
   }
 
   private cleanOutput(rawOutput: string): string {
+    // Filter out debug messages and clean output
+    const lines = rawOutput.split('\n');
+    const cleanedLines = lines.filter(line => {
+      // Remove debug messages
+      if (line.trim().startsWith('[DEBUG]')) return false;
+      // Remove verbose/info messages that aren't part of the response
+      if (line.trim().startsWith('[INFO]')) return false;
+      if (line.trim().startsWith('[WARN]')) return false;
+      // Remove progress indicators and status messages
+      if (line.trim().match(/^(Creating|Writing|Preserving|Applied|Renaming|File|Shell|Executing|Found|Matched|Cleaned|Getting|Summarizing|Stream started)/)) return false;
+      return true;
+    });
+    
+    const filteredOutput = cleanedLines.join('\n');
+    
     // With --print option, output should be clean, but still remove any ANSI codes
-    return rawOutput
+    return filteredOutput
       .replace(/\x1b\[[0-9;]*m/g, '') // Remove ANSI escape sequences
       .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '') // Remove control characters (keep \t \n)
       .trim();

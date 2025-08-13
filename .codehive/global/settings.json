@@ -5,9 +5,9 @@
   "criticalThreshold": 0.9,
   "allocationStrategy": 0.5,
   "autoResumeEnabled": true,
-  "pauseOnWarning": false,
+  "pauseOnWarning": true,
   "claudeCodePath": "claude",
   "rateLimitPerMinute": 50,
   "createdAt": "2025-08-06T16:24:08.392Z",
-  "updatedAt": "2025-08-06T16:24:08.394Z"
+  "updatedAt": "2025-08-13T07:24:44.024Z"
 }

@@ -3,6 +3,10 @@
 import { useToast } from '@/components/ui/ToastManager';
 import { Eye, EyeOff, FileText, RefreshCw, Settings } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
+import 'highlight.js/styles/github-dark.css';
 
 interface ClaudeMdViewerProps {
   projectId: string;
@@ -97,69 +101,6 @@ export default function ClaudeMdViewer({
     }
   };
 
-  const renderMarkdown = (content: string) => {
-    // Simple markdown rendering for basic formatting
-    // For a production app, you might want to use a proper markdown parser like 'react-markdown'
-    return content.split('\n').map((line, index) => {
-      if (line.startsWith('# ')) {
-        return (
-          <h1
-            key={index}
-            className="text-2xl font-bold text-accent-50 mb-4 mt-6"
-          >
-            {line.substring(2)}
-          </h1>
-        );
-      } else if (line.startsWith('## ')) {
-        return (
-          <h2
-            key={index}
-            className="text-xl font-semibold text-accent-50 mb-3 mt-5"
-          >
-            {line.substring(3)}
-          </h2>
-        );
-      } else if (line.startsWith('### ')) {
-        return (
-          <h3
-            key={index}
-            className="text-lg font-medium text-accent-50 mb-2 mt-4"
-          >
-            {line.substring(4)}
-          </h3>
-        );
-      } else if (line.startsWith('**') && line.endsWith('**')) {
-        return (
-          <p key={index} className="text-primary-200 mb-2 font-semibold">
-            {line.substring(2, line.length - 2)}
-          </p>
-        );
-      } else if (line.startsWith('- ')) {
-        return (
-          <li key={index} className="text-primary-300 mb-1 ml-4">
-            {line.substring(2)}
-          </li>
-        );
-      } else if (line.startsWith('```')) {
-        return (
-          <div
-            key={index}
-            className="bg-primary-800 rounded p-3 my-2 font-mono text-sm text-primary-200"
-          >
-            Code block
-          </div>
-        );
-      } else if (line.trim() === '') {
-        return <br key={index} />;
-      } else {
-        return (
-          <p key={index} className="text-primary-300 mb-2">
-            {line}
-          </p>
-        );
-      }
-    });
-  };
 
   useEffect(() => {
     fetchClaudeMd();
@@ -197,7 +138,7 @@ export default function ClaudeMdViewer({
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-primary-800 bg-primary-900">
+      <div className="flex items-center justify-between p-4 border-b border-primary-800 bg-primary-900 flex-shrink-0">
         <div className="flex items-center space-x-3">
           <FileText className="w-6 h-6 text-accent-500" />
           <div>
@@ -257,12 +198,56 @@ export default function ClaudeMdViewer({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         {claudeMdData?.content ? (
           <div className="p-6">
             {viewMode === 'rendered' ? (
-              <div className="prose prose-invert max-w-none">
-                {renderMarkdown(claudeMdData.content)}
+              <div className="prose prose-invert max-w-none prose-headings:text-accent-50 prose-strong:text-accent-50 prose-code:text-accent-200 prose-pre:bg-primary-800 prose-pre:text-primary-200 prose-p:text-primary-300 prose-li:text-primary-300 prose-em:text-accent-100">
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeHighlight]}
+                  components={{
+                    strong: ({ children }) => (
+                      <strong className="font-bold text-accent-50">{children}</strong>
+                    ),
+                    em: ({ children }) => (
+                      <em className="italic text-accent-100">{children}</em>
+                    ),
+                    code: ({ children, className, ...rest }) => {
+                      const match = /language-(\w+)/.exec(className || '');
+                      const isInline = !match;
+                      
+                      if (isInline) {
+                        return <code className="bg-primary-800 text-accent-200 px-1 py-0.5 rounded text-sm font-mono" {...rest}>{children}</code>;
+                      }
+                      
+                      return <code className={className} {...rest}>{children}</code>;
+                    },
+                    h1: ({ children }) => (
+                      <h1 className="text-2xl font-bold text-accent-50 mb-4">{children}</h1>
+                    ),
+                    h2: ({ children }) => (
+                      <h2 className="text-xl font-bold text-accent-50 mb-3">{children}</h2>
+                    ),
+                    h3: ({ children }) => (
+                      <h3 className="text-lg font-bold text-accent-50 mb-2">{children}</h3>
+                    ),
+                    p: ({ children }) => (
+                      <p className="text-primary-300 mb-3 leading-relaxed">{children}</p>
+                    ),
+                    ul: ({ children }) => (
+                      <ul className="text-primary-300 mb-3 list-disc list-inside space-y-1">{children}</ul>
+                    ),
+                    ol: ({ children }) => (
+                      <ol className="text-primary-300 mb-3 list-decimal list-inside space-y-1">{children}</ol>
+                    ),
+                    li: ({ children }) => (
+                      <li className="text-primary-300">{children}</li>
+                    ),
+                  }}
+                >
+                  {claudeMdData.content}
+                </ReactMarkdown>
               </div>
             ) : (
               <pre className="bg-primary-800 rounded p-4 text-sm text-primary-200 font-mono whitespace-pre-wrap overflow-x-auto">
@@ -300,7 +285,7 @@ export default function ClaudeMdViewer({
 
       {/* Footer Info */}
       {claudeMdData?.lastModified && (
-        <div className="p-3 border-t border-primary-800 bg-primary-900">
+        <div className="p-3 border-t border-primary-800 bg-primary-900 flex-shrink-0">
           <p className="text-xs text-primary-500">
             Last modified:{' '}
             {new Date(claudeMdData.lastModified).toLocaleString()}

@@ -89,7 +89,7 @@ export class ProjectManagerAgent {
       console.log(`📋 Starting project review for project: ${projectId}`);
 
       // Get project details
-      const project = await prisma.project.findUnique({
+      const project = await prisma.projectIndex.findUnique({
         where: { id: projectId },
       });
 
@@ -177,11 +177,8 @@ export class ProjectManagerAgent {
           }
         }
 
-        // Update project with generated summary
-        await prisma.project.update({
-          where: { id: projectId },
-          data: { summary: projectSummary },
-        });
+        // Note: ProjectIndex doesn't have a summary field in current schema
+        // Would need to store this elsewhere or update schema
 
         // Calculate actual tokens used (based on content size)
         const inputTokens = Math.ceil(context.name.length / 4);
@@ -393,7 +390,7 @@ Just respond with the sentence describing this project's purpose.`;
   }
 
   async analyzeProject(projectId: string): Promise<ProjectContext> {
-    const project = await prisma.project.findUnique({
+    const project = await prisma.projectIndex.findUnique({
       where: { id: projectId },
     });
 
@@ -444,7 +441,7 @@ Just respond with the sentence describing this project's purpose.`;
    * Get project context without regenerating summary (for feature requests)
    */
   async getProjectContext(projectId: string): Promise<ProjectContext> {
-    const project = await prisma.project.findUnique({
+    const project = await prisma.projectIndex.findUnique({
       where: { id: projectId },
     });
 
@@ -701,15 +698,8 @@ Just respond with the sentence describing this project's purpose.`;
     recommendations: string[];
     metrics: Record<string, number>;
   }> {
-    const project = await prisma.project.findUnique({
+    const project = await prisma.projectIndex.findUnique({
       where: { id: projectId },
-      include: {
-        agentSpecs: true,
-        tokenUsage: {
-          orderBy: { timestamp: 'desc' },
-          take: 10,
-        },
-      },
     });
 
     if (!project) {
@@ -766,7 +756,7 @@ Just respond with the sentence describing this project's purpose.`;
       testFiles: analysis?.structure?.testFiles.length || 0,
       configFiles: analysis?.structure?.configFiles.length || 0,
       dependencies: analysis?.dependencies?.length || 0,
-      agentSpecs: project.agentSpecs.length,
+      agentSpecs: 0, // TODO: agentSpecs not available in current schema
       recentTasks: recentTokenUsage,
     };
 
@@ -787,7 +777,7 @@ Just respond with the sentence describing this project's purpose.`;
 
     // Store analysis in a JSON field or separate table
     // For now, we'll use the project's description field to store basic info
-    await prisma.project.update({
+    await prisma.projectIndex.update({
       where: { id: projectId },
       data: {
         description: summary,
@@ -796,9 +786,12 @@ Just respond with the sentence describing this project's purpose.`;
   }
 
   private async storeAgentSpec(
-    projectId: string,
-    spec: AgentSpec
+    _projectId: string,
+    _spec: AgentSpec
   ): Promise<void> {
+    // TODO: AgentSpecification model not found in current schema
+    // Temporarily commenting out until schema is updated
+    /*
     await prisma.agentSpecification.upsert({
       where: {
         projectId_name: {
@@ -825,10 +818,11 @@ Just respond with the sentence describing this project's purpose.`;
         prompt: spec.prompt,
       },
     });
+    */
   }
 
   private async getStoredProjectAnalysis(
-    projectId: string
+    _projectId: string
   ): Promise<ProjectContext | null> {
     // In a real implementation, this would retrieve from a proper storage
     // For now, return null and analyze on demand
@@ -987,12 +981,11 @@ Guidelines:
           projectId,
           title: analysis.epicTitle,
           description: analysis.epicDescription,
-          type: 'FEATURE',
-          phase: 'PLANNING',
-          status: 'ACTIVE',
-          mvpPriority,
-          coreValue: analysis.description,
-          estimatedStoryPoints: analysis.stories.reduce(
+          businessValue: analysis.description,
+          phase: 'MVP',
+          status: 'PENDING',
+          priority: mvpPriority === 'LOW' ? 0 : mvpPriority === 'MEDIUM' ? 1 : 2,
+          estimatedEffort: analysis.stories.reduce(
             (sum, story) => sum + story.storyPoints,
             0
           ),
@@ -1024,32 +1017,27 @@ Guidelines:
       for (let i = 0; i < stories.length; i++) {
         const story = stories[i];
 
-        const kanbanCard = await prisma.kanbanCard.create({
+        const createdStory = await prisma.story.create({
           data: {
-            projectId: (await prisma.epic.findUnique({
-              where: { id: epicId },
-            }))!.projectId,
             epicId,
             title: story.title,
             description: story.description,
-            status: 'BACKLOG',
-            position: i,
-            storyPoints: story.storyPoints,
-            priority: story.priority,
-            sequence: i,
-            tddEnabled: true,
             acceptanceCriteria: JSON.stringify(story.acceptanceCriteria),
+            status: 'PENDING',
+            storyPoints: story.storyPoints,
+            priority: story.priority === 'LOW' ? 0 : story.priority === 'MEDIUM' ? 1 : 2,
+            iteration: null,
           },
         });
 
-        storyIds.push(kanbanCard.id);
+        storyIds.push(createdStory.id);
         console.log(`Created Story: ${story.title}`);
       }
 
-      // Update Epic phase to IN_PROGRESS
+      // Update Epic status to IN_PROGRESS
       await prisma.epic.update({
         where: { id: epicId },
-        data: { phase: 'IN_PROGRESS' },
+        data: { status: 'IN_PROGRESS', startedAt: new Date() },
       });
 
       return storyIds;
@@ -1068,24 +1056,8 @@ Guidelines:
     try {
       console.log(`Updating CLAUDE.md for project: ${projectId}`);
 
-      const project = await prisma.project.findUnique({
+      const project = await prisma.projectIndex.findUnique({
         where: { id: projectId },
-        include: {
-          epics: {
-            where: { status: 'ACTIVE' },
-            include: {
-              stories: {
-                orderBy: { sequence: 'asc' },
-              },
-            },
-            orderBy: { sequence: 'asc' },
-          },
-          cycles: {
-            where: { status: 'ACTIVE' },
-            orderBy: { createdAt: 'desc' },
-            take: 5,
-          },
-        },
       });
 
       if (!project) {

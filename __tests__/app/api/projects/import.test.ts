@@ -5,7 +5,7 @@ import { mockPrisma, clearAllMocks } from '@/__tests__/helpers/test-utils';
 
 jest.mock('@/lib/db', () => ({
   prisma: {
-    project: {
+    projectIndex: {
       findFirst: jest.fn(),
       create: jest.fn(),
     },
@@ -29,9 +29,9 @@ jest.mock('fs/promises', () => ({
 
 // Type the mocked prisma client properly
 const mockPrismaDb = {
-  project: {
-    findFirst: prisma.project.findFirst as jest.MockedFunction<typeof prisma.project.findFirst>,
-    create: prisma.project.create as jest.MockedFunction<typeof prisma.project.create>,
+  projectIndex: {
+    findFirst: prisma.projectIndex.findFirst as jest.MockedFunction<typeof prisma.projectIndex.findFirst>,
+    create: prisma.projectIndex.create as jest.MockedFunction<typeof prisma.projectIndex.create>,
   },
   taskExecution: {
     create: prisma.taskExecution.create as jest.MockedFunction<typeof prisma.taskExecution.create>,
@@ -75,7 +75,7 @@ describe('/api/projects/import', () => {
         updatedAt: new Date(),
       };
 
-      mockPrismaDb.project.findFirst.mockResolvedValueOnce(null);
+      mockPrismaDb.projectIndex.findFirst.mockResolvedValueOnce(null);
       fs.access.mockRejectedValueOnce(new Error('Path does not exist'));
       runImportAsync.mockResolvedValueOnce({
         success: true,
@@ -121,7 +121,7 @@ describe('/api/projects/import', () => {
         updatedAt: new Date(),
       };
 
-      mockPrismaDb.project.findFirst.mockResolvedValueOnce(null);
+      mockPrismaDb.projectIndex.findFirst.mockResolvedValueOnce(null);
       fs.access.mockResolvedValueOnce(undefined);
       fs.stat.mockResolvedValueOnce({ isDirectory: () => true });
       runImportAsync.mockResolvedValueOnce({
@@ -190,7 +190,7 @@ describe('/api/projects/import', () => {
         updatedAt: new Date(),
       };
 
-      mockPrismaDb.project.findFirst.mockResolvedValueOnce(existingProject);
+      mockPrismaDb.projectIndex.findFirst.mockResolvedValueOnce(existingProject);
 
       const request = new NextRequest('http://localhost:3000/api/projects/import', {
         method: 'POST',
@@ -206,7 +206,7 @@ describe('/api/projects/import', () => {
     });
 
     it('should return 409 for conflicting local path', async () => {
-      mockPrismaDb.project.findFirst
+      mockPrismaDb.projectIndex.findFirst
         .mockResolvedValueOnce(null) // No name conflict
         .mockResolvedValueOnce({ // Path conflict
           id: 'path-conflict-id',
@@ -236,7 +236,7 @@ describe('/api/projects/import', () => {
         description: 'A project that does not exist',
       };
 
-      mockPrismaDb.project.findFirst.mockResolvedValueOnce(null);
+      mockPrismaDb.projectIndex.findFirst.mockResolvedValueOnce(null);
       fs.access.mockRejectedValueOnce(new Error('ENOENT: no such file or directory'));
 
       const request = new NextRequest('http://localhost:3000/api/projects/import', {
@@ -259,7 +259,7 @@ describe('/api/projects/import', () => {
         description: 'Trying to import a file instead of directory',
       };
 
-      mockPrismaDb.project.findFirst.mockResolvedValueOnce(null);
+      mockPrismaDb.projectIndex.findFirst.mockResolvedValueOnce(null);
       fs.access.mockResolvedValueOnce(undefined);
       fs.stat.mockResolvedValueOnce({ isDirectory: () => false });
 
@@ -277,7 +277,7 @@ describe('/api/projects/import', () => {
     });
 
     it('should handle import process failure', async () => {
-      mockPrismaDb.project.findFirst.mockResolvedValueOnce(null);
+      mockPrismaDb.projectIndex.findFirst.mockResolvedValueOnce(null);
       fs.access.mockRejectedValueOnce(new Error('Path does not exist'));
       runImportAsync.mockResolvedValueOnce({
         success: false,
@@ -331,7 +331,7 @@ describe('/api/projects/import', () => {
     });
 
     it('should handle database connection errors', async () => {
-      mockPrismaDb.project.findFirst.mockRejectedValueOnce(
+      mockPrismaDb.projectIndex.findFirst.mockRejectedValueOnce(
         new Error('Database connection lost')
       );
 

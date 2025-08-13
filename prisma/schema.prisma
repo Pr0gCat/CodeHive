@@ -22,6 +22,7 @@ model ProjectIndex {
   buildTool       String?
   projectType     String   @default("PORTABLE")
   importSource    String?
+  phase           String   @default("REQUIREMENTS") // 專案階段: REQUIREMENTS, MVP, CONTINUOUS
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   lastAccessedAt  DateTime @default(now())
@@ -136,4 +137,240 @@ model TaskEvent {
   task      TaskExecution @relation(fields: [taskId], references: [taskId], onDelete: Cascade)
 
   @@map("task_events")
+}
+
+// ===== Sprint 2: 階層化結構模型 =====
+
+model Epic {
+  id                String     @id @default(cuid())
+  projectId         String
+  title             String
+  description       String?
+  businessValue     String?      // 商業價值描述
+  acceptanceCriteria String?     // 驗收標準
+  priority          Int        @default(0)  // 優先級 (0=低, 1=中, 2=高, 3=緊急)
+  status            String     @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, BLOCKED
+  phase             String?     // 對應專案階段 (REQUIREMENTS, MVP, CONTINUOUS)
+  estimatedEffort   Int?        // 預估工作量（故事點）
+  actualEffort      Int?        // 實際工作量
+  startedAt         DateTime?
+  completedAt       DateTime?
+  tokenUsage        Int        @default(0)  // 此Epic使用的token數
+  createdBy         String?     // 創建者（使用者/AI）
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  
+  // Relations
+  stories           Story[]
+  dependencies      EpicDependency[] @relation("DependentEpic")
+  dependents        EpicDependency[] @relation("RequiredEpic")
+  
+  @@index([projectId, status])
+  @@index([projectId, priority])
+  @@map("epics")
+}
+
+model Story {
+  id                String      @id @default(cuid())
+  epicId            String
+  title             String
+  userStory         String?      // As a [user], I want [feature] so that [benefit]
+  description       String?
+  acceptanceCriteria String?     // 驗收標準
+  priority          Int         @default(0)
+  status            String      @default("PENDING")
+  storyPoints       Int?         // 故事點數
+  iteration         Int?         // 迭代/Sprint編號
+  startedAt         DateTime?
+  completedAt       DateTime?
+  tokenUsage        Int         @default(0)
+  metadata          String?      // JSON string for additional data
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // Relations
+  epic              Epic        @relation(fields: [epicId], references: [id], onDelete: Cascade)
+  tasks             Task[]
+  
+  @@index([epicId, status])
+  @@index([epicId, priority])
+  @@map("stories")
+}
+
+model Task {
+  id                String          @id @default(cuid())
+  storyId           String
+  title             String
+  description       String?
+  type              String          // DEV, TEST, REVIEW, DEPLOY, DOCUMENT, etc.
+  acceptanceCriteria String?        // ATDD標準
+  expectedOutcome   String?         // 預期成果
+  priority          Int             @default(0)
+  status            String          @default("PENDING")
+  estimatedTime     Int?            // 預估時間（分鐘）
+  actualTime        Int?            // 實際時間（分鐘）
+  assignedAgent     String?         // 指派的代理類型
+  retryCount        Int             @default(0)
+  maxRetries        Int             @default(3)
+  startedAt         DateTime?
+  completedAt       DateTime?
+  validationResult  String?         // 驗證結果
+  metadata          String?         // JSON string
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  
+  // Relations
+  story             Story           @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  instructions      Instruction[]
+  dependencies      TaskDependency[] @relation("DependentTask")
+  dependents        TaskDependency[] @relation("RequiredTask")
+  
+  @@index([storyId, status])
+  @@index([storyId, priority])
+  @@map("tasks")
+}
+
+model Instruction {
+  id                String      @id @default(cuid())
+  taskId            String
+  directive         String      // 具體指令
+  expectedOutcome   String      // 預期成果
+  validationCriteria String?    // 驗證標準
+  sequence          Int         // 執行順序
+  status            String      @default("PENDING")
+  output            String?     // 執行輸出
+  error             String?     // 錯誤訊息
+  tokenUsage        Int         @default(0)
+  executionTime     Int?        // 執行時間（毫秒）
+  retryCount        Int         @default(0)
+  executedBy        String?     // 執行的代理
+  startedAt         DateTime?
+  completedAt       DateTime?
+  metadata          String?     // JSON string
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // Relations
+  task              Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  dependencies      InstructionDependency[] @relation("DependentInstruction")
+  dependents        InstructionDependency[] @relation("RequiredInstruction")
+  
+  @@index([taskId, sequence])
+  @@index([taskId, status])
+  @@map("instructions")
+}
+
+// ===== 依賴關係模型 =====
+
+model EpicDependency {
+  id              String   @id @default(cuid())
+  dependentEpicId String   // 依賴的Epic
+  requiredEpicId  String   // 被依賴的Epic
+  dependencyType  String   @default("BLOCKS") // BLOCKS, RELATES_TO
+  createdAt       DateTime @default(now())
+  
+  dependentEpic   Epic     @relation("DependentEpic", fields: [dependentEpicId], references: [id], onDelete: Cascade)
+  requiredEpic    Epic     @relation("RequiredEpic", fields: [requiredEpicId], references: [id], onDelete: Cascade)
+  
+  @@unique([dependentEpicId, requiredEpicId])
+  @@map("epic_dependencies")
+}
+
+model TaskDependency {
+  id              String   @id @default(cuid())
+  dependentTaskId String
+  requiredTaskId  String
+  dependencyType  String   @default("BLOCKS")
+  createdAt       DateTime @default(now())
+  
+  dependentTask   Task     @relation("DependentTask", fields: [dependentTaskId], references: [id], onDelete: Cascade)
+  requiredTask    Task     @relation("RequiredTask", fields: [requiredTaskId], references: [id], onDelete: Cascade)
+  
+  @@unique([dependentTaskId, requiredTaskId])
+  @@map("task_dependencies")
+}
+
+model InstructionDependency {
+  id                      String      @id @default(cuid())
+  dependentInstructionId  String
+  requiredInstructionId   String
+  dependencyType          String      @default("SEQUENTIAL")
+  createdAt               DateTime    @default(now())
+  
+  dependentInstruction    Instruction @relation("DependentInstruction", fields: [dependentInstructionId], references: [id], onDelete: Cascade)
+  requiredInstruction     Instruction @relation("RequiredInstruction", fields: [requiredInstructionId], references: [id], onDelete: Cascade)
+  
+  @@unique([dependentInstructionId, requiredInstructionId])
+  @@map("instruction_dependencies")
+}
+
+// ===== Sprint 1: Conversation Infrastructure =====
+
+model Conversation {
+  id          String   @id @default(cuid())
+  projectId   String   
+  title       String?  // Optional conversation title
+  phase       String   // REQUIREMENTS, MVP, CONTINUOUS
+  status      String   @default("ACTIVE") // ACTIVE, ARCHIVED, COMPLETED
+  context     String?  // JSON string with project context at conversation start
+  summary     String?  // AI-generated conversation summary
+  messageCount Int     @default(0)
+  tokenUsage  Int      @default(0) // Total tokens used in this conversation
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lastMessageAt DateTime?
+  
+  // Relations
+  messages    Message[]
+  
+  @@index([projectId, status])
+  @@index([projectId, phase])
+  @@index([projectId, lastMessageAt])
+  @@map("conversations")
+}
+
+model Message {
+  id            String       @id @default(cuid())
+  conversationId String
+  role          String       // USER, AGENT, SYSTEM
+  content       String       // The actual message content
+  contentType   String       @default("TEXT") // TEXT, MARKDOWN, JSON
+  metadata      String?      // JSON string for additional data (actions, references, etc.)
+  phase         String?      // Phase when message was sent
+  tokenUsage    Int         @default(0) // Tokens used for this message (for AI responses)
+  responseTime  Int?        // Response time in milliseconds (for AI responses)
+  parentMessageId String?   // For threading/replies
+  isError       Boolean     @default(false)
+  errorDetails  String?     // Error information if message failed
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  // Relations
+  conversation  Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  parentMessage Message?     @relation("MessageThread", fields: [parentMessageId], references: [id])
+  replies       Message[]    @relation("MessageThread")
+  actions       MessageAction[] // Actions triggered by this message
+  
+  @@index([conversationId, createdAt])
+  @@index([conversationId, role])
+  @@map("messages")
+}
+
+model MessageAction {
+  id          String   @id @default(cuid())
+  messageId   String
+  actionType  String   // CREATE_EPIC, CREATE_STORY, CREATE_TASK, UPDATE_PHASE, etc.
+  actionData  String   // JSON string with action parameters
+  status      String   @default("PENDING") // PENDING, COMPLETED, FAILED
+  result      String?  // Result of the action execution
+  error       String?  // Error message if action failed
+  executedAt  DateTime?
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  message     Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  
+  @@index([messageId])
+  @@index([status])
+  @@map("message_actions")
 }

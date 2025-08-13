@@ -19,7 +19,7 @@ export default function Home() {
             </h1>
           </div>
           <p className="text-lg text-primary-300">
-            Claude Code 驅動的多 Agent 軟體開發平台
+            AI 驅動的智能專案開發平台 - 單一專案代理架構
           </p>
         </div>
 

@@ -13,6 +13,7 @@ import { UnifiedProjectOverview } from '@/components/UnifiedProjectOverview';
 import UserQueriesPanel from '@/components/UserQueriesPanel';
 import EpicCreateModal from '@/components/EpicCreateModal';
 import KanbanBoard from '@/components/KanbanBoard';
+import ProjectAgentChat from '@/components/ProjectAgentChat';
 
 interface ProjectPageProps {
   params: { id: string };
@@ -39,7 +40,24 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     | 'cycles'
     | 'queries'
     | 'claude-md'
-  >('overview');
+  >('queries'); // Start with conversation-first approach
+  const [projectPhase, setProjectPhase] = useState<
+    'REQUIREMENTS' | 'MVP' | 'CONTINUOUS'
+  >('REQUIREMENTS');
+
+  const handlePhaseChange = useCallback((newPhase: 'REQUIREMENTS' | 'MVP' | 'CONTINUOUS') => {
+    setProjectPhase(newPhase);
+    // Also update the project object to reflect the new phase
+    if (project) {
+      setProject({
+        ...project,
+        phase: newPhase
+      });
+    }
+  }, [project]);
+  const [projectAgentStatus, setProjectAgentStatus] = useState<
+    'IDLE' | 'PLANNING' | 'EXECUTING' | 'VALIDATING'
+  >('IDLE');
   const [claudeMdLastUpdate, setClaudeMdLastUpdate] = useState<Date | null>(
     null
   );
@@ -57,8 +75,8 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     const tab = urlParams.get('tab');
     if (tab === 'claude-md') {
       setActiveTab('claude-md');
-    } else if (tab === 'queries') {
-      setActiveTab('queries');
+    } else if (tab === 'overview') {
+      setActiveTab('overview');
     } else if (tab === 'epics') {
       setActiveTab('epics');
     } else if (tab === 'stories') {
@@ -68,7 +86,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     } else if (tab === 'cycles') {
       setActiveTab('cycles');
     } else {
-      setActiveTab('overview');
+      setActiveTab('queries'); // Default to conversation-first
     }
   }, []);
 
@@ -79,6 +97,11 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
       if (data.success) {
         setProject(data.data);
+
+        // Set project phase from database
+        if (data.data.phase) {
+          setProjectPhase(data.data.phase as 'REQUIREMENTS' | 'MVP' | 'CONTINUOUS');
+        }
 
         // If project is initializing, try to fetch progress
         if (data.data.status === 'INITIALIZING') {
@@ -473,9 +496,9 @@ export default function ProjectPage({ params }: ProjectPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-primary-950">
+    <div className="h-screen bg-primary-950 overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="bg-primary-900 border-b border-primary-800">
+      <div className="bg-primary-900 border-b border-primary-800 flex-shrink-0">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -587,18 +610,99 @@ export default function ProjectPage({ params }: ProjectPageProps) {
         </div>
       </div>
 
-      <div className="h-[calc(100vh-120px)] flex">
+      {/* Project Phase & Agent Status Indicator */}
+      <div className="bg-primary-900 border-b border-primary-800 flex-shrink-0">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-primary-400">專案階段：</span>
+                <div className="flex gap-2">
+                  {[
+                    { key: 'REQUIREMENTS', label: '需求獲取', color: 'blue' },
+                    { key: 'MVP', label: 'MVP開發', color: 'purple' },
+                    { key: 'CONTINUOUS', label: '持續整合', color: 'green' }
+                  ].map((phase) => (
+                    <button
+                      key={phase.key}
+                      className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                        projectPhase === phase.key
+                          ? `bg-${phase.color}-600 text-white`
+                          : 'bg-primary-700 text-primary-300 hover:bg-primary-600'
+                      }`}
+                      onClick={() => setProjectPhase(phase.key as any)}
+                    >
+                      {phase.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-primary-400">專案代理：</span>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                  projectAgentStatus === 'IDLE'
+                    ? 'bg-gray-700 text-gray-200'
+                    : projectAgentStatus === 'PLANNING'
+                      ? 'bg-blue-700 text-blue-200'
+                      : projectAgentStatus === 'EXECUTING'
+                        ? 'bg-green-700 text-green-200'
+                        : 'bg-yellow-700 text-yellow-200'
+                }`}>
+                  {projectAgentStatus === 'IDLE' ? '閒置' :
+                   projectAgentStatus === 'PLANNING' ? '規劃中' :
+                   projectAgentStatus === 'EXECUTING' ? '執行中' : '驗證中'}
+                </span>
+              </div>
+            </div>
+            <div className="text-sm text-primary-400">
+              {projectPhase === 'REQUIREMENTS' && '🔍 探索專案需求和願景'}
+              {projectPhase === 'MVP' && '🚀 建立最小可行產品'}
+              {projectPhase === 'CONTINUOUS' && '🔄 持續改進和迭代'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 flex min-h-0">
         {/* Agent Status Panel - Always Visible */}
         <div className="w-64 lg:w-72 xl:w-80 2xl:w-96 p-4 bg-primary-950 border-r border-primary-800 h-full overflow-y-auto flex-shrink-0">
           <AgentStatusPanel projectId={project.id} />
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col">
-          {/* Tabs - Organized by Workflow */}
-          <div className="border-b border-primary-800 bg-primary-950">
+        <div className="flex-1 flex flex-col min-h-0">
+          {/* Tabs - Conversation-First Approach */}
+          <div className="border-b border-primary-800 bg-primary-950 flex-shrink-0">
             <div className="flex overflow-x-auto">
-              {/* 1. PLANNING PHASE */}
+              {/* PRIMARY: Conversation Interface */}
+              <button
+                onClick={() => setActiveTab('queries')}
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
+                  activeTab === 'queries'
+                    ? 'text-accent-50 border-accent-500 bg-accent-500/10'
+                    : 'text-primary-400 hover:text-accent-50 border-transparent hover:border-primary-600'
+                }`}
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+                <div className="flex flex-col items-start">
+                  <span>專案對話</span>
+                  <span className="text-xs text-primary-500 font-normal">主要互動介面</span>
+                </div>
+              </button>
+
+              {/* SECONDARY: Execution Status */}
               <button
                 onClick={() => setActiveTab('overview')}
                 className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
@@ -620,9 +724,34 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                     d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
                   />
                 </svg>
-                專案總覽
+                執行狀態
               </button>
 
+              <button
+                onClick={() => setActiveTab('tasks')}
+                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
+                  activeTab === 'tasks'
+                    ? 'text-accent-50 border-accent-500'
+                    : 'text-primary-400 hover:text-accent-50 border-transparent hover:border-primary-600'
+                }`}
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+                當前任務
+              </button>
+
+              {/* TERTIARY: Development Tools */}
               <button
                 onClick={() => setActiveTab('epics')}
                 className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
@@ -644,10 +773,9 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                     d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
                   />
                 </svg>
-                Epic 規劃
+                史詩規劃
               </button>
 
-              {/* 2. DEVELOPMENT PHASE */}
               <button
                 onClick={() => setActiveTab('stories')}
                 className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
@@ -669,7 +797,7 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                     d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
                   />
                 </svg>
-                Story 開發
+                故事開發
               </button>
 
               <button
@@ -693,60 +821,10 @@ export default function ProjectPage({ params }: ProjectPageProps) {
                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                   />
                 </svg>
-                TDD 週期
+                ATDD週期
               </button>
 
-              {/* 3. EXECUTION PHASE */}
-              <button
-                onClick={() => setActiveTab('tasks')}
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
-                  activeTab === 'tasks'
-                    ? 'text-accent-50 border-accent-500'
-                    : 'text-primary-400 hover:text-accent-50 border-transparent hover:border-primary-600'
-                }`}
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
-                任務執行
-              </button>
-
-              {/* 4. COMMUNICATION PHASE */}
-              <button
-                onClick={() => setActiveTab('queries')}
-                className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
-                  activeTab === 'queries'
-                    ? 'text-accent-50 border-accent-500'
-                    : 'text-primary-400 hover:text-accent-50 border-transparent hover:border-primary-600'
-                }`}
-              >
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                  />
-                </svg>
-                AI 諮詢
-              </button>
-
-              {/* 5. DOCUMENTATION PHASE */}
+              {/* DOCUMENTATION */}
               <button
                 onClick={() => setActiveTab('claude-md')}
                 className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
@@ -786,21 +864,177 @@ export default function ProjectPage({ params }: ProjectPageProps) {
           </div>
 
           {/* Tab Content */}
-          <div className="flex-1">
-            {/* Unified Project Overview */}
+          <div className="flex-1 min-h-0">
+            {/* Execution Status Overview */}
             <div
-              className={`h-full ${activeTab === 'overview' ? 'block' : 'hidden'}`}
+              className={`h-full ${activeTab === 'overview' ? 'block' : 'hidden'} flex flex-col`}
             >
-              <div className="p-6 h-full overflow-y-auto">
-                <UnifiedProjectOverview projectId={project.id} />
+              <div className="p-6 flex-1 overflow-y-auto min-h-0">
+                <div className="max-w-7xl mx-auto space-y-6">
+                  {/* Agent Status Summary */}
+                  <div className="bg-primary-900 border border-primary-700 rounded-lg p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-xl font-bold text-accent-50">專案代理執行狀態</h2>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm text-primary-400">當前狀態：</span>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          projectAgentStatus === 'IDLE'
+                            ? 'bg-gray-700 text-gray-200'
+                            : projectAgentStatus === 'PLANNING'
+                              ? 'bg-blue-700 text-blue-200'
+                              : projectAgentStatus === 'EXECUTING'
+                                ? 'bg-green-700 text-green-200'
+                                : 'bg-yellow-700 text-yellow-200'
+                        }`}>
+                          {projectAgentStatus === 'IDLE' ? '閒置中' :
+                           projectAgentStatus === 'PLANNING' ? '規劃中' :
+                           projectAgentStatus === 'EXECUTING' ? '執行中' : '驗證中'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Execution Hierarchy */}
+                    <div className="grid md:grid-cols-3 gap-6">
+                      {/* Current Epic */}
+                      <div className="bg-primary-800 border border-primary-600 rounded-lg p-4">
+                        <h3 className="font-semibold text-accent-50 mb-3 flex items-center gap-2">
+                          📚 當前史詩
+                        </h3>
+                        {epics.find(e => e.phase === 'IN_PROGRESS') ? (
+                          epics.filter(e => e.phase === 'IN_PROGRESS').map(epic => (
+                            <div key={epic.id}>
+                              <h4 className="font-medium text-accent-50 mb-1">{epic.title}</h4>
+                              <p className="text-sm text-primary-300 mb-2">{epic.description}</p>
+                              <div className="flex justify-between text-xs text-primary-400">
+                                <span>進度: {epic.progress?.percentage || 0}%</span>
+                                <span className="px-2 py-1 bg-green-800 text-green-200 rounded">
+                                  {epic.phase}
+                                </span>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-primary-400 text-sm">無進行中的史詩</p>
+                        )}
+                      </div>
+
+                      {/* Current Story */}
+                      <div className="bg-primary-800 border border-primary-600 rounded-lg p-4">
+                        <h3 className="font-semibold text-accent-50 mb-3 flex items-center gap-2">
+                          📝 當前故事
+                        </h3>
+                        <p className="text-primary-400 text-sm">等待史詩啟動</p>
+                      </div>
+
+                      {/* Current Task */}
+                      <div className="bg-primary-800 border border-primary-600 rounded-lg p-4">
+                        <h3 className="font-semibold text-accent-50 mb-3 flex items-center gap-2">
+                          ⚡ 當前任務
+                        </h3>
+                        <p className="text-primary-400 text-sm">等待故事分派</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ATDD Cycle Status */}
+                  <div className="bg-primary-900 border border-primary-700 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-accent-50 mb-4 flex items-center gap-2">
+                      🔄 ATDD 執行循環
+                    </h3>
+                    <div className="grid grid-cols-4 gap-4">
+                      {[
+                        { name: '定義期望', desc: '明確任務目標', active: false, icon: '🎯' },
+                        { name: '建立標準', desc: '設定驗證條件', active: false, icon: '📋' },
+                        { name: '執行指令', desc: 'Claude Code 實作', active: false, icon: '⚙️' },
+                        { name: '驗證結果', desc: '確認完成狀態', active: false, icon: '✅' }
+                      ].map((step, idx) => (
+                        <div
+                          key={idx}
+                          className={`p-4 rounded-lg text-center border-2 transition-all ${
+                            step.active
+                              ? 'bg-accent-600 text-white border-accent-500'
+                              : 'bg-primary-800 text-primary-300 border-primary-600'
+                          }`}
+                        >
+                          <div className="text-2xl mb-2">{step.icon}</div>
+                          <h4 className="font-medium text-sm mb-1">{step.name}</h4>
+                          <p className="text-xs opacity-80">{step.desc}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Project Statistics */}
+                  <div className="grid md:grid-cols-3 gap-6">
+                    <div className="bg-primary-900 border border-primary-700 rounded-lg p-6">
+                      <h3 className="text-lg font-semibold text-accent-50 mb-4">專案統計</h3>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-primary-300">史詩總數</span>
+                          <span className="text-accent-50 font-medium">{epics.length}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-primary-300">已完成史詩</span>
+                          <span className="text-accent-50 font-medium">
+                            {epics.filter(e => e.phase === 'DONE').length}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-primary-300">進行中史詩</span>
+                          <span className="text-accent-50 font-medium">
+                            {epics.filter(e => e.phase === 'IN_PROGRESS').length}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-primary-900 border border-primary-700 rounded-lg p-6">
+                      <h3 className="text-lg font-semibold text-accent-50 mb-4">代幣使用</h3>
+                      <div className="space-y-3 text-center">
+                        <div>
+                          <div className="text-2xl font-bold text-accent-50">0</div>
+                          <div className="text-sm text-primary-400">總計代幣</div>
+                        </div>
+                        <div>
+                          <div className="text-lg font-medium text-accent-50">$0.00</div>
+                          <div className="text-sm text-primary-400">預估成本</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-primary-900 border border-primary-700 rounded-lg p-6">
+                      <h3 className="text-lg font-semibold text-accent-50 mb-4">快速操作</h3>
+                      <div className="space-y-3">
+                        <button
+                          onClick={() => setActiveTab('queries')}
+                          className="w-full px-4 py-2 bg-accent-600 text-white rounded-lg hover:bg-accent-700 text-sm"
+                        >
+                          開始對話
+                        </button>
+                        <button
+                          onClick={() => setActiveTab('epics')}
+                          className="w-full px-4 py-2 border border-primary-600 text-primary-300 rounded-lg hover:bg-primary-800 text-sm"
+                        >
+                          管理史詩
+                        </button>
+                        <button
+                          onClick={() => setActiveTab('claude-md')}
+                          className="w-full px-4 py-2 border border-primary-600 text-primary-300 rounded-lg hover:bg-primary-800 text-sm"
+                        >
+                          查看文檔
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Epics Management Tab */}
             <div
-              className={`h-full ${activeTab === 'epics' ? 'block' : 'hidden'}`}
+              className={`h-full ${activeTab === 'epics' ? 'block' : 'hidden'} flex flex-col`}
             >
-              <div className="p-6 h-full overflow-y-auto">
+              <div className="p-6 flex-1 overflow-y-auto min-h-0">
                 <div className="max-w-7xl mx-auto">
                   <div className="flex items-center justify-between mb-6">
                     <div>
@@ -994,18 +1228,18 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
             {/* Stories Management Tab */}
             <div
-              className={`h-full ${activeTab === 'stories' ? 'block' : 'hidden'}`}
+              className={`h-full ${activeTab === 'stories' ? 'block' : 'hidden'} flex flex-col`}
             >
-              <div className="p-6 h-full overflow-hidden">
+              <div className="p-6 flex-1 overflow-hidden min-h-0">
                 <KanbanBoard projectId={project.id} />
               </div>
             </div>
 
             {/* Tasks Tracking Tab */}
             <div
-              className={`h-full ${activeTab === 'tasks' ? 'block' : 'hidden'}`}
+              className={`h-full ${activeTab === 'tasks' ? 'block' : 'hidden'} flex flex-col`}
             >
-              <div className="p-6 h-full overflow-y-auto">
+              <div className="p-6 flex-1 overflow-y-auto min-h-0">
                 <div className="max-w-7xl mx-auto">
                   <div className="flex items-center justify-between mb-6">
                     <div>
@@ -1059,9 +1293,9 @@ export default function ProjectPage({ params }: ProjectPageProps) {
 
             {/* TDD Cycles Tab */}
             <div
-              className={`h-full ${activeTab === 'cycles' ? 'block' : 'hidden'}`}
+              className={`h-full ${activeTab === 'cycles' ? 'block' : 'hidden'} flex flex-col`}
             >
-              <div className="p-6 h-full overflow-y-auto">
+              <div className="p-6 flex-1 overflow-y-auto min-h-0">
                 <div className="max-w-7xl mx-auto">
                   <div className="mb-6">
                     <h2 className="text-2xl font-bold text-accent-50">
@@ -1138,12 +1372,120 @@ export default function ProjectPage({ params }: ProjectPageProps) {
               </div>
             </div>
 
-            {/* Queries Tab */}
+            {/* Primary: Conversation Interface */}
             <div
-              className={`h-full ${activeTab === 'queries' ? 'block' : 'hidden'}`}
+              className={`h-full ${activeTab === 'queries' ? 'block' : 'hidden'} flex flex-col`}
             >
-              <div className="p-6 h-full overflow-y-auto">
-                <UserQueriesPanel projectId={project.id} />
+              <div className="p-6 flex-1 overflow-y-auto min-h-0">
+                <div className="max-w-4xl mx-auto space-y-6">
+                  {/* Phase-specific guidance */}
+                  {projectPhase === 'REQUIREMENTS' && (
+                    <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-6 mb-6">
+                      <h2 className="text-xl font-bold text-blue-300 mb-3 flex items-center gap-2">
+                        🔍 需求獲取階段
+                      </h2>
+                      <p className="text-blue-200 mb-4">
+                        歡迎來到 CodeHive！我是您的專案代理，將透過對話幫助您探索和定義專案需求。
+                      </p>
+                      <div className="grid md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <h4 className="font-medium text-blue-300 mb-2">我們可以討論：</h4>
+                          <ul className="space-y-1 text-blue-200">
+                            <li>• 專案目標和願景</li>
+                            <li>• 核心功能需求</li>
+                            <li>• 目標用戶和使用場景</li>
+                            <li>• 技術限制和偏好</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-blue-300 mb-2">接下來：</h4>
+                          <ul className="space-y-1 text-blue-200">
+                            <li>• 建立專案提案</li>
+                            <li>• 定義 MVP 範圍</li>
+                            <li>• 規劃開發階段</li>
+                            <li>• 進入 MVP 開發</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {projectPhase === 'MVP' && (
+                    <div className="bg-purple-900/20 border border-purple-700 rounded-lg p-6 mb-6">
+                      <h2 className="text-xl font-bold text-purple-300 mb-3 flex items-center gap-2">
+                        🚀 MVP 開發階段
+                      </h2>
+                      <p className="text-purple-200 mb-4">
+                        正在建立最小可行產品。我將循序執行各個史詩和故事，確保每個功能都經過適當的測試和驗證。
+                      </p>
+                      <div className="grid md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <h4 className="font-medium text-purple-300 mb-2">當前執行模式：</h4>
+                          <ul className="space-y-1 text-purple-200">
+                            <li>• 史詩 → 故事 → 任務</li>
+                            <li>• ATDD 循環驗證</li>
+                            <li>• 循序執行確保品質</li>
+                            <li>• 代幣使用追蹤</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-purple-300 mb-2">您可以：</h4>
+                          <ul className="space-y-1 text-purple-200">
+                            <li>• 調整功能優先級</li>
+                            <li>• 提出新需求</li>
+                            <li>• 檢視開發進度</li>
+                            <li>• 討論技術決策</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {projectPhase === 'CONTINUOUS' && (
+                    <div className="bg-green-900/20 border border-green-700 rounded-lg p-6 mb-6">
+                      <h2 className="text-xl font-bold text-green-300 mb-3 flex items-center gap-2">
+                        🔄 持續整合階段
+                      </h2>
+                      <p className="text-green-200 mb-4">
+                        專案已進入持續改進階段。我可以協助您實現新功能、修復錯誤、進行重構或處理任何開發需求。
+                      </p>
+                      <div className="grid md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <h4 className="font-medium text-green-300 mb-2">支援類型：</h4>
+                          <ul className="space-y-1 text-green-200">
+                            <li>• 功能開發</li>
+                            <li>• 錯誤修復</li>
+                            <li>• 代碼重構</li>
+                            <li>• 性能優化</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-green-300 mb-2">工作方式：</h4>
+                          <ul className="space-y-1 text-green-200">
+                            <li>• 基於對話的需求收集</li>
+                            <li>• 相同的史詩-故事-任務結構</li>
+                            <li>• 持續的品質保證</li>
+                            <li>• 靈活的迭代週期</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <ProjectAgentChat 
+                    projectId={project.id} 
+                    projectPhase={projectPhase}
+                    onPhaseChange={handlePhaseChange}
+                  />
+                  
+                  {/* Optional: Keep queries panel for advanced users */}
+                  <details className="mt-6">
+                    <summary className="cursor-pointer text-primary-400 hover:text-accent-50 mb-4">
+                      📋 進階：管理現有查詢 (展開)
+                    </summary>
+                    <UserQueriesPanel projectId={project.id} />
+                  </details>
+                </div>
               </div>
             </div>
 

@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 
 export async function checkProjectOperationAccess(projectId: string) {
   try {
-    const project = await prisma.project.findUnique({
+    const project = await prisma.projectIndex.findUnique({
       where: { id: projectId },
       select: { id: true, name: true, status: true, localPath: true },
     });

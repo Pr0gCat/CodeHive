@@ -181,9 +181,16 @@ project-root/
 - Do not change too much of the project unless it is really needed to
 - Do not launch or restart the server by yourself, ask user to do it instead
 - Texts on UI should be written Traditional Chinese
+- **UI LOCALIZATION**: Always respond in Traditional Chinese when asked to generate UI-related content or interactions
+- **NEW ARCHITECTURE**: 正在設計新的單一專案代理架構，取代現有的多代理系統
+- **PROJECT AGENT CONCEPT**: 新系統將使用單一專案代理處理所有對話和專案管理
+- **THREE PHASES**: 專案生命週期包含三個階段：需求獲取、MVP開發、持續整合
+- **ATDD/TDD**: 使用通用ATDD框架，支援開發和非開發任務
+- **DESIGN DOCUMENT**: 完整設計文件位於 AI_PROJECT_DEVELOPMENT_DESIGN.md
 
 # important-instruction-reminders
 Do what has been asked; nothing more, nothing less.
 NEVER create files unless they're absolutely necessary for achieving your goal.
 ALWAYS prefer editing an existing file to creating a new one.
 NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+- do not run prisma studio by yourself

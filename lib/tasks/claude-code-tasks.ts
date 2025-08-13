@@ -17,7 +17,7 @@ export class ClaudeCodeTaskExecutor {
   }> {
     try {
       // Get project details
-      const project = await prisma.project.findUnique({
+      const project = await prisma.projectIndex.findUnique({
         where: { id: projectId },
       });
 
@@ -39,12 +39,34 @@ export class ClaudeCodeTaskExecutor {
         },
       });
 
-      // Execute Claude Code /init command
+      // Execute Claude Code /init command with specialized system prompt
+      const initSystemPrompt = `You are a project initialization specialist. When running the /init command:
+
+1. ANALYZE PROJECT STRUCTURE: Examine the codebase thoroughly to understand its architecture
+2. GENERATE CLAUDE.md: Create comprehensive documentation that includes:
+   - Project overview and purpose
+   - Technology stack and dependencies
+   - Setup and development instructions
+   - Key architectural decisions
+   - Development workflow and conventions
+3. PROVIDE CONTEXT: Include relevant context about the project's current state
+4. SUGGEST IMPROVEMENTS: Recommend best practices and potential improvements
+
+Key Behaviors:
+- Be thorough in your analysis of the project structure
+- Create documentation that helps future development
+- Use Traditional Chinese for user-facing explanations
+- Focus on practical, actionable information
+- Consider both technical and non-technical stakeholders
+
+Your CLAUDE.md should be comprehensive enough for a new developer to understand and contribute to the project.`;
+
       const result = await claudeCode.execute('/init', {
         workingDirectory: project.localPath,
         timeout: 1800000, // 30 minutes for init command
         outputFormat: 'stream-json',
         projectId,
+        systemPrompt: initSystemPrompt,
         onProgress: (event) => {
           // Log progress events
           if (event.type === 'assistant') {
