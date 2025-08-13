@@ -40,6 +40,8 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     progress?: number;
     message?: string;
   } | null>(null);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [deletingProject, setDeletingProject] = useState(false);
 
   // Check URL parameters for tab selection
   useEffect(() => {
@@ -274,6 +276,33 @@ export default function ProjectPage({ params }: ProjectPageProps) {
     setProjectSettings(settings);
   };
 
+  const handleDeleteProject = async () => {
+    if (!project) return;
+    
+    setDeletingProject(true);
+    try {
+      const response = await fetch(`/api/projects/${project.id}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        showToast('專案已成功刪除', 'success');
+        // Redirect to projects list
+        window.location.href = '/projects';
+      } else {
+        showToast(`刪除失敗: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      showToast('刪除專案時發生錯誤', 'error');
+    } finally {
+      setDeletingProject(false);
+      setShowDeleteConfirmation(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'ACTIVE':
@@ -282,6 +311,8 @@ export default function ProjectPage({ params }: ProjectPageProps) {
         return 'bg-yellow-100 text-yellow-800';
       case 'COMPLETED':
         return 'bg-blue-100 text-blue-800';
+      case 'FAILED':
+        return 'bg-red-100 text-red-800';
       case 'ARCHIVED':
         return 'bg-primary-900 text-primary-200';
       default:
@@ -337,6 +368,85 @@ export default function ProjectPage({ params }: ProjectPageProps) {
           >
             返回專案列表
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if project import failed
+  if (project.status === 'FAILED') {
+    return (
+      <div className="min-h-screen bg-primary-950 flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <div className="mb-6">
+            <div className="rounded-full h-16 w-16 bg-red-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-red-400 mb-2">
+              {project.name}
+            </h2>
+            <p className="text-red-300 font-medium mb-4">
+              專案導入失敗
+            </p>
+            <div className="bg-red-950 border border-red-800 rounded-lg p-4 mb-6">
+              <p className="text-sm text-red-200">
+                {project.description || '導入過程中發生未知錯誤'}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              onClick={() => setShowDeleteConfirmation(true)}
+              className="block w-full px-4 py-2 bg-red-800 text-red-200 rounded hover:bg-red-700 transition-colors"
+            >
+              刪除失敗專案
+            </button>
+          </div>
+
+          {/* Delete Confirmation Modal */}
+          {showDeleteConfirmation && (
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+              <div className="bg-primary-900 rounded-lg p-6 max-w-md mx-4 border border-primary-700">
+                <div className="flex items-center mb-4">
+                  <svg className="h-6 w-6 text-red-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                  <h3 className="text-lg font-medium text-primary-100">確認刪除專案</h3>
+                </div>
+                
+                <p className="text-primary-300 mb-6">
+                  您確定要永久刪除專案「{project.name}」嗎？此操作無法復原，將會刪除所有相關數據。
+                </p>
+                
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => setShowDeleteConfirmation(false)}
+                    disabled={deletingProject}
+                    className="flex-1 px-4 py-2 bg-primary-700 text-primary-200 rounded hover:bg-primary-600 transition-colors disabled:opacity-50"
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={handleDeleteProject}
+                    disabled={deletingProject}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center"
+                  >
+                    {deletingProject ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                        刪除中...
+                      </>
+                    ) : (
+                      '確認刪除'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );

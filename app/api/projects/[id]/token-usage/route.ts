@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { tokenTracker } from '@/lib/claude-code/token-tracker';
+import { tokenManager } from '@/lib/resources/token-management';
 
 export async function GET(
   request: NextRequest,
@@ -8,26 +8,19 @@ export async function GET(
   try {
     const projectId = params.id;
 
-    // Get usage summary
-    const summary = await tokenTracker.getProjectUsageSummary(projectId);
-
-    // Get current limits
-    const dailyLimit = tokenTracker.getDailyLimit();
-    const rateLimit = tokenTracker.getRateLimit();
-
-    // Calculate remaining tokens
-    const remainingDaily = tokenTracker.getRemainingDailyTokens(summary.daily);
+    // Get token status which includes usage, limits, and remaining
+    const status = await tokenManager.getTokenStatus(projectId);
 
     return NextResponse.json({
-      usage: summary,
-      limits: {
-        daily: dailyLimit,
-        ratePerMinute: rateLimit,
+      usage: {
+        daily: status.currentUsage.today,
+        weekly: status.currentUsage.thisWeek,
+        monthly: status.currentUsage.thisMonth,
+        breakdown: status.breakdown,
       },
-      remaining: {
-        daily: remainingDaily,
-        percentUsed: Math.round((summary.daily / dailyLimit) * 100),
-      },
+      limits: status.limits,
+      remaining: status.remaining,
+      projection: status.projection,
     });
   } catch (error) {
     console.error('Failed to get token usage:', error);

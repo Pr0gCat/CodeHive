@@ -1,5 +1,5 @@
 import { claudeCode } from '@/lib/claude-code';
-import { tokenTracker } from '@/lib/claude-code/token-tracker';
+import { tokenManager } from '@/lib/resources/token-management';
 import { logger } from '@/lib/logging/structured-logger';
 import {
     canRunParallelAgent,
@@ -82,15 +82,15 @@ export class AgentExecutor {
         };
       }
 
-      // Also check legacy token tracker for backward compatibility
-      const canExecute = await tokenTracker.canExecute(
+      // Also check token manager for execution permission
+      const canExecute = await tokenManager.canExecuteWork(
         projectId,
         estimatedTokens
       );
       if (!canExecute.allowed) {
         return {
           success: false,
-          error: canExecute.reason,
+          error: canExecute.reason || 'Token execution blocked',
           executionTime: Date.now() - startTime,
           tokensUsed: 0,
         };
@@ -173,13 +173,17 @@ export class AgentExecutor {
               outputTokens
             );
 
-            // Also track with legacy system for backward compatibility
-            await tokenTracker.trackUsage({
+            // Also track with token manager
+            await tokenManager.logTokenUsage(
               projectId,
-              agentType: agentType || 'unknown',
-              tokensUsed: totalTokensUsed,
-              timestamp: new Date(),
-            });
+              agentType || 'unknown',
+              'claude_code_execution',
+              totalTokensUsed,
+              {
+                inputTokens,
+                outputTokens,
+              }
+            );
           }
 
           return {
@@ -247,13 +251,17 @@ export class AgentExecutor {
         0 // No output tokens for failed executions
       );
 
-      // Also track with legacy system for backward compatibility
-      await tokenTracker.trackUsage({
+      // Also track with token manager for failed execution
+      await tokenManager.logTokenUsage(
         projectId,
-        agentType: agentType || 'unknown',
-        tokensUsed: inputTokens,
-        timestamp: new Date(),
-      });
+        agentType || 'unknown',
+        'claude_code_execution_failed',
+        inputTokens,
+        {
+          inputTokens,
+          outputTokens: 0,
+        }
+      );
     }
 
     return {

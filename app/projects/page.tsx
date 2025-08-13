@@ -52,6 +52,27 @@ export default function ProjectsPage() {
     }
   };
 
+  const handleDeleteProject = async (projectId: string, projectName: string) => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Remove the project from the local state
+        setProjects(projects.filter(p => p.id !== projectId));
+        console.log(`Project "${projectName}" deleted successfully`);
+      } else {
+        alert(`刪除失敗: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      alert('刪除專案時發生錯誤');
+    }
+  };
+
   const getAgentStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'active':
@@ -71,6 +92,8 @@ export default function ProjectsPage() {
         return 'bg-green-900 text-green-300 border border-green-700';
       case 'PAUSED':
         return 'bg-yellow-900 text-yellow-300 border border-yellow-700';
+      case 'FAILED':
+        return 'bg-red-900 text-red-300 border border-red-700';
       case 'ARCHIVED':
         return 'bg-gray-900 text-gray-300 border border-gray-700';
       default:
@@ -201,6 +224,26 @@ export default function ProjectsPage() {
                           {project.status === 'INITIALIZING' && (
                             <div className="flex items-center">
                               <div className="animate-spin rounded-full h-4 w-4 border border-blue-300 border-t-transparent"></div>
+                            </div>
+                          )}
+                          {project.status === 'FAILED' && (
+                            <div className="flex items-center gap-2">
+                              <svg className="h-4 w-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                              </svg>
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (confirm(`確定要刪除失敗的專案「${project.name}」嗎？`)) {
+                                    handleDeleteProject(project.id, project.name);
+                                  }
+                                }}
+                                className="text-xs px-2 py-1 bg-red-800 hover:bg-red-700 text-red-200 rounded transition-colors"
+                                title="刪除失敗專案"
+                              >
+                                刪除
+                              </button>
                             </div>
                           )}
                         </div>

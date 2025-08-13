@@ -181,6 +181,39 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  async function abortImport(projectId: string, reason: string) {
+    console.error(`🚨 Aborting import for project ${projectId}: ${reason}`);
+    
+    try {
+      // Update project status to failed
+      await prisma.project.update({
+        where: { id: projectId },
+        data: {
+          status: 'FAILED',
+          description: `Import failed: ${reason}`,
+        },
+      });
+
+      // Log the abortion
+      await prisma.projectLog.create({
+        data: {
+          projectId,
+          level: 'ERROR',
+          category: 'IMPORT',
+          message: `Import process aborted: ${reason}`,
+          metadata: JSON.stringify({
+            abortedAt: new Date().toISOString(),
+            reason,
+          }),
+        },
+      });
+
+      console.log(`❌ Import aborted and project ${projectId} marked as FAILED`);
+    } catch (abortError) {
+      console.error(`Failed to properly abort import for ${projectId}:`, abortError);
+    }
+  }
+
   async function runImportAsync(
     projectId: string, 
     taskId: string, 
@@ -280,6 +313,7 @@ export async function POST(request: NextRequest) {
             'git_clone',
             'Path is not a valid Git repository'
           );
+          await abortImport(projectId, 'Local path is not a valid Git repository');
           return;
         }
 
@@ -299,6 +333,7 @@ export async function POST(request: NextRequest) {
             'git_clone',
             'Repository already exists at this location'
           );
+          await abortImport(projectId, 'Repository already exists at this location');
           return;
         }
 
@@ -321,6 +356,7 @@ export async function POST(request: NextRequest) {
             'git_clone',
             'Failed to clone repository: ' + cloneResult.error
           );
+          await abortImport(projectId, 'Failed to clone repository: ' + cloneResult.error);
           return;
         }
 
@@ -332,6 +368,7 @@ export async function POST(request: NextRequest) {
             'git_clone',
             'Repository clone verification failed'
           );
+          await abortImport(projectId, 'Repository clone verification failed');
           return;
         }
 
@@ -347,16 +384,31 @@ export async function POST(request: NextRequest) {
       await taskManager.startPhase(taskId, 'analysis');
 
       // Run real project analysis with progress tracking
-      const analysisResult = await projectAnalyzer.analyzeProject(
-        finalLocalPath,
-        taskId,
-        'analysis'
-      );
+      let analysisResult;
+      try {
+        analysisResult = await projectAnalyzer.analyzeProject(
+          finalLocalPath,
+          taskId,
+          'analysis'
+        );
+      } catch (analysisError) {
+        const errorMessage = analysisError instanceof Error ? analysisError.message : 'Project analysis failed';
+        await taskManager.failPhase(taskId, 'analysis', errorMessage);
+        await abortImport(projectId, `Project analysis failed: ${errorMessage}`);
+        return;
+      }
 
       // Get additional repository metadata
-      const currentBranch = await gitClient.getCurrentBranch(finalLocalPath);
-      const actualRemoteUrl =
-        gitUrl || (await gitClient.getRemoteUrl(finalLocalPath));
+      let currentBranch, actualRemoteUrl;
+      try {
+        currentBranch = await gitClient.getCurrentBranch(finalLocalPath);
+        actualRemoteUrl = gitUrl || (await gitClient.getRemoteUrl(finalLocalPath));
+      } catch (metadataError) {
+        const errorMessage = metadataError instanceof Error ? metadataError.message : 'Failed to get repository metadata';
+        await taskManager.failPhase(taskId, 'analysis', errorMessage);
+        await abortImport(projectId, `Repository metadata retrieval failed: ${errorMessage}`);
+        return;
+      }
 
       await taskManager.completePhase(taskId, 'analysis', {
         filesAnalyzed: analysisResult.totalFiles,
@@ -378,24 +430,31 @@ export async function POST(request: NextRequest) {
       });
 
       // Update project in database with analysis results and set status to ACTIVE
-      await prisma.project.update({
-        where: { id: projectId },
-        data: {
-          description: gitUrl
-            ? `Imported from ${gitUrl}`
-            : `Imported from local repository at ${finalLocalPath}`,
-          gitUrl: actualRemoteUrl,
-          localPath: finalLocalPath,
-          status: 'ACTIVE', // Change status to ACTIVE before sprint creation
-          framework: framework || analysisResult.detectedFramework,
-          language: language || analysisResult.detectedLanguage,
-          packageManager:
-            packageManager || analysisResult.detectedPackageManager,
-          testFramework: testFramework || analysisResult.detectedTestFramework,
-          lintTool,
-          buildTool,
-        },
-      });
+      try {
+        await prisma.project.update({
+          where: { id: projectId },
+          data: {
+            description: gitUrl
+              ? `Imported from ${gitUrl}`
+              : `Imported from local repository at ${finalLocalPath}`,
+            gitUrl: actualRemoteUrl,
+            localPath: finalLocalPath,
+            status: 'ACTIVE', // Change status to ACTIVE before sprint creation
+            framework: framework || analysisResult.detectedFramework,
+            language: language || analysisResult.detectedLanguage,
+            packageManager:
+              packageManager || analysisResult.detectedPackageManager,
+            testFramework: testFramework || analysisResult.detectedTestFramework,
+            lintTool,
+            buildTool,
+          },
+        });
+      } catch (updateError) {
+        const errorMessage = updateError instanceof Error ? updateError.message : 'Failed to update project in database';
+        await taskManager.failPhase(taskId, 'completion', errorMessage);
+        await abortImport(projectId, `Database update failed: ${errorMessage}`);
+        return;
+      }
 
       await taskManager.updatePhaseProgress(taskId, 'completion', 40, {
         type: 'PHASE_PROGRESS',
@@ -507,12 +566,17 @@ export async function POST(request: NextRequest) {
         },
       ];
 
-      await prisma.kanbanCard.createMany({
-        data: initialCards.map(card => ({
-          projectId: projectId,
-          ...card,
-        })),
-      });
+      try {
+        await prisma.kanbanCard.createMany({
+          data: initialCards.map(card => ({
+            projectId: projectId,
+            ...card,
+          })),
+        });
+      } catch (cardError) {
+        console.warn(`⚠️ Failed to create initial Kanban cards for project ${projectId}:`, cardError);
+        // Don't abort import for card creation failure, just warn
+      }
 
       await taskManager.updatePhaseProgress(taskId, 'completion', 80, {
         type: 'PHASE_PROGRESS',
@@ -601,10 +665,15 @@ export async function POST(request: NextRequest) {
       }
 
       // Step 2: Update project with generated description and complete status
-      await prisma.project.update({
-        where: { id: projectId },
-        data: { description: projectDescription },
-      });
+      try {
+        await prisma.project.update({
+          where: { id: projectId },
+          data: { description: projectDescription },
+        });
+      } catch (descUpdateError) {
+        console.warn(`⚠️ Failed to update project description for ${projectId}:`, descUpdateError);
+        // Don't abort for description update failure, just warn
+      }
 
       await taskManager.updatePhaseProgress(taskId, 'completion', 100, {
         type: 'PHASE_COMPLETE',
@@ -643,14 +712,8 @@ export async function POST(request: NextRequest) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
 
-      // Update project status to failed
-      await prisma.project.update({
-        where: { id: projectId },
-        data: {
-          status: 'ARCHIVED',
-          description: `導入失敗: ${errorMessage}`,
-        },
-      });
+      // Use the abort function for consistency
+      await abortImport(projectId, errorMessage);
 
       await taskManager.failPhase(
         taskId,
