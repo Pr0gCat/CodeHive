@@ -385,7 +385,7 @@ export class ProjectIndexService {
     const path = await import('path');
     
     const allProjects = await this.getAllProjects({ includeInactive: true });
-    let removed = 0; // Always 0 now - we don't remove projects
+    const removed = 0; // Always 0 now - we don't remove projects
     let archived = 0;
 
     for (const project of allProjects) {

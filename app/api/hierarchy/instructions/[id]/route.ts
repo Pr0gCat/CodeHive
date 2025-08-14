@@ -7,7 +7,7 @@ import { ModelStatus, type UpdateInstructionInput } from '@/lib/models/types';
 const hierarchyManager = new HierarchyManager(prisma);
 
 // 初始化執行管理器（如果需要執行指令）
-let executionManager: ExecutionManager | null = null;
+const executionManager: ExecutionManager | null = null;
 
 /**
  * GET /api/hierarchy/instructions/[id] - 取得 Instruction 詳細資料

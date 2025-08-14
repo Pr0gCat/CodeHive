@@ -235,7 +235,7 @@ export class ATDDCycleManager {
    */
   async executeFullCycle(taskId: string, conversationId?: string): Promise<ATDDCycleData> {
     try {
-      let cycleData = await this.startATDDCycle(taskId);
+      const cycleData = await this.startATDDCycle(taskId);
       const phases: ATDDPhase['name'][] = ['DEFINE', 'TEST', 'DEVELOP', 'VALIDATE'];
 
       for (const phase of phases) {
