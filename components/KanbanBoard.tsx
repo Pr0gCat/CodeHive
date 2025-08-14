@@ -62,7 +62,6 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
   const [epics, setEpics] = useState<Epic[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [optimizing, setOptimizing] = useState(false);
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createCardData, setCreateCardData] = useState<{
@@ -136,51 +135,6 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
     await fetchEpics();
   };
 
-  const handleOptimizeBoard = async () => {
-    setOptimizing(true);
-    try {
-      const response = await fetch(
-        `/api/projects/${projectId}/kanban/optimize`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      const result = await response.json();
-      if (result.success) {
-        const { optimizationsApplied, reason, improvements } = result.data;
-
-        if (optimizationsApplied > 0) {
-          showToast(
-            `🎯 看板已優化！應用了 ${optimizationsApplied} 項改進`,
-            'success'
-          );
-          // Refresh stories to show updated positions
-          await fetchStories(true);
-        } else {
-          showToast('✅ 看板已經是最佳狀態！', 'info');
-        }
-
-        // Log the reason and improvements for user visibility
-        if (reason) {
-          console.log('Kanban optimization reason:', reason);
-        }
-        if (improvements && improvements.length > 0) {
-          console.log('Kanban improvements:', improvements);
-        }
-      } else {
-        showToast(`優化失敗: ${result.error}`, 'error');
-      }
-    } catch (error) {
-      console.error('Failed to optimize board:', error);
-      showToast('看板優化失敗', 'error');
-    } finally {
-      setOptimizing(false);
-    }
-  };
 
   const handleDragStart = (e: React.DragEvent, storyId: string) => {
     setDraggedItem(storyId);
@@ -370,31 +324,6 @@ export default function KanbanBoard({ projectId }: KanbanBoardProps) {
           <p className="text-primary-300 mt-1">拖拽 Stories 來更改狀態</p>
         </div>
         <div className="flex gap-2">
-          {/* Manual AI optimization is now optional since it runs automatically */}
-          {process.env.NODE_ENV === 'development' && (
-            <button
-              onClick={handleOptimizeBoard}
-              disabled={optimizing || loading}
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-purple-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-              title="Manual AI optimization (automatic optimization runs in background)"
-            >
-              <svg
-                className={`w-4 h-4 ${optimizing ? 'animate-spin' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
-              {optimizing ? 'AI 優化中...' : '手動 AI 優化'}
-            </button>
-          )}
-
           <button
             onClick={handleRefresh}
             disabled={refreshing}
